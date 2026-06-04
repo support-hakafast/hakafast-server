@@ -1,56 +1,57 @@
-const { Client } = require('pg');
+const express = require('express');
+const { Pool } = require('pg');
+const app = express();
+const port = process.env.PORT || 3000;
 
-// חיבור ל-Database באמצעות ה-URL מ-Render
-const connectionString = process.env.DATABASE_URL;
+app.use(express.json());
 
-const client = new Client({
-  connectionString: connectionString,
-  ssl: { rejectUnauthorized: false } // נדרש בחיבור ל-Render
+// הגדרת חיבור ל-DB
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });
 
-async function initDB() {
+// בדיקת תקינות - דף הבית של ה-API
+app.get('/', (req, res) => {
+  res.send('HAKAFAST API is Running - High Contrast Mode Active');
+});
+
+// Endpoint: הוספת נהג למקצה (KISS Assignment)
+app.post('/assign-driver', async (req, res) => {
+  const { track_id, kart_number, driver_name, driver_level } = req.body;
+  
   try {
-    await client.connect();
-    console.log("Connected to HAKAFAST DB successfully!");
-
-    // יצירת טבלאות (SQL שכתבנו קודם)
-    const createTablesQuery = `
-      CREATE TABLE IF NOT EXISTS tracks (
-          id SERIAL PRIMARY KEY,
-          track_name VARCHAR(100) NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS drivers (
-          id SERIAL PRIMARY KEY,
-          track_id INT REFERENCES tracks(id) ON DELETE CASCADE,
-          full_name VARCHAR(100) NOT NULL,
-          contact_info VARCHAR(100),
-          driver_level VARCHAR(20) DEFAULT 'Amateur',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS current_heat (
-          id SERIAL PRIMARY KEY,
-          track_id INT REFERENCES tracks(id) ON DELETE CASCADE,
-          kart_number INT NOT NULL,
-          driver_name VARCHAR(100) NOT NULL,
-          driver_level VARCHAR(20) DEFAULT 'Amateur',
-          last_lap_time NUMERIC(6, 3),
-          best_lap_time NUMERIC(6, 3),
-          second_best_time NUMERIC(6, 3),
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+    const query = `
+      INSERT INTO current_heat (track_id, kart_number, driver_name, driver_level)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *;
     `;
-
-    await client.query(createTablesQuery);
-    console.log("Tables are ready!");
+    const values = [track_id, kart_number, driver_name, driver_level || 'Amateur'];
+    const result = await pool.query(query, values);
     
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
-    console.error("Error initializing DB:", err);
-  } finally {
-    await client.end();
+    console.error(err);
+    res.status(500).json({ success: false, error: 'Database error' });
   }
-}
+});
 
-initDB();
+// Endpoint: שליפת נתוני המקצה למסכים (Live Timing)
+app.get('/live-timing/:track_id', async (req, res) => {
+  try {
+    const query = `
+      SELECT * FROM current_heat 
+      WHERE track_id = $1 
+      ORDER BY best_lap_time ASC NULLS LAST 
+      LIMIT 30;
+    `;
+    const result = await pool.query(query, [req.params.track_id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server is live on port ${port}`);
+});
