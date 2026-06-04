@@ -1,41 +1,41 @@
 {
   "he": {
-    "title": "HAKAFAST - זמנים בזמן אמת",
-    "pos": "#",
+    "title": "HAKAFAST - זמנים ושיבוצים",
+    "pos": "מיקום",
     "kart": "קארט",
     "driver": "נהג",
     "last_lap": "זמן אחרון",
     "best_lap": "הכי מהיר",
-    "admin_title": "לוח בקרה למארגן",
-    "add_driver": "שיבוץ נהג לקארט",
-    "setup_karts": "הגדרת מצבת קארטים (טווח)",
-    "save": "שמור",
-    "anonymous": "קארט"
+    "anonymous": "קארט",
+    "status_waiting": "ממתין למקצה",
+    "level_amateur": "חובבן",
+    "level_master": "מאסטר",
+    "level_pro": "פרו"
   },
   "en": {
-    "title": "HAKAFAST - LIVE TIMING",
+    "title": "HAKAFAST - LIVE TIMING & ASSIGNMENTS",
     "pos": "POS",
     "kart": "KART",
     "driver": "DRIVER",
     "last_lap": "LAST LAP",
     "best_lap": "BEST LAP",
-    "admin_title": "Organizer Dashboard",
-    "add_driver": "Assign Driver to Kart",
-    "setup_karts": "Setup Active Karts Range",
-    "save": "Save",
-    "anonymous": "Kart"
+    "anonymous": "Kart",
+    "status_waiting": "Waiting for Heat",
+    "level_amateur": "Amateur",
+    "level_master": "Master",
+    "level_pro": "Pro"
   },
   "ar": {
-    "title": "HAKAFAST - توقيت مباشر",
+    "title": "HAKAFAST - توقيت مباشر ותוצאות",
     "pos": "#",
     "kart": "كارت",
     "driver": "سائق",
     "last_lap": "الدورة الأخيرة",
     "best_lap": "الأسرع",
-    "admin_title": "لوحة تحكم المنظم",
-    "add_driver": "تخصيص سائق للكارت",
-    "setup_karts": "إعداد نطاق الكارت النشט",
-    "save": "حفظ",
-    "anonymous": "كارت"
+    "anonymous": "كارت",
+    "status_waiting": "في الانتظار",
+    "level_amateur": "هاوي",
+    "level_master": "ماستر",
+    "level_pro": "محترف"
   }
 }

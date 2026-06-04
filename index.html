@@ -2,42 +2,60 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>HAKAFAST | Live Timing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAKAFAST | Live Display</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #FFFFFF; color: #000080; text-align: center; margin: 0; padding: 20px; }
-        h1 { color: #000080; border-bottom: 3px solid #40E0D0; display: inline-block; padding-bottom: 10px; }
-        .controls { margin-bottom: 20px; }
-        button { background-color: #000080; color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; margin: 5px; border-radius: 5px; }
-        button:hover { background-color: #40E0D0; color: #000080; }
-        table { width: 100%; max-width: 1200px; margin: 20px auto; border-collapse: collapse; font-size: 1.6em; }
-        th { background-color: #000080; color: #FFFFFF; padding: 15px; }
-        td { border-bottom: 2px solid #f0f0f0; padding: 15px; font-weight: bold; }
-        .best-lap { color: #800080; font-weight: 900; }
-        .tag-badge { font-size: 0.6em; padding: 3px 8px; border-radius: 4px; margin-inline-end: 10px; background-color: #40E0D0; color: #000080; }
+        :root { --navy: #000080; --turquoise: #40E0D0; --purple: #800080; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #FFFFFF; color: var(--navy); margin: 0; padding: 30px; text-align: center; }
+        
+        h1 { font-size: 2.8em; font-weight: 800; margin-bottom: 5px; }
+        .subtitle { font-size: 1.5em; color: var(--turquoise); font-weight: bold; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .controls { margin-bottom: 30px; }
+        .btn-lang { background-color: var(--navy); color: white; border: none; padding: 10px 24px; cursor: pointer; font-weight: bold; margin: 0 5px; border-radius: 6px; font-size: 1em; transition: 0.2s; }
+        .btn-lang:hover { background-color: var(--turquoise); color: var(--navy); }
+        
+        .display-container { max-width: 1300px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; padding: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 1.8em; text-align: center; }
+        th { background-color: var(--navy); color: #FFFFFF; padding: 20px; text-transform: uppercase; font-weight: 700; }
+        td { border-bottom: 3px solid #f4f6f9; padding: 20px; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        
+        .kart-badge { background: var(--navy); color: white; padding: 5px 15px; border-radius: 8px; font-size: 1.1em; display: inline-block; min-width: 60px; }
+        .best-lap { color: var(--purple); font-weight: 900; font-size: 1.1em; }
+        .tag-badge { font-size: 0.55em; padding: 4px 10px; border-radius: 6px; margin-inline-end: 12px; background-color: var(--turquoise); color: var(--navy); vertical-align: middle; font-weight: 800; }
+        
+        /* סטייל ייחודי למצב שלפני תחילת המקצה */
+        .status-banner { background: #e6fffa; border: 2px solid var(--turquoise); color: var(--navy); padding: 15px; font-size: 1.4em; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <h1 id="mainTitle">HAKAFAST</h1>
+    <div id="subTitle" class="subtitle">LIVE DASHBOARD</div>
     
     <div class="controls">
-        <button onclick="changeLanguage('he')">עברית</button>
-        <button onclick="changeLanguage('en')">English</button>
-        <button onclick="changeLanguage('ar')">العربية</button>
+        <button class="btn-lang" onclick="changeLanguage('he')">עברית</button>
+        <button class="btn-lang" onclick="changeLanguage('en')">English</button>
+        <button class="btn-lang" onclick="changeLanguage('ar')">العربية</button>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th id="thPos">#</th>
-                <th id="thKart">קארט</th>
-                <th id="thDriver">נהג</th>
-                <th id="thLast">זמן אחרון</th>
-                <th id="thBest">הכי מהיר</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+    <div class="display-container">
+        <div id="statusBanner" class="status-banner" style="display: none;"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th id="thPos" style="width: 80px;">#</th>
+                    <th id="thKart" style="width: 160px;">קארט</th>
+                    <th id="thDriver" style="text-align: start; padding-inline-start: 40px;">נהג</th>
+                    <th id="thLast">זמן אחרון</th>
+                    <th id="thBest">הכי מהיר</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
 
     <script>
         let words = {};
@@ -54,24 +72,42 @@
                 const response = await fetch('/live-timing/1'); 
                 const data = await response.json();
                 const tbody = document.getElementById('tableBody');
+                const banner = document.getElementById('statusBanner');
                 tbody.innerHTML = '';
 
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="color: #999; padding: 40px;">No active drivers in this heat</td></tr>`;
+                    banner.style.display = 'none';
+                    return;
+                }
+
+                // בדיקה האם המקצה עוד לא התחלתי (לכל הנהגים אין זמנים)
+                const heatNotStarted = data.every(row => !row.best_lap_time);
+                if (heatNotStarted && words[currentLang]) {
+                    banner.innerText = words[currentLang].status_waiting;
+                    banner.style.display = 'block';
+                } else {
+                    banner.style.display = 'none';
+                }
+
                 data.forEach((row, index) => {
-                    const isAnon = row.driver_name.startsWith('קארט #');
-                    const displayName = isAnon && words[currentLang] ? `${words[currentLang].anonymous} ${row.kart_number}` : row.driver_name;
-                    const tag = row.driver_level !== 'Amateur' ? `<span class="tag-badge">${row.driver_level.toUpperCase()}</span>` : '';
+                    const levelKey = `level_${row.driver_level.toLowerCase()}`;
+                    const translatedLevel = words[currentLang] && words[currentLang][levelKey] ? words[currentLang][levelKey] : row.driver_level;
+                    const tag = row.driver_level !== 'Amateur' ? `<span class="tag-badge">${translatedLevel.toUpperCase()}</span>` : '';
                     
                     tbody.innerHTML += `
                         <tr>
                             <td>${index + 1}</td>
-                            <td>${row.kart_number}</td>
-                            <td style="text-align: start;">${tag}${displayName}</td>
+                            <td><span class="kart-badge">${row.kart_number}</span></td>
+                            <td style="text-align: start; padding-inline-start: 40px;">${tag}${row.driver_name}</td>
                             <td>${row.last_lap_time || '--.---'}</td>
-                            <td class="best-lap">${row.best_lap_time || '--.---'}</td>
+                            <td class="${row.best_lap_time ? 'best-lap' : ''}">${row.best_lap_time || '--.---'}</td>
                         </tr>
                     `;
                 });
-            } catch (err) {}
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         function changeLanguage(lang) {
@@ -93,7 +129,7 @@
         }
 
         loadTranslations();
-        setInterval(updateTable, 3000);
+        setInterval(updateTable, 2000); // עדכון מהיר של שתי שניות למסך הראשי
     </script>
 </body>
 </html>
