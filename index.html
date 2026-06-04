@@ -32,7 +32,7 @@
 </head>
 <body>
 
-    <h1>HAKAFAST - LIVE TIMING</h1>
+    <h1 id="mainTitle">HAKAFAST - LIVE TIMING</h1>
     
     <div class="controls">
         <button onclick="changeLanguage('he')">עברית</button>
@@ -43,11 +43,11 @@
     <table id="timingTable">
         <thead>
             <tr>
-                <th>#</th>
-                <th>קארט</th>
-                <th>נהג</th>
-                <th>זמן אחרון</th>
-                <th>הכי מהיר</th>
+                <th id="thPos">#</th>
+                <th id="thKart">קארט</th>
+                <th id="thDriver">נהג</th>
+                <th id="thLast">זמן אחרון</th>
+                <th id="thBest">הכי מהיר</th>
             </tr>
         </thead>
         <tbody id="tableBody">
@@ -55,10 +55,38 @@
     </table>
 
     <script>
-        // פונקציה לשליפת נתונים מה-API
+        // מילון תרגומים
+        const translations = {
+            he: {
+                title: "HAKAFAST - זמנים בזמן אמת",
+                pos: "#",
+                kart: "קארט",
+                driver: "נהג",
+                last: "זמן אחרון",
+                best: "הכי מהיר"
+            },
+            en: {
+                title: "HAKAFAST - LIVE TIMING",
+                pos: "#",
+                kart: "KART",
+                driver: "DRIVER",
+                last: "LAST LAP",
+                best: "BEST LAP"
+            },
+            ar: {
+                title: "HAKAFAST - توقيت مباشر",
+                pos: "#",
+                kart: "كارت",
+                driver: "سائق",
+                last: "الدورة الأخيرة",
+                best: "الأسرع"
+            }
+        };
+
+        let currentLang = 'he';
+
         async function updateTable() {
             try {
-                // נחליף את ה-URL ל-URL של ה-Render שלך
                 const response = await fetch('/live-timing/1'); 
                 const data = await response.json();
                 const tbody = document.getElementById('tableBody');
@@ -80,19 +108,29 @@
             }
         }
 
+        function changeLanguage(lang) {
+            currentLang = lang;
+            const body = document.querySelector('body');
+            const t = translations[lang];
+
+            // שינוי כיוון הטקסט
+            body.dir = (lang === 'en') ? 'ltr' : 'rtl';
+
+            // עדכון הכותרות
+            document.getElementById('mainTitle').innerText = t.title;
+            document.getElementById('thPos').innerText = t.pos;
+            document.getElementById('thKart').innerText = t.kart;
+            document.getElementById('thDriver').innerText = t.driver;
+            document.getElementById('thLast').innerText = t.last;
+            document.getElementById('thBest').innerText = t.best;
+
+            // עדכון הטבלה מיד לאחר שינוי השפה
+            updateTable();
+        }
+
         // עדכון כל 3 שניות
         setInterval(updateTable, 3000);
         updateTable();
-
-        function changeLanguage(lang) {
-            const body = document.querySelector('body');
-            if (lang === 'en') {
-                body.dir = 'ltr';
-                // כאן נוסיף תרגום כותרות בעתיד
-            } else {
-                body.dir = 'rtl';
-            }
-        }
     </script>
 </body>
 </html>
