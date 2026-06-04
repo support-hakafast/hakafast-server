@@ -7,6 +7,11 @@
         :root { --navy: #000080; --turquoise: #40E0D0; --purple: #800080; }
         .admin-header { text-align: center; background: var(--navy); color: white; padding: 15px; border-radius: 12px; margin-bottom: 25px; }
         .admin-header h1 { margin: 0; font-size: 2.2em; }
+        
+        .controls { text-align: center; margin-bottom: 20px; }
+        .btn-lang { background-color: var(--navy); color: white; border: none; padding: 8px 20px; cursor: pointer; font-weight: bold; margin: 0 5px; border-radius: 6px; }
+        .btn-lang:hover { background-color: var(--turquoise); color: var(--navy); }
+
         .main-layout { display: grid; grid-template-columns: 340px 1fr 380px; gap: 20px; align-items: start; max-width: 1650px; margin: 0 auto; }
         .panel { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
         .panel h2 { font-size: 1.3em; margin-top: 0; border-bottom: 3px solid var(--turquoise); padding-bottom: 8px; font-weight: 700; }
@@ -44,44 +49,45 @@
 <body>
 
     <div class="admin-header">
-        <h1>HAKAFAST - מרכז שליטה ובקרת מרוצים</h1>
+        <h1 id="lblAdminMainTitle">HAKAFAST - מרכז שליטה ובקרת מרוצים</h1>
+    </div>
+
+    <div class="controls">
+        <button class="btn-lang" onclick="changeLanguage('he')">עברית</button>
+        <button class="btn-lang" onclick="changeLanguage('en')">English</button>
+        <button class="btn-lang" onclick="changeLanguage('ar')">العربية</button>
     </div>
 
     <div class="main-layout">
         
         <!-- עמודה 1: מחסן קארטים חופשיים -->
         <div class="panel">
-            <h2>מצבת קארטים (מחסן)</h2>
+            <h2 id="lblAdminWarehouse">מצבת קארטים (מחסן)</h2>
             <div class="input-group">
                 <input type="text" id="kartInput" placeholder="מספר או טווח (למשל 1-12)">
-                <button onclick="addKartsFromInput()">הוסף</button>
+                <button id="lblAdminAddInventory" onclick="addKartsFromInput()">הוסף</button>
             </div>
-            <div id="kartPool" class="kart-pool" ondragover="allowDrop(event)" ondrop="dropToPool(event)" ondragleave="dragLeave(event)">
-                <!-- קארטים חופשיים -->
-            </div>
+            <div id="kartPool" class="kart-pool" ondragover="allowDrop(event)" ondrop="dropToPool(event)" ondragleave="dragLeave(event)"></div>
         </div>
 
         <!-- עמודה 2: ניהול ליינים דינמי וגרפי -->
         <div class="panel">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2>סידור ה-Pits (ליינים דינמיים)</h2>
-                <button onclick="addNewLane()" style="padding: 6px 12px; background: var(--purple);">+ הוסף ליין ב-Pit</button>
+                <h2 id="lblAdminPitsTitle">סידור ה-Pits (ליינים דינמיים)</h2>
+                <button id="lblAdminAddLane" onclick="addNewLane()" style="padding: 6px 12px; background: var(--purple);">+ הוסף ליין ב-Pit</button>
             </div>
-            <div class="pit-lanes-board" id="lanesBoard">
-                <!-- ליינים ייווצרו כאן דינמית -->
-            </div>
+            <div class="pit-lanes-board" id="lanesBoard"></div>
         </div>
 
         <!-- עמודה 3: סוג המקצה ורישום נהגים -->
         <div class="panel">
-            <h2>הגדרות מקצה קרוב</h2>
+            <h2 id="lblAdminHeatSettings">הגדרות מקצה קרוב</h2>
             <select id="heatType" onchange="toggleHeatTypeFields()">
-                <option value="time">מקצה זמן (Best Lap)</option>
-                <option value="endurance">מרוץ סיבולת (Endurance)</option>
-                <option value="sprint">מרוץ ספרינט (לפי הקפות)</option>
+                <option value="time" id="optHeatTime">מקצה זמן (Best Lap)</option>
+                <option value="endurance" id="optHeatEndurance">מרוץ סיבולת (Endurance)</option>
+                <option value="sprint" id="optHeatSprint">מרוץ ספרינט (לפי הקפות)</option>
             </select>
             
-            <!-- החלף את אלמנט ה-durationField הקיים בזה: -->
             <div id="durationField" style="margin-top: 10px;">
                 <input type="number" id="heatDuration" placeholder="אורך מקצה בדקות" value="10">
             </div>
@@ -89,62 +95,137 @@
                 <input type="number" id="enduranceHours" placeholder="שעות" min="0" value="1" style="width: 48%; display: inline-block;">
                 <input type="number" id="enduranceMinutes" placeholder="דקות" min="0" max="59" value="0" style="width: 48%; display: inline-block;">
             </div>
+            <div id="sprintField" style="margin-top: 10px; display: none;">
+                <input type="number" id="targetLaps" placeholder="כמות הקפות ליעד (ניצחון)">
+            </div>
 
-            <h2 style="margin-top: 25px;">רישום נהג למקצה</h2>
-            <input type="text" id="drName" placeholder="שם הנהג (חובה)">
+            <h2 id="lblAdminRegisterTitle" style="margin-top: 25px;">רישום נהג למקצה</h2>
+            <div class="section-box" style="border: 1px solid #cbd5e0; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                <label id="lblAdminReqLabel"><b>חובה:</b></label>
+                <input type="text" id="drName" placeholder="שם הנהג (חובה)">
+            </div>
             
-            <!-- כפתור לפתיחת הרשמה מתקדמת לנהג רשום קבוע -->
             <button id="toggleRegistrationBtn" onclick="toggleAdvancedRegistration()" style="margin: 10px 0; background: none; color: var(--navy); border: 1px dashed var(--navy); width: 100%; font-size: 0.9em; padding: 6px;">[+ רשום כלקוח קבוע]</button>
             
             <div id="advancedRegistrationZone" style="display: none; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e0; margin-bottom: 10px;">
                 <div class="checkbox-zone">
-                    <label><input type="checkbox" id="chkPhone" onchange="toggleIdentFields()"> שמור טלפון</label>
-                    <label><input type="checkbox" id="chkEmail" onchange="toggleIdentFields()"> שמור מייל</label>
+                    <label id="lblAdminChkPhone"><input type="checkbox" id="chkPhone" onchange="toggleIdentFields()"> שמור טלפון</label>
+                    <label id="lblAdminChkEmail"><input type="checkbox" id="chkEmail" onchange="toggleIdentFields()"> שמור מייל</label>
                 </div>
                 
                 <input type="text" id="drPhone" placeholder="מספר טלפון לקוח" style="display: none; margin-bottom: 8px;">
                 <input type="text" id="drEmail" placeholder="כתובת מייל לקוח" style="display: none; margin-bottom: 8px;">
 
                 <select id="drLevel">
-                    <option value="Amateur">Amateur (חובבן)</option>
-                    <option value="Master">Master (מאסטר)</option>
-                    <option value="Pro">Pro (מקצוען)</option>
+                    <option value="Amateur" id="optLvlAmateur">Amateur (חובבן)</option>
+                    <option value="Master" id="optLvlMaster">Master (מאסטר)</option>
+                    <option value="Pro" id="optLvlPro">Pro (מקצוען)</option>
                 </select>
             </div>
             
-            <button onclick="addDriverToQueue()" style="margin-top: 5px; width: 100%;">רשום למקצה</button>
+            <button id="lblAdminBtnAddQueue" onclick="addDriverToQueue()" style="margin-top: 5px; width: 100%;">רשום למקצה</button>
             
-            <h3 style="font-size: 1em; margin-top: 15px; margin-bottom: 5px;">רשימת ממתינים במקצה:</h3>
+            <h3 id="lblAdminQueueTitle" style="font-size: 1em; margin-top: 15px; margin-bottom: 5px;">רשימת ממתינים במקצה:</h3>
             <ul id="driverQueue" class="queue-list"></ul>
             
-            <button onclick="executeAutoAssignment()" style="margin-top: 20px; width: 100%; background: var(--purple); font-size: 1.1em; padding: 14px;">
+            <button id="lblAdminBtnExecute" onclick="executeAutoAssignment()" style="margin-top: 20px; width: 100%; background: var(--purple); font-size: 1.1em; padding: 14px;">
                 בצע שיבוץ אוטומטי ומסנכרן מסכים! 🚀
             </button>
 
             <!-- פיצ'ר עריכת רמת נהג רשום ישירות מה-DB -->
             <div style="margin-top: 30px; border-top: 2px solid #e2e8f0; padding-top: 15px;">
-                <h3 style="font-size: 1.1em; margin-bottom: 10px;">עריכת רמת נהג רשום</h3>
+                <h3 id="lblAdminEditDbTitle" style="font-size: 1.1em; margin-bottom: 10px;">עריכת רמת נהג רשום</h3>
                 <input type="text" id="editLookup" placeholder="הזן טלפון או מייל לחיפוש">
                 <select id="editLevel" style="margin-top: 5px;">
-                    <option value="Amateur">Amateur (חובבן)</option>
-                    <option value="Master">Master (מאסטר)</option>
-                    <option value="Pro">Pro (מקצוען)</option>
+                    <option value="Amateur" id="optEditAmateur">Amateur (חובבן)</option>
+                    <option value="Master" id="optEditMaster">Master (מאסטר)</option>
+                    <option value="Pro" id="optEditPro">Pro (מקצוען)</option>
                 </select>
-                <button onclick="updateDriverLevelInDB()" style="margin-top: 5px; width: 100%; background: #4a5568;">עדכן רמה במערכת</button>
+                <button id="lblAdminBtnUpdateDb" onclick="updateDriverLevelInDB()" style="margin-top: 5px; width: 100%; background: #4a5568;">עדכן רמה במערכת</button>
             </div>
+
+            <!-- לחצן ייצוא וסיום מקצה -->
+            <button id="lblAdminBtnFinishHeat" class="btn" style="background:#28a745; width:100%; margin-top:20px; padding:12px; color:white; border:none; font-weight:bold; border-radius:6px; cursor:pointer;" onclick="finH()">סיום מקצה וייצוא CSV</button>
         </div>
 
     </div>
 
     <script>
+        let words = {};
+        let currentLang = 'he';
         let allKarts = {};
-        // עדכון מבנה הנתונים של הליינים כדי להחזיק שם וסטטוס פעילות (Enabled/Disabled)
         let linesData = { 
             1: { name: "ליין 1", active: true, karts: [] }, 
             2: { name: "ליין 2", active: true, karts: [] } 
         }; 
         let driverQueue = [];
         let showAdvancedRegistration = false;
+
+        async function loadTranslations() {
+            const res = await fetch('/api/translations');
+            words = await res.json();
+            applyLanguage();
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            applyLanguage();
+        }
+
+        function applyLanguage() {
+            if(!words[currentLang]) return;
+            const t = words[currentLang];
+            
+            document.querySelector('body').dir = (currentLang === 'en') ? 'ltr' : 'rtl';
+            
+            // עדכון טקסטים קבועים
+            document.getElementById('lblAdminMainTitle').innerText = t.admin_main_title;
+            document.getElementById('lblAdminWarehouse').innerText = t.admin_warehouse;
+            document.getElementById('lblAdminAddInventory').innerText = t.admin_add_inventory;
+            document.getElementById('lblAdminPitsTitle').innerText = t.admin_pits_title;
+            document.getElementById('lblAdminAddLane').innerText = t.admin_add_lane;
+            document.getElementById('lblAdminHeatSettings').innerText = t.admin_heat_settings;
+            document.getElementById('lblAdminRegisterTitle').innerText = t.admin_register_title;
+            document.getElementById('lblAdminBtnAddQueue').innerText = t.admin_btn_add_queue;
+            document.getElementById('lblAdminQueueTitle').innerText = t.admin_queue_title;
+            document.getElementById('lblAdminBtnExecute').innerText = t.admin_btn_execute;
+            document.getElementById('lblAdminEditDbTitle').innerText = t.admin_edit_db_title;
+            document.getElementById('lblAdminBtnUpdateDb').innerText = t.admin_btn_update_db;
+            document.getElementById('lblAdminBtnFinishHeat').innerText = t.admin_btn_finish_heat;
+            
+            // עדכון פלייסהולדרים
+            document.getElementById('heatDuration').placeholder = t.admin_duration_placeholder;
+            document.getElementById('enduranceHours').placeholder = t.admin_hours_placeholder;
+            document.getElementById('enduranceMinutes').placeholder = t.admin_minutes_placeholder;
+            document.getElementById('targetLaps').placeholder = t.admin_laps_placeholder;
+            document.getElementById('drName').placeholder = t.admin_driver_placeholder;
+            document.getElementById('drPhone').placeholder = t.admin_phone_placeholder;
+            document.getElementById('drEmail').placeholder = t.admin_email_placeholder;
+            document.getElementById('editLookup').placeholder = t.admin_edit_lookup_placeholder;
+
+            // עדכון תוויות קטנות
+            document.getElementById('lblAdminReqLabel').innerHTML = `<b>${t.admin_req_label}</b>`;
+            document.getElementById('toggleRegistrationBtn').innerText = showAdvancedRegistration ? t.admin_toggle_reg_open : t.admin_toggle_reg_closed;
+            
+            // עדכון צ'קבוקסים
+            document.getElementById('lblAdminChkPhone').innerHTML = `<input type="checkbox" id="chkPhone" onchange="toggleIdentFields()"> ${t.admin_chk_phone}`;
+            document.getElementById('lblAdminChkEmail').innerHTML = `<input type="checkbox" id="chkEmail" onchange="toggleIdentFields()"> ${t.admin_chk_email}`;
+
+            // תפריטים נפתחים
+            document.getElementById('optHeatTime').innerText = t.heat_time;
+            document.getElementById('optHeatEndurance').innerText = t.heat_endurance;
+            document.getElementById('optHeatSprint').innerText = t.heat_sprint;
+            
+            document.getElementById('optLvlAmateur').innerText = t.level_amateur;
+            document.getElementById('optLvlMaster').innerText = t.level_master;
+            document.getElementById('optLvlPro').innerText = t.level_pro;
+            document.getElementById('optEditAmateur').innerText = t.level_amateur;
+            document.getElementById('optEditMaster').innerText = t.level_master;
+            document.getElementById('optEditPro').innerText = t.level_pro;
+
+            renderAll();
+            renderQueue();
+        }
 
         function toggleHeatTypeFields() {
             const type = document.getElementById('heatType').value;
@@ -161,12 +242,14 @@
         function toggleAdvancedRegistration() {
             showAdvancedRegistration = !showAdvancedRegistration;
             document.getElementById('advancedRegistrationZone').style.display = showAdvancedRegistration ? 'block' : 'none';
-            document.getElementById('toggleRegistrationBtn').innerText = showAdvancedRegistration ? '[- סגור הרשמה קבועה]' : '[+ רשום כלקוח קבוע]';
+            if(words[currentLang]) {
+                document.getElementById('toggleRegistrationBtn').innerText = showAdvancedRegistration ? words[currentLang].admin_toggle_reg_open : words[currentLang].admin_toggle_reg_closed;
+            }
         }
 
         function addNewLane() {
             const newLaneId = Object.keys(linesData).length + 1;
-            linesData[newLaneId] = { name: `ליין ${newLaneId}`, active: true, karts: [] };
+            linesData[newLaneId] = { name: (words[currentLang] ? words[currentLang].kart : "ליין") + ` ${newLaneId}`, active: true, karts: [] };
             renderAll();
             syncPitsWithServer();
         }
@@ -186,11 +269,8 @@
 
         function removeLane(laneId) {
             if (!linesData[laneId]) return;
-            
-            // פיזור רנדומלי של הקארטים שהיו בליין שנמחק חזרה לליינים פעילים אחרים או ל-Pool
             const kartsToScatter = [...linesData[laneId].karts];
             const otherLanes = Object.keys(linesData).filter(id => id != laneId && linesData[id].active);
-            
             kartsToScatter.forEach(num => {
                 if (otherLanes.length > 0) {
                     const randomLane = otherLanes[Math.floor(Math.random() * otherLanes.length)];
@@ -200,7 +280,6 @@
                     allKarts[num].lane = null;
                 }
             });
-
             delete linesData[laneId];
             renderAll();
             syncPitsWithServer();
@@ -276,7 +355,7 @@
         }
 
         function renderAll() {
-            const pool = document.getElementById('kartPool'); pool.innerHTML = '';
+            const pool = document.getElementById('kartPool'); if(!pool) return; pool.innerHTML = '';
             Object.keys(allKarts).forEach(num => {
                 if (allKarts[num].lane === null) {
                     const card = document.createElement('div');
@@ -288,7 +367,7 @@
                 }
             });
 
-            const board = document.getElementById('lanesBoard'); board.innerHTML = '';
+            const board = document.getElementById('lanesBoard'); if(!board) return; board.innerHTML = '';
             Object.keys(linesData).forEach(l => {
                 const laneDiv = document.createElement('div');
                 laneDiv.className = `lane ${!linesData[l].active ? 'disabled-lane' : ''}`;
@@ -322,7 +401,7 @@
 
             let phone = null;
             let email = null;
-            let level = null; // ברירת מחדל null לנהג זמני/גנרי כדי שלא תודפס רמה
+            let level = null; 
 
             if (showAdvancedRegistration) {
                 const chkPhone = document.getElementById('chkPhone').checked;
@@ -349,11 +428,14 @@
         }
 
         function renderQueue() {
-            const list = document.getElementById('driverQueue'); list.innerHTML = '';
+            const list = document.getElementById('driverQueue'); if(!list) return; list.innerHTML = '';
             driverQueue.forEach((d, i) => {
-                // אם level הוא null, נציג רק את השם בלי סוגריים של רמה
-                const levelDisplay = d.level ? ` (${d.level})` : '';
-                list.innerHTML += `<li class="queue-item"><span>${d.name}${levelDisplay}</span><button onclick="driverQueue.splice(${i},1); renderQueue();" style="background:red; padding:3px 7px; color: white; border: none; border-radius: 4px; cursor: pointer;">X</button></li>`;
+                let displayLevel = '';
+                if(d.level && words[currentLang]) {
+                    const key = `level_${d.level.toLowerCase()}`;
+                    displayLevel = ` (${words[currentLang][key] || d.level})`;
+                }
+                list.innerHTML += `<li class="queue-item"><span>${d.name}${displayLevel}</span><button onclick="driverQueue.splice(${i},1); renderQueue();" style="background:red; padding:3px 7px; color: white; border: none; border-radius: 4px; cursor: pointer;">X</button></li>`;
             });
         }
 
@@ -380,14 +462,18 @@
             }
         }
 
+        async function finH() { 
+            await fetch('/api/admin/finish-heat', {method:'POST'}); 
+            window.location.href = '/api/admin/export-csv'; 
+        }
+
         async function executeAutoAssignment() {
             if(driverQueue.length === 0) return alert("אין נהגים במקצה");
             
             const type = document.getElementById('heatType').value;
             let duration = document.getElementById('heatDuration').value;
             const targetLaps = document.getElementById('targetLaps').value || 0;
-
-            // אם המרוץ הוא סיבולת, נחשב את סך כל הדקות לפי השעות והדקות שהוזנו
+            
             if (type === 'endurance') {
                 const hours = parseInt(document.getElementById('enduranceHours').value) || 0;
                 const minutes = parseInt(document.getElementById('enduranceMinutes').value) || 0;
@@ -403,7 +489,6 @@
             await fetch('/api/admin/clear-heat', { method: 'POST' });
 
             let assignedKarts = [];
-            // סינון מפתח: משתמשים רק בליינים שסטטוס ה-active שלהם הוא true
             let laneKeys = Object.keys(linesData).filter(id => linesData[id].active);
             let currentLineIdx = 0;
 
@@ -433,12 +518,8 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        track_id: 1, 
-                        kart_number: assign.kart, 
-                        driver_name: assign.driver.name,
-                        phone: assign.driver.phone, 
-                        email: assign.driver.email, 
-                        driver_level: assign.driver.level || 'Amateur' // השרת מקבל Amateur כברירת מחדל למסכים, אך הממשק נשאר נקי
+                        track_id: 1, kart_number: assign.kart, driver_name: assign.driver.name,
+                        phone: assign.driver.phone, email: assign.driver.email, driver_level: assign.driver.level || 'Amateur'
                     })
                 });
                 linesData[assign.lane].karts.push(assign.kart);
@@ -448,8 +529,7 @@
             driverQueue = []; renderQueue(); renderAll(); syncPitsWithServer();
         }
 
-        renderAll();
-        syncPitsWithServer();
+        loadTranslations();
     </script>
 </body>
 </html>
