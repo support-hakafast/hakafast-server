@@ -81,11 +81,13 @@
                 <option value="sprint">מרוץ ספרינט (לפי הקפות)</option>
             </select>
             
+            <!-- החלף את אלמנט ה-durationField הקיים בזה: -->
             <div id="durationField" style="margin-top: 10px;">
                 <input type="number" id="heatDuration" placeholder="אורך מקצה בדקות" value="10">
             </div>
-            <div id="sprintField" style="margin-top: 10px; display: none;">
-                <input type="number" id="targetLaps" placeholder="כמות הקפות ליעד (ניצחון)">
+            <div id="enduranceField" style="margin-top: 10px; display: none; gap: 8px;">
+                <input type="number" id="enduranceHours" placeholder="שעות" min="0" value="1" style="width: 48%; display: inline-block;">
+                <input type="number" id="enduranceMinutes" placeholder="דקות" min="0" max="59" value="0" style="width: 48%; display: inline-block;">
             </div>
 
             <h2 style="margin-top: 25px;">רישום נהג למקצה</h2>
@@ -146,8 +148,9 @@
 
         function toggleHeatTypeFields() {
             const type = document.getElementById('heatType').value;
-            document.getElementById('durationField').style.display = (type === 'sprint') ? 'none' : 'block';
+            document.getElementById('durationField').style.display = (type === 'time') ? 'block' : 'none';
             document.getElementById('sprintField').style.display = (type === 'sprint') ? 'block' : 'none';
+            document.getElementById('enduranceField').style.display = (type === 'endurance') ? 'flex' : 'none';
         }
 
         function toggleIdentFields() {
@@ -319,9 +322,8 @@
 
             let phone = null;
             let email = null;
-            let level = 'Amateur';
+            let level = null; // ברירת מחדל null לנהג זמני/גנרי כדי שלא תודפס רמה
 
-            // קריאת השדות המורחבים רק אם אזור ההרשמה הקבוע פתוח ופעיל
             if (showAdvancedRegistration) {
                 const chkPhone = document.getElementById('chkPhone').checked;
                 const chkEmail = document.getElementById('chkEmail').checked;
@@ -349,7 +351,9 @@
         function renderQueue() {
             const list = document.getElementById('driverQueue'); list.innerHTML = '';
             driverQueue.forEach((d, i) => {
-                list.innerHTML += `<li class="queue-item"><span>${d.name} (${d.level})</span><button onclick="driverQueue.splice(${i},1); renderQueue();" style="background:red; padding:3px 7px;">X</button></li>`;
+                // אם level הוא null, נציג רק את השם בלי סוגריים של רמה
+                const levelDisplay = d.level ? ` (${d.level})` : '';
+                list.innerHTML += `<li class="queue-item"><span>${d.name}${levelDisplay}</span><button onclick="driverQueue.splice(${i},1); renderQueue();" style="background:red; padding:3px 7px; color: white; border: none; border-radius: 4px; cursor: pointer;">X</button></li>`;
             });
         }
 
@@ -380,9 +384,16 @@
             if(driverQueue.length === 0) return alert("אין נהגים במקצה");
             
             const type = document.getElementById('heatType').value;
-            const duration = document.getElementById('heatDuration').value;
+            let duration = document.getElementById('heatDuration').value;
             const targetLaps = document.getElementById('targetLaps').value || 0;
-            
+
+            // אם המרוץ הוא סיבולת, נחשב את סך כל הדקות לפי השעות והדקות שהוזנו
+            if (type === 'endurance') {
+                const hours = parseInt(document.getElementById('enduranceHours').value) || 0;
+                const minutes = parseInt(document.getElementById('enduranceMinutes').value) || 0;
+                duration = (hours * 60) + minutes;
+            }
+
             await fetch('/api/admin/heat-settings', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -422,8 +433,12 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        track_id: 1, kart_number: assign.kart, driver_name: assign.driver.name,
-                        phone: assign.driver.phone, email: assign.driver.email, driver_level: assign.driver.level
+                        track_id: 1, 
+                        kart_number: assign.kart, 
+                        driver_name: assign.driver.name,
+                        phone: assign.driver.phone, 
+                        email: assign.driver.email, 
+                        driver_level: assign.driver.level || 'Amateur' // השרת מקבל Amateur כברירת מחדל למסכים, אך הממשק נשאר נקי
                     })
                 });
                 linesData[assign.lane].karts.push(assign.kart);
