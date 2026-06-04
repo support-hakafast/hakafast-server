@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>HAKAFAST | Live Timing</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #FFFFFF; /* לבן */
+            color: #000080; /* Navy Blue */
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 { color: #000080; border-bottom: 3px solid #40E0D0; display: inline-block; padding-bottom: 10px; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 1.5em; /* פונט בולט למסכים */
+        }
+        th { background-color: #000080; color: #FFFFFF; padding: 15px; }
+        td { border-bottom: 2px solid #000080; padding: 15px; font-weight: bold; }
+        
+        .best-lap { color: #800080; font-weight: 900; } /* סגול לזמן הכי מהיר */
+        .tag-pro { color: #40E0D0; font-size: 0.8em; margin-right: 5px; } /* טורקיז ל-TAG */
+        
+        .controls { margin-bottom: 20px; }
+        button { background-color: #40E0D0; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>HAKAFAST - LIVE TIMING</h1>
+    
+    <div class="controls">
+        <button onclick="changeLanguage('he')">עברית</button>
+        <button onclick="changeLanguage('en')">English</button>
+        <button onclick="changeLanguage('ar')">العربية</button>
+    </div>
+
+    <table id="timingTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>קארט</th>
+                <th>נהג</th>
+                <th>זמן אחרון</th>
+                <th>הכי מהיר</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            </tbody>
+    </table>
+
+    <script>
+        // פונקציה לשליפת נתונים מה-API
+        async function updateTable() {
+            try {
+                // נחליף את ה-URL ל-URL של ה-Render שלך
+                const response = await fetch('/live-timing/1'); 
+                const data = await response.json();
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+
+                data.forEach((row, index) => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${row.kart_number}</td>
+                            <td><span class="tag-pro">${row.driver_level === 'Pro' ? '[PRO]' : ''}</span>${row.driver_name}</td>
+                            <td>${row.last_lap_time || '--.---'}</td>
+                            <td class="best-lap">${row.best_lap_time || '--.---'}</td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                console.error("Error fetching data:", err);
+            }
+        }
+
+        // עדכון כל 3 שניות
+        setInterval(updateTable, 3000);
+        updateTable();
+
+        function changeLanguage(lang) {
+            const body = document.querySelector('body');
+            if (lang === 'en') {
+                body.dir = 'ltr';
+                // כאן נוסיף תרגום כותרות בעתיד
+            } else {
+                body.dir = 'rtl';
+            }
+        }
+    </script>
+</body>
+</html>
