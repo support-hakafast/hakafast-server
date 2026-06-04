@@ -69,11 +69,9 @@
 
         async function updateTable() {
             try {
-                // משיכת הגדרות מקצה
                 const settingsRes = await fetch('/api/heat-settings');
                 heatSettings = await settingsRes.json();
                 
-                // הצגה/הסתרה של עמודת הקפות במרוץ ספרינט
                 const thLaps = document.getElementById('thLaps');
                 if(heatSettings.type === 'sprint') {
                     thLaps.style.display = 'table-cell';
@@ -82,8 +80,8 @@
                     thLaps.style.display = 'none';
                 }
 
-                // משיכת זמנים
-                const response = await fetch('/live-timing/1'); 
+                // תיקון נתיב משיכת הנתונים הדינמי פר מסלול
+                const response = await fetch('/live-timing-data/1'); 
                 const data = await response.json();
                 const tbody = document.getElementById('tableBody');
                 const banner = document.getElementById('statusBanner');
@@ -104,9 +102,9 @@
                 }
 
                 data.forEach((row, index) => {
-                    const levelKey = `level_${row.driver_level.toLowerCase()}`;
-                    const translatedLevel = words[currentLang]?.[levelKey] || row.driver_level;
-                    const tag = row.driver_level !== 'Amateur' ? `<span class="tag-badge">${translatedLevel.toUpperCase()}</span>` : '';
+                    const levelKey = `level_${row.driver_level ? row.driver_level.toLowerCase() : 'amateur'}`;
+                    const translatedLevel = words[currentLang]?.[levelKey] || row.driver_level || 'Amateur';
+                    const tag = (row.driver_level && row.driver_level !== 'Amateur') ? `<span class="tag-badge">${translatedLevel.toUpperCase()}</span>` : '';
                     
                     let lapsCell = heatSettings.type === 'sprint' ? `<td>${row.lap_count} / ${heatSettings.targetLaps}</td>` : '';
 

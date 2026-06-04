@@ -37,6 +37,7 @@
         .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; font-weight: bold; }
         .checkbox-zone { display: flex; gap: 15px; align-items: center; margin: 10px 0; font-weight: bold; font-size: 0.9em; }
         .checkbox-zone input { width: auto; margin: 0; }
+        .url-banner { background: #e6fffa; border: 1px solid var(--turquoise); padding: 10px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; text-align: center; font-size: 0.95em; }
         body { 
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
             background: #f7fafc; 
@@ -50,6 +51,11 @@
 
     <div class="admin-header">
         <h1 id="lblAdminMainTitle">HAKAFAST - מרכז שליטה ובקרת מרוצים</h1>
+    </div>
+
+    <!-- הצגת הקישור הציבורי הייעודי של מסלול זה -->
+    <div class="url-banner">
+        🔗 מסך לקוחות ציבורי: <a id="liveTimingUrl" href="#" target="_blank" style="color: var(--navy);">טוען קישור...</a>
     </div>
 
     <div class="controls">
@@ -161,6 +167,13 @@
         let driverQueue = [];
         let showAdvancedRegistration = false;
 
+        // חילוץ שם המסלול מתוך ה-URL הנוכחי לצורך יצירת הלינקים הדינמיים
+        const currentTrackName = window.location.pathname.split('/').pop();
+        const liveTimingTargetUrl = `${window.location.origin}/live-timing/${currentTrackName}`;
+        const urlElement = document.getElementById('liveTimingUrl');
+        urlElement.href = liveTimingTargetUrl;
+        urlElement.innerText = liveTimingTargetUrl;
+
         async function loadTranslations() {
             const res = await fetch('/api/translations');
             words = await res.json();
@@ -178,7 +191,6 @@
             
             document.querySelector('body').dir = (currentLang === 'en') ? 'ltr' : 'rtl';
             
-            // עדכון טקסטים קבועים
             document.getElementById('lblAdminMainTitle').innerText = t.admin_main_title;
             document.getElementById('lblAdminWarehouse').innerText = t.admin_warehouse;
             document.getElementById('lblAdminAddInventory').innerText = t.admin_add_inventory;
@@ -193,7 +205,6 @@
             document.getElementById('lblAdminBtnUpdateDb').innerText = t.admin_btn_update_db;
             document.getElementById('lblAdminBtnFinishHeat').innerText = t.admin_btn_finish_heat;
             
-            // עדכון פלייסהולדרים
             document.getElementById('heatDuration').placeholder = t.admin_duration_placeholder;
             document.getElementById('enduranceHours').placeholder = t.admin_hours_placeholder;
             document.getElementById('enduranceMinutes').placeholder = t.admin_minutes_placeholder;
@@ -203,15 +214,12 @@
             document.getElementById('drEmail').placeholder = t.admin_email_placeholder;
             document.getElementById('editLookup').placeholder = t.admin_edit_lookup_placeholder;
 
-            // עדכון תוויות קטנות
             document.getElementById('lblAdminReqLabel').innerHTML = `<b>${t.admin_req_label}</b>`;
             document.getElementById('toggleRegistrationBtn').innerText = showAdvancedRegistration ? t.admin_toggle_reg_open : t.admin_toggle_reg_closed;
             
-            // עדכון צ'קבוקסים
             document.getElementById('lblAdminChkPhone').innerHTML = `<input type="checkbox" id="chkPhone" onchange="toggleIdentFields()"> ${t.admin_chk_phone}`;
             document.getElementById('lblAdminChkEmail').innerHTML = `<input type="checkbox" id="chkEmail" onchange="toggleIdentFields()"> ${t.admin_chk_email}`;
 
-            // תפריטים נפתחים
             document.getElementById('optHeatTime').innerText = t.heat_time;
             document.getElementById('optHeatEndurance').innerText = t.heat_endurance;
             document.getElementById('optHeatSprint').innerText = t.heat_sprint;
@@ -518,8 +526,12 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        track_id: 1, kart_number: assign.kart, driver_name: assign.driver.name,
-                        phone: assign.driver.phone, email: assign.driver.email, driver_level: assign.driver.level || 'Amateur'
+                        track_id: 1, 
+                        kart_number: assign.kart, 
+                        driver_name: assign.driver.name,
+                        phone: assign.driver.phone, 
+                        email: assign.driver.email, 
+                        driver_level: assign.driver.level || 'Amateur'
                     })
                 });
                 linesData[assign.lane].karts.push(assign.kart);
