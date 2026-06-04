@@ -2,143 +2,161 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>HAKAFAST | Live Display</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAKAFAST | מערכת ניהול ותזמון מסלולי קארטינג</title>
     <style>
-        :root { --navy: #000080; --turquoise: #40E0D0; --purple: #800080; }
-        h1 { font-size: 2.8em; font-weight: 800; margin-bottom: 5px; }
-        .subtitle { font-size: 1.5em; color: var(--turquoise); font-weight: bold; margin-bottom: 25px; text-transform: uppercase; }
-        .controls { margin-bottom: 30px; }
-        .btn-lang { background-color: var(--navy); color: white; border: none; padding: 10px 24px; cursor: pointer; font-weight: bold; margin: 0 5px; border-radius: 6px; }
-        .btn-lang:hover { background-color: var(--turquoise); color: var(--navy); }
-        table { width: 100%; border-collapse: collapse; font-size: 1.8em; }
-        th { background-color: var(--navy); color: #FFFFFF; padding: 20px; }
-        td { border-bottom: 3px solid #f4f6f9; padding: 20px; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f8f9fa; }
-        .kart-badge { background: var(--navy); color: white; padding: 5px 15px; border-radius: 8px; font-size: 1.1em; display: inline-block; min-width: 60px; }
-        .best-lap { color: var(--purple); font-weight: 900; }
-        .tag-badge { font-size: 0.55em; padding: 4px 10px; border-radius: 6px; margin-inline-end: 12px; background-color: var(--turquoise); color: var(--navy); vertical-align: middle; }
-        .status-banner { background: #e6fffa; border: 2px solid var(--turquoise); color: var(--navy); padding: 15px; font-size: 1.4em; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
-        body { 
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
-            background-color: #FFFFFF; 
-            color: var(--navy); 
-            margin: 0; 
-            padding: 30px; 
-            text-align: center; 
-        }
+        :root { --navy: #000080; --turquoise: #40E0D0; --purple: #800080; --dark: #1a202c; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; color: var(--dark); margin: 0; padding: 0; }
+        
+        /* Navigation & Header */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: #ffffff; border-bottom: 1px solid #e2e8f0; }
+        .logo-zone { display: flex; align-items: center; gap: 12px; font-size: 1.8em; font-weight: 900; color: var(--navy); text-decoration: none; }
+        nav a { margin-right: 25px; text-decoration: none; color: var(--dark); font-weight: bold; transition: 0.2s; }
+        nav a:hover { color: var(--turquoise); }
+        
+        /* Hero Section */
+        .hero { text-align: center; padding: 80px 20px; background: linear-gradient(180deg, #f7fafc 0%, #ffffff 100%); }
+        .hero h1 { font-size: 3.5em; font-weight: 800; color: var(--navy); margin-bottom: 15px; }
+        .hero p { font-size: 1.4em; color: #4a5568; max-width: 800px; margin: 0 auto 30px auto; font-weight: 500; }
+        
+        /* Call to Action Buttons */
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-bottom: 40px; }
+        .btn-main { background: var(--navy); color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1em; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,128,0.1); }
+        .btn-main:hover { background: var(--turquoise); color: var(--navy); }
+        .btn-sub { background: white; color: var(--navy); border: 2px solid var(--navy); padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1em; transition: 0.2s; }
+        .btn-sub:hover { background: #f7fafc; }
+
+        /* Demo Dashboard Box */
+        .demo-box { max-width: 700px; margin: 0 auto 6px; padding: 25px; border-radius: 12px; background: #e6fffa; border: 2px solid var(--turquoise); text-align: center; }
+        .demo-box h3 { margin-top: 0; color: var(--navy); font-size: 1.4em; }
+        .demo-links { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
+        .demo-links a { background: white; border: 1px solid var(--navy); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold; color: var(--navy); transition: 0.2s; }
+        .demo-links a:hover { background: var(--navy); color: white; }
+
+        /* Features Section */
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; max-width: 1200px; margin: 60px auto; padding: 0 20px; }
+        .feature-card { background: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: 0.3s; }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+        .feature-card h3 { color: var(--navy); font-size: 1.3em; margin-bottom: 10px; }
+        
+        /* Active Tracks Section */
+        .tracks-section { background: #f7fafc; padding: 60px 20px; text-align: center; }
+        .tracks-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 25px; }
+        .track-badge { background: white; border: 1px solid #cbd5e0; padding: 15px 30px; border-radius: 8px; font-weight: bold; color: var(--navy); display: flex; flex-direction: column; gap: 5px; min-width: 200px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .track-badge a { font-size: 0.85em; color: var(--turquoise); text-decoration: none; font-weight: bold; }
+        .track-badge a:hover { text-decoration: underline; }
+
+        /* Contact Section */
+        .contact-section { max-width: 600px; margin: 80px auto; padding: 0 20px; text-align: center; }
+        .contact-section h2 { color: var(--navy); font-size: 2em; margin-bottom: 10px; }
+        .contact-form { margin-top: 30px; text-align: right; }
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+        
+        footer { background: var(--navy); color: white; text-align: center; padding: 25px; font-size: 0.9em; margin-top: 80px; }
     </style>
 </head>
 <body>
 
-    <h1 id="mainTitle">HAKAFAST</h1>
-    <div id="subTitle" class="subtitle">LIVE DASHBOARD</div>
-    
-    <div class="controls">
-        <button class="btn-lang" onclick="changeLanguage('he')">עברית</button>
-        <button class="btn-lang" onclick="changeLanguage('en')">English</button>
-        <button class="btn-lang" onclick="changeLanguage('ar')">العربية</button>
-    </div>
+    <!-- Header & Brand Logo Vector -->
+    <header>
+        <img src="public/assets/logo.png" alt="HAKAFAST Logo" />
+        <a href="/" class="logo-zone">
+            <!-- מיתוג ולוגו מעוצב ב-SVG נקי ללא תלויות חומרה -->
+            <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="45" stroke="#000080" stroke-width="8"/>
+                <path d="M30 30V70M30 50H70M70 30V70" stroke="#000080" stroke-width="10" stroke-linecap="round"/>
+                <path d="M50 15C65 15 80 25 85 40" stroke="#40E0D0" stroke-width="8" stroke-linecap="round"/>
+                <polygon points="85,40 75,35 85,30" fill="#40E0D0" />
+            </svg>
+            <span>HAKAFAST</span>
+        </a>
+        <nav>
+            <a href="#features">פתרונות</a>
+            <a href="#tracks">מסלולים פעילים</a>
+            <a href="#contact">צור קשר</a>
+        </nav>
+    </header>
 
-    <div style="max-width: 1300px; margin: 0 auto;">
-        <div id="statusBanner" class="status-banner" style="display: none;"></div>
-        <table>
-            <thead>
-                <tr>
-                    <th id="thPos" style="width: 80px;">#</th>
-                    <th id="thKart" style="width: 160px;">קארט</th>
-                    <th id="thDriver" style="text-align: start; padding-inline-start: 40px;">נהג</th>
-                    <th id="thLast">זמן אחרון</th>
-                    <th id="thBest">הכי מהיר</th>
-                    <th id="thLaps" style="display: none;">הקפות</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
-    </div>
+    <!-- Hero Content Section -->
+    <section class="hero">
+        <h1>הקפה אחת מהירה יותר.</h1>
+        <p>המערכת המובילה לניהול ותזמון מסלולי קארטינג מקצועיים. סנכרון מושלם בין ה-Pits למסכי הלקוחות בזמן אמת, מניעת צווארי בקבוק וייעול זמני עלייה למסלול.</p>
+        
+        <div class="btn-group">
+            <a href="/admin/kart-demo" class="btn-main">כניסה למערכת המנהל (Demo)</a>
+            <a href="#contact" class="btn-sub">תיאום פגישת אפיון</a>
+        </div>
 
-    <script>
-        let words = {};
-        let currentLang = 'he';
-        let heatSettings = {};
+        <!-- סביבת הדמו המבוקשת למוצר החיצוני -->
+        <div class="demo-box">
+            <h3>🏁 סביבת הדמו המובנית של המערכת: <code style="color:var(--purple)">kart-demo</code></h3>
+            <p style="margin: 5px 0; font-size: 0.95em; color: #4a5568;">הסיסמה לכניסת ניהול אדמין היא: <b style="color: var(--navy);">demo123</b></p>
+            <div class="demo-links">
+                <a href="/live-timing/kart-demo" target="_blank">📺 מסך לקוחות (Live Timing)</a>
+                <a href="/admin/kart-demo" target="_blank">🛠️ לוח בקרה (Admin Board)</a>
+            </div>
+        </div>
+    </section>
 
-        async function loadTranslations() {
-            const res = await fetch('/api/translations');
-            words = await res.json();
-            applyLanguage();
-        }
+    <!-- Features Analysis Layout -->
+    <section class="features" id="features">
+        <div class="feature-card">
+            <h3>💻 אפליקציית KIOSK ייעודית במסלול</h3>
+            <p>ניהול תפעולי מלא של המסלול ישירות מתחנת המרשל המקומית. עבודה רציפה, יציבה ומותאמת למחשבי קצה ללא עיכובים.</p>
+        </div>
+        <div class="feature-card">
+            <h3>⏱️ חיבור ישיר לטרנספונדרים (TCP)</h3>
+            <p>האזנה רציפה לחומרת המדידה במסלול, סינון "זמני רפאים" ורעשי קליטה, ועדכון מיידי של התוצאות בענן.</p>
+        </div>
+        <div class="feature-card">
+            <h3>🔀 ניהול תור Pits חכם וגרפי</h3>
+            <p>סידור הליינים ב-Drag & Drop, חלוקת עומסים אוטומטית, ורוטציה של כלים בסיום מקצה לחיסכון מקסימלי בזמן.</p>
+        </div>
+    </section>
 
-        async function updateTable() {
-            try {
-                const settingsRes = await fetch('/api/heat-settings');
-                heatSettings = await settingsRes.json();
-                
-                const thLaps = document.getElementById('thLaps');
-                if(heatSettings.type === 'sprint') {
-                    thLaps.style.display = 'table-cell';
-                    thLaps.innerText = words[currentLang]?.laps || 'LAPS';
-                } else {
-                    thLaps.style.display = 'none';
-                }
+    <!-- Tracks Active Work Environment -->
+    <section class="tracks-section" id="tracks">
+        <h2>מסלולים מחוברים בזמן אמת</h2>
+        <p>צפה בלוחות ה-Live Timing הפעילים כעת ברחבי הארץ:</p>
+        <div class="tracks-grid">
+            <div class="track-badge">
+                <span>Holyland Racing</span>
+                <a href="/live-timing/holyland-racing" target="_blank">צפה בלוח זמנים 💻</a>
+            </div>
+            <div class="track-badge">
+                <span>Go Karting</span>
+                <a href="/live-timing/go-karting" target="_blank">צפה בלוח זמנים 💻</a>
+            </div>
+            <div class="track-badge" style="border-color: var(--turquoise); background: #f0fffb;">
+                <span>Kart Demo Track</span>
+                <a href="/live-timing/kart-demo" target="_blank">סביבת בדיקה פעילה 🏎️</a>
+            </div>
+        </div>
+    </section>
 
-                // תיקון נתיב משיכת הנתונים הדינמי פר מסלול
-                const response = await fetch('/live-timing-data/1'); 
-                const data = await response.json();
-                const tbody = document.getElementById('tableBody');
-                const banner = document.getElementById('statusBanner');
-                tbody.innerHTML = '';
+    <!-- Contact Form Linked to Email Context -->
+    <section class="contact-section" id="contact">
+        <h2>הצטרף למהפכת התזמון</h2>
+        <p>השאר פרטים ונחזור אליך עם הצעה מותאמת אישית למסלול שלך.</p>
+        
+        <!-- טופס שליחה ייעודי הפותח קומפוזיציה ב-Gmail לניהול פניות -->
+        <form class="contact-form" action="mailto:yanih@gmail.com" method="post" enctype="text/plain">
+            <label>שם המסלול / חברה:</label>
+            <input type="text" name="Track_Name" required>
+            
+            <label>איש קשר וטלפון:</label>
+            <input type="text" name="Contact_Details" required>
+            
+            <label>הודעה / כמות קארטים במסלול:</label>
+            <textarea name="Message" rows="4" required></textarea>
+            
+            <button type="submit" style="width:100%; padding:14px; background:var(--navy); color:white; border:none; font-weight:bold; border-radius:6px; cursor:pointer;">שלח פנייה למחלקת המכירות ✉️</button>
+        </form>
+    </section>
 
-                if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" style="color: #999; padding: 40px;">No active drivers</td></tr>`;
-                    banner.style.display = 'none';
-                    return;
-                }
+    <footer>
+        <p>© 2026 HAKAFAST Track Management Solutions. All Rights Reserved.</p>
+    </footer>
 
-                const heatNotStarted = data.every(row => !row.best_lap_time);
-                if (heatNotStarted && words[currentLang]) {
-                    banner.innerText = words[currentLang].status_waiting + ` (${words[currentLang]['heat_' + heatSettings.type]})`;
-                    banner.style.display = 'block';
-                } else {
-                    banner.style.display = 'none';
-                }
-
-                data.forEach((row, index) => {
-                    const levelKey = `level_${row.driver_level ? row.driver_level.toLowerCase() : 'amateur'}`;
-                    const translatedLevel = words[currentLang]?.[levelKey] || row.driver_level || 'Amateur';
-                    const tag = (row.driver_level && row.driver_level !== 'Amateur') ? `<span class="tag-badge">${translatedLevel.toUpperCase()}</span>` : '';
-                    
-                    let lapsCell = heatSettings.type === 'sprint' ? `<td>${row.lap_count} / ${heatSettings.targetLaps}</td>` : '';
-
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td><span class="kart-badge">${row.kart_number}</span></td>
-                            <td style="text-align: start; padding-inline-start: 40px;">${tag}${row.driver_name}</td>
-                            <td>${row.last_lap_time || '--.---'}</td>
-                            <td class="${row.best_lap_time ? 'best-lap' : ''}">${row.best_lap_time || '--.---'}</td>
-                            ${lapsCell}
-                        </tr>
-                    `;
-                });
-            } catch (err) { console.error(err); }
-        }
-
-        function changeLanguage(lang) { currentLang = lang; applyLanguage(); }
-
-        function applyLanguage() {
-            if(!words[currentLang]) return;
-            const t = words[currentLang];
-            document.querySelector('body').dir = (currentLang === 'en') ? 'ltr' : 'rtl';
-            document.getElementById('mainTitle').innerText = t.title;
-            document.getElementById('thPos').innerText = t.pos;
-            document.getElementById('thKart').innerText = t.kart;
-            document.getElementById('thDriver').innerText = t.driver;
-            document.getElementById('thLast').innerText = t.last_lap;
-            document.getElementById('thBest').innerText = t.best_lap;
-            updateTable();
-        }
-
-        loadTranslations();
-        setInterval(updateTable, 2000);
-    </script>
 </body>
 </html>

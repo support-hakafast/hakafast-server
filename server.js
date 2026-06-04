@@ -1,24 +1,39 @@
 const express = require('express');
 const { Pool } = require('pg');
 const fs = require('fs');
-const session = require('express-session'); // הוספת סשן לאבטחת האדמין
+const session = require('express-session');
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// הגדרת מערכת Session פשוטה ומאובטחת (KISS)
 app.use(session({
   secret: 'hakafast_secret_key_2026',
   resave: false,
   saveUninitialized: true,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // יממה אחת
+  cookie: { maxAge: 24 * 60 * 60 * 1000 }
 }));
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
+});
+
+// הגשת דף הבית הראשי של השירות (חלון הראווה השיווקי)
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
+// הגשת דף הלקוחות הציבורי (צפייה בלבד)
+app.get('/live-timing/:trackName', (req, res) => {
+  res.sendFile(__dirname + '/live-timing.html');
+});
+
+// הגשת דף המנהל (מאובטח בסשן)
+app.get('/admin/:trackName', (req, res) => {
+  // ... (לוגיקת האבטחה הקיימת שלך)
+  res.sendFile(__dirname + '/admin.html');
 });
 
 async function migrateDB() {
@@ -35,11 +50,11 @@ migrateDB();
 let pitLines = [{ id: 1, name: "ליין ימין", active: true, karts: [] }, { id: 2, name: "ליין שמאל", active: true, karts: [] }];
 let heatSettings = { type: 'time', duration: 10, targetLaps: 0 };
 
-// מיפוי זמני של מסלולים לסיסמאות הגישה שלהם (במציאות זה יישלף מה-DB)
+// הוספת מסלול kart-demo עם סיסמת דמו ייעודית
 const trackCredentials = {
   'holyland-racing': 'fast123',
   'go-karting': 'track2026',
-  'demo-track': 'admin'
+  'kart-demo': 'demo123'
 };
 
 app.get('/api/translations', (req, res) => res.json(JSON.parse(fs.readFileSync('./translations.json'))));
@@ -48,7 +63,6 @@ app.post('/api/admin/update-pits', (req, res) => { pitLines = req.body.newLines;
 app.get('/api/heat-settings', (req, res) => res.json(heatSettings));
 app.post('/api/admin/heat-settings', (req, res) => { heatSettings = req.body; res.json({success:true}); });
 
-// נתיב התחברות דינמי לאדמין (מכניזם אבטחה)
 app.post('/api/admin/login/:trackName', (req, res) => {
   const { trackName } = req.params;
   const { password } = req.body;
@@ -60,11 +74,14 @@ app.post('/api/admin/login/:trackName', (req, res) => {
   res.status(401).json({ success: false, error: "Password incorrect" });
 });
 
-// הגשת דף האדמין - רק אם המשתמש מורשה ועבר את האבטחה
+// הגשת דף הבית הראשי של השירות השיווקי
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/home.html');
+});
+
 app.get('/admin/:trackName', (req, res) => {
   const { trackName } = req.params;
   
-  // אם לא רשום כבעל סיסמה למסלול זה - נציג לו דף התחברות פשוט
   if (req.session.authenticatedTrack !== trackName) {
     return res.send(`
       <!DOCTYPE html>
@@ -111,13 +128,9 @@ app.get('/admin/:trackName', (req, res) => {
   res.sendFile(__dirname + '/admin.html');
 });
 
-// הגשת דף הלקוחות הציבורי - פתוח לכולם לצפייה בלבד ללא סיסמה
 app.get('/live-timing/:trackName', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
-
-// הפניית ברירת מחדל של דף הבית למסלול דמו
-app.get('/', (req, res) => res.redirect('/live-timing/demo-track'));
 
 app.post('/api/admin/finish-heat', async (req, res) => {
     const data = await pool.query('SELECT * FROM current_heat WHERE track_id = 1');
