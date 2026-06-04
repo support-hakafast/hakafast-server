@@ -9,9 +9,22 @@
         body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; color: var(--dark); margin: 0; padding: 0; }
         
         /* Navigation & Header */
-        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: #ffffff; border-bottom: 1px solid #e2e8f0; }
-        .logo-zone { display: flex; align-items: center; gap: 12px; font-size: 1.8em; font-weight: 900; color: var(--navy); text-decoration: none; }
-        nav a { margin-right: 25px; text-decoration: none; color: var(--dark); font-weight: bold; transition: 0.2s; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 40px; /* צמצמתי מעט את ה-padding כדי שה-Header לא יהיה ענקי */
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            height: 80px; /* הגדרת גובה קבוע ל-Header כדי שה-10% יהיה מדיד */
+        }
+
+        /* הגדרת הלוגו */
+        .logo-zone img {
+            max-height: 8px; /* זהו 10% מגובה של 80px */
+            width: auto;     /* שומר על פרופורציות */
+            display: block;
+        }
         nav a:hover { color: var(--turquoise); }
         
         /* Hero Section */
@@ -59,22 +72,12 @@
 
     <!-- Header & Brand Logo Vector -->
     <header>
-        <img src="public/assets/logo.png" alt="HAKAFAST Logo" />
-        <a href="/" class="logo-zone">
-            <!-- מיתוג ולוגו מעוצב ב-SVG נקי ללא תלויות חומרה -->
-            <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="45" stroke="#000080" stroke-width="8"/>
-                <path d="M30 30V70M30 50H70M70 30V70" stroke="#000080" stroke-width="10" stroke-linecap="round"/>
-                <path d="M50 15C65 15 80 25 85 40" stroke="#40E0D0" stroke-width="8" stroke-linecap="round"/>
-                <polygon points="85,40 75,35 85,30" fill="#40E0D0" />
-            </svg>
+        <a href="#" class="logo-zone">
+            <img src="/assets/images/logo.svg" alt="HAKAFAST Logo">
             <span>HAKAFAST</span>
         </a>
         <nav>
-            <a href="#features">פתרונות</a>
-            <a href="#tracks">מסלולים פעילים</a>
-            <a href="#contact">צור קשר</a>
-        </nav>
+            </nav>
     </header>
 
     <!-- Hero Content Section -->
