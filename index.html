@@ -2,75 +2,23 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HAKAFAST | Live Timing</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #FFFFFF; /* לבן */
-            color: #000080; /* Navy Blue */
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-        }
-        h1 { color: #000080; border-bottom: 3px solid #40E0D0; display: inline-block; padding-bottom: 10px; margin-bottom: 10px; }
-        
-        .controls { margin-bottom: 30px; }
-        button { 
-            background-color: #000080; 
-            color: white; 
-            border: none; 
-            padding: 10px 25px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            border-radius: 5px;
-            margin: 5px;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #FFFFFF; color: #000080; text-align: center; margin: 0; padding: 20px; }
+        h1 { color: #000080; border-bottom: 3px solid #40E0D0; display: inline-block; padding-bottom: 10px; }
+        .controls { margin-bottom: 20px; }
+        button { background-color: #000080; color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; margin: 5px; border-radius: 5px; }
         button:hover { background-color: #40E0D0; color: #000080; }
-
-        table {
-            width: 100%;
-            max-width: 1200px;
-            margin: 20px auto;
-            border-collapse: collapse;
-            font-size: 1.4em; /* פונט בולט למסכים */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        th { background-color: #000080; color: #FFFFFF; padding: 18px; text-transform: uppercase; }
-        td { border-bottom: 2px solid #f0f0f0; padding: 18px; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-
-        .best-lap { color: #800080; font-weight: 900; } /* סגול לזמן הכי מהיר */
-        .tag-badge { 
-            font-size: 0.6em; 
-            padding: 3px 8px; 
-            border-radius: 4px; 
-            margin-inline-end: 10px;
-            vertical-align: middle;
-            background-color: #40E0D0; /* טורקיז */
-            color: #000080;
-        }
-        
-        #adminPanel {
-            margin-top: 50px;
-            background: #f1f4f9;
-            padding: 30px;
-            border-radius: 15px;
-            border: 2px dashed #000080;
-            max-width: 800px;
-            margin-inline: auto;
-        }
-        input, select {
-            padding: 10px;
-            margin: 5px;
-            border: 1px solid #000080;
-            border-radius: 5px;
-        }
+        table { width: 100%; max-width: 1200px; margin: 20px auto; border-collapse: collapse; font-size: 1.6em; }
+        th { background-color: #000080; color: #FFFFFF; padding: 15px; }
+        td { border-bottom: 2px solid #f0f0f0; padding: 15px; font-weight: bold; }
+        .best-lap { color: #800080; font-weight: 900; }
+        .tag-badge { font-size: 0.6em; padding: 3px 8px; border-radius: 4px; margin-inline-end: 10px; background-color: #40E0D0; color: #000080; }
     </style>
 </head>
 <body>
 
-    <h1 id="mainTitle">HAKAFAST - זמנים בזמן אמת</h1>
+    <h1 id="mainTitle">HAKAFAST</h1>
     
     <div class="controls">
         <button onclick="changeLanguage('he')">עברית</button>
@@ -78,7 +26,7 @@
         <button onclick="changeLanguage('ar')">العربية</button>
     </div>
 
-    <table id="timingTable">
+    <table>
         <thead>
             <tr>
                 <th id="thPos">#</th>
@@ -88,101 +36,64 @@
                 <th id="thBest">הכי מהיר</th>
             </tr>
         </thead>
-        <tbody id="tableBody">
-            </tbody>
+        <tbody id="tableBody"></tbody>
     </table>
 
-    <div id="adminPanel">
-        <h3 id="adminTitle">לוח מארגן - הוספת נהג למקצה</h3>
-        <input type="number" id="simKart" placeholder="מס' קארט" style="width: 100px;">
-        <input type="text" id="simName" placeholder="שם מלא">
-        <select id="simLevel">
-            <option value="Amateur">Amateur</option>
-            <option value="Master">Master (Level Mid)</option>
-            <option value="Pro">Pro (League)</option>
-        </select>
-        <button onclick="simulateAddDriver()" style="background-color: #40E0D0; color: #000080;">הוסף למקצה</button>
-    </div>
-
     <script>
-        const translations = {
-            he: { title: "HAKAFAST - זמנים בזמן אמת", pos: "#", kart: "קארט", driver: "נהג", last: "זמן אחרון", best: "הכי מהיר", admin: "לוח מארגן - הוספת נהג" },
-            en: { title: "HAKAFAST - LIVE TIMING", pos: "POS", kart: "KART", driver: "DRIVER", last: "LAST LAP", best: "BEST LAP", admin: "Admin - Add Driver" },
-            ar: { title: "HAKAFAST - توقيت مباشر", pos: "#", kart: "كارت", driver: "سائق", last: "الدورة الأخيرة", best: "الأسرع", admin: "لوحة التحكم - إضافة سائق" }
-        };
-
+        let words = {};
         let currentLang = 'he';
+
+        async function loadTranslations() {
+            const res = await fetch('/api/translations');
+            words = await res.json();
+            applyLanguage();
+        }
 
         async function updateTable() {
             try {
-                // track_id 1 כברירת מחדל
                 const response = await fetch('/live-timing/1'); 
                 const data = await response.json();
                 const tbody = document.getElementById('tableBody');
                 tbody.innerHTML = '';
 
                 data.forEach((row, index) => {
+                    const isAnon = row.driver_name.startsWith('קארט #');
+                    const displayName = isAnon && words[currentLang] ? `${words[currentLang].anonymous} ${row.kart_number}` : row.driver_name;
                     const tag = row.driver_level !== 'Amateur' ? `<span class="tag-badge">${row.driver_level.toUpperCase()}</span>` : '';
+                    
                     tbody.innerHTML += `
                         <tr>
                             <td>${index + 1}</td>
                             <td>${row.kart_number}</td>
-                            <td style="text-align: start;">${tag}${row.driver_name}</td>
+                            <td style="text-align: start;">${tag}${displayName}</td>
                             <td>${row.last_lap_time || '--.---'}</td>
                             <td class="best-lap">${row.best_lap_time || '--.---'}</td>
                         </tr>
                     `;
                 });
-            } catch (err) {
-                console.error("Error fetching data:", err);
-            }
-        }
-
-        async function simulateAddDriver() {
-            const kart = document.getElementById('simKart').value;
-            const name = document.getElementById('simName').value;
-            const level = document.getElementById('simLevel').value;
-
-            if(!kart || !name) return alert("נא להזין מספר קארט ושם");
-
-            const payload = { track_id: 1, kart_number: kart, driver_name: name, driver_level: level };
-
-            try {
-                const response = await fetch('/assign-driver', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-                if(result.success) {
-                    document.getElementById('simKart').value = '';
-                    document.getElementById('simName').value = '';
-                    updateTable();
-                }
-            } catch (err) {
-                console.error("Error adding driver:", err);
-            }
+            } catch (err) {}
         }
 
         function changeLanguage(lang) {
             currentLang = lang;
-            const body = document.querySelector('body');
-            const t = translations[lang];
+            applyLanguage();
+        }
 
-            body.dir = (lang === 'en') ? 'ltr' : 'rtl';
+        function applyLanguage() {
+            if(!words[currentLang]) return;
+            const t = words[currentLang];
+            document.querySelector('body').dir = (currentLang === 'en') ? 'ltr' : 'rtl';
             document.getElementById('mainTitle').innerText = t.title;
             document.getElementById('thPos').innerText = t.pos;
             document.getElementById('thKart').innerText = t.kart;
             document.getElementById('thDriver').innerText = t.driver;
-            document.getElementById('thLast').innerText = t.last;
-            document.getElementById('thBest').innerText = t.best;
-            document.getElementById('adminTitle').innerText = t.admin;
-
+            document.getElementById('thLast').innerText = t.last_lap;
+            document.getElementById('thBest').innerText = t.best_lap;
             updateTable();
         }
 
+        loadTranslations();
         setInterval(updateTable, 3000);
-        updateTable();
     </script>
 </body>
 </html>

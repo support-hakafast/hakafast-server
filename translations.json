@@ -1,0 +1,41 @@
+{
+  "he": {
+    "title": "HAKAFAST - זמנים בזמן אמת",
+    "pos": "#",
+    "kart": "קארט",
+    "driver": "נהג",
+    "last_lap": "זמן אחרון",
+    "best_lap": "הכי מהיר",
+    "admin_title": "לוח בקרה למארגן",
+    "add_driver": "שיבוץ נהג לקארט",
+    "setup_karts": "הגדרת מצבת קארטים (טווח)",
+    "save": "שמור",
+    "anonymous": "קארט"
+  },
+  "en": {
+    "title": "HAKAFAST - LIVE TIMING",
+    "pos": "POS",
+    "kart": "KART",
+    "driver": "DRIVER",
+    "last_lap": "LAST LAP",
+    "best_lap": "BEST LAP",
+    "admin_title": "Organizer Dashboard",
+    "add_driver": "Assign Driver to Kart",
+    "setup_karts": "Setup Active Karts Range",
+    "save": "Save",
+    "anonymous": "Kart"
+  },
+  "ar": {
+    "title": "HAKAFAST - توقيت مباشر",
+    "pos": "#",
+    "kart": "كارت",
+    "driver": "سائق",
+    "last_lap": "الدورة الأخيرة",
+    "best_lap": "الأسرع",
+    "admin_title": "لوحة تحكم المنظم",
+    "add_driver": "تخصيص سائق للكارت",
+    "setup_karts": "إعداد نطاق الكارت النشט",
+    "save": "حفظ",
+    "anonymous": "كارت"
+  }
+}

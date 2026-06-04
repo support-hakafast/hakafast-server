@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>HAKAFAST | לוח מארגן</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #FFFFFF; color: #000080; padding: 30px; text-align: center; }
+        .section { max-width: 600px; margin: 20px auto; padding: 20px; border: 2px solid #000080; border-radius: 10px; background: #f9f9f9; }
+        input, select { padding: 10px; margin: 10px; width: 80%; max-width: 300px; border: 1px solid #000080; border-radius: 5px; }
+        button { background-color: #40E0D0; color: #000080; border: none; padding: 12px 25px; font-weight: bold; cursor: pointer; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1 id="adminTitle">HAKAFAST - לוח מארגן</h1>
+
+    <!-- הגדרת מצבת קארטים בטווח -->
+    <div class="section">
+        <h3 id="setupKarts">הגדרת מצבת קארטים (טווח מספרים)</h3>
+        <input type="number" id="kartMin" placeholder="קארט התחלתי (למשל 1)">
+        <input type="number" id="kartMax" placeholder="קארט סופי (למשל 20)">
+        <br>
+        <button onclick="saveKartRange()">עדכן מצבה</button>
+    </div>
+
+    <!-- שיבוץ נהג -->
+    <div class="section">
+        <h3 id="addDriver">שיבוץ נהג לקארט</h3>
+        <select id="driverKart"><option value="">בחר קארט מהמצבה...</option></select>
+        <input type="text" id="driverName" placeholder="שם הנהג (השאר ריק לאנונימי)">
+        <input type="text" id="driverContact" placeholder="טלפון או מייל (לקוח שמור בלבד)">
+        <select id="driverLevel">
+            <option value="Amateur">Amateur</option>
+            <option value="Master">Master</option>
+            <option value="Pro">Pro</option>
+        </select>
+        <br>
+        <button onclick="assignDriver()">שבץ לקארט</button>
+    </div>
+
+    <script>
+        async function loadKarts() {
+            const res = await fetch('/api/admin/karts');
+            const range = await res.json();
+            
+            document.getElementById('kartMin').value = range.min;
+            document.getElementById('kartMax').value = range.max;
+
+            const select = document.getElementById('driverKart');
+            select.innerHTML = '<option value="">בחר קארט...</option>';
+            for(let i = range.min; i <= range.max; i++) {
+                select.innerHTML += `<option value="${i}">קארט ${i}</option>`;
+            }
+        }
+
+        async function saveKartRange() {
+            const min = document.getElementById('kartMin').value;
+            const max = document.getElementById('kartMax').value;
+            await fetch('/api/admin/setup-karts', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ min, max })
+            });
+            alert("המצבה עודכנה!");
+            loadKarts();
+        }
+
+        async function assignDriver() {
+            const payload = {
+                track_id: 1,
+                kart_number: document.getElementById('driverKart').value,
+                driver_name: document.getElementById('driverName').value,
+                contact_info: document.getElementById('driverContact').value,
+                driver_level: document.getElementById('driverLevel').value
+            };
+
+            if(!payload.kart_number) return alert("חובה לבחור מספר קארט");
+
+            const res = await fetch('/assign-driver', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if(result.success) {
+                alert("הקארט שובץ בהצלחה!");
+                document.getElementById('driverName').value = '';
+                document.getElementById('driverContact').value = '';
+            }
+        }
+
+        loadKarts();
+    </script>
+</body>
+</html>
