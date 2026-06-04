@@ -12,66 +12,96 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// משתנה גלובלי בזיכרון למצבת הקארטים הפעילים (KISS - טווח מספרים)
-let activeKartsRange = { min: 1, max: 20 };
+// פונקציה להרצת עדכוני מבנה ב-Database באופן אוטומטי (Auto-Migration)
+async function migrateDB() {
+  try {
+    console.log("Checking for database updates...");
+    
+    // 1. הוספת עמודות טלפון ומייל לטבלת נהגים (אם אינן קיימות)
+    await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);`);
+    await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS email VARCHAR(100);`);
+    
+    // 2. הוספת עמודת ספירת הקפות למקצה הנוכחי (עבור מרוצי ספרינט)
+    await pool.query(`ALTER TABLE current_heat ADD COLUMN IF NOT EXISTS lap_count INT DEFAULT 0;`);
+    
+    console.log("Database migrations completed successfully!");
+  } catch (err) {
+    console.error("Error running migrations:", err);
+  }
+}
 
-// הגשת קובץ התרגום
+// הפעלת המיגרציה מיד עם חיבור השרת
+migrateDB();
+
+// משתנים גלובליים דינמיים בזיכרון השרת (KISS)
+let pitLines = { 1: [], 2: [] }; // מתחיל מ-2 ליינים דינמיים כברירת מחדל
+let currentHeatSettings = {
+  type: 'time', // 'time', 'endurance', 'sprint'
+  duration: 10,  // דקות
+  targetLaps: 0  // רלוונטי רק לספרינט
+};
+
 app.get('/api/translations', (req, res) => {
-  const data = fs.readFileSync('./translations.json');
-  res.json(JSON.parse(data));
+  res.json(JSON.parse(fs.readFileSync('./translations.json')));
 });
 
-// דף לקוחות (Live Timing)
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
-});
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 
-// דף מנהל (Admin) - מוגן ב-URL ייעודי
-app.get('/admin', (req, res) => {
-  res.sendFile(__dirname + '/admin.html');
-});
+// ניהול ליינים מה-Admin
+app.get('/api/admin/pits', (req, res) => res.json(pitLines));
 
-// Endpoint: עדכון מצבת הקארטים ע"י ה-Admin
-app.post('/api/admin/setup-karts', (req, res) => {
-  const { min, max } = req.body;
-  if(min && max) {
-    activeKartsRange = { min: parseInt(min), max: parseInt(max) };
-    return res.json({ success: true, range: activeKartsRange });
+app.post('/api/admin/update-pits', (req, res) => {
+  const { newLines } = req.body;
+  if (newLines) {
+    pitLines = newLines;
+    return res.json({ success: true, pitLines });
   }
-  res.status(400).json({ success: false, error: 'Invalid range' });
+  res.status(400).json({ success: false });
 });
 
-// Endpoint: קבלת הקארטים הזמינים לשיבוץ
-app.get('/api/admin/karts', (req, res) => {
-  res.json(activeKartsRange);
+// עדכון הגדרות מקצה מה-Admin
+app.post('/api/admin/heat-settings', (req, res) => {
+  const { type, duration, targetLaps } = req.body;
+  currentHeatSettings = { type, duration: parseInt(duration), targetLaps: parseInt(targetLaps) };
+  res.json({ success: true, currentHeatSettings });
 });
 
-// Endpoint לשיבוץ נהג (תומך גם בנהג אנונימי/זמני)
+app.get('/api/heat-settings', (req, res) => res.json(currentHeatSettings));
+
+// ניקוי המקצה הנוכחי (כשמתחילים מקצה חדש)
+app.post('/api/admin/clear-heat', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM current_heat WHERE track_id = 1');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// שיבוץ נהג (תומך בהפרדת שדות טלפון ומייל)
 app.post('/assign-driver', async (req, res) => {
-  let { track_id, kart_number, driver_name, driver_level, contact_info } = req.body;
+  let { track_id, kart_number, driver_name, driver_level, phone, email } = req.body;
   
-  // הגדרת שם ברירת מחדל אם הושאר ריק (KISS)
-  if (!driver_name) {
-    driver_name = `קארט #${kart_number}`;
-    driver_level = 'Amateur';
-  }
+  if (!driver_name) driver_name = `קארט #${kart_number}`;
 
   try {
-    // אם הוכנס פרט זיהוי (מייל או טלפון), נשמור אותו בטבלת הנהגים הקבועים
-    if (contact_info && contact_info.trim() !== "") {
-      const driverCheck = await pool.query(
-        'INSERT INTO drivers (track_id, full_name, contact_info, driver_level) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING RETURNING id',
-        [track_id, driver_name, contact_info, driver_level]
+    // שמירה ל-DB לטווח ארוך רק אם הוכנס פרט זיהוי אחד לפחות
+    if ((phone && phone.trim() !== "") || (email && email.trim() !== "")) {
+      await pool.query(
+        `INSERT INTO drivers (track_id, full_name, phone, email, driver_level) 
+         VALUES ($1, $2, $3, $4, $5) 
+         ON CONFLICT DO NOTHING`,
+        [track_id, driver_name, phone || null, email || null, driver_level || 'Amateur']
       );
     }
 
-    // הזרקה למקצה הפעיל
-    const query = `
-      INSERT INTO current_heat (track_id, kart_number, driver_name, driver_level)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *;
-    `;
-    const result = await pool.query(query, [track_id, kart_number, driver_name, driver_level]);
+    // הזרקה למקצה הנוכחי
+    const result = await pool.query(
+      `INSERT INTO current_heat (track_id, kart_number, driver_name, driver_level, lap_count)
+       VALUES ($1, $2, $3, $4, 0) RETURNING *`,
+      [track_id, kart_number, driver_name, driver_level || 'Amateur']
+    );
     
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
@@ -80,15 +110,16 @@ app.post('/assign-driver', async (req, res) => {
   }
 });
 
-// שליפת נתוני המקצה למסכים
+// שליפת נתוני המקצה למסכי לקוחות (עם מיון דינמי לפי סוג המרוץ!)
 app.get('/live-timing/:track_id', async (req, res) => {
   try {
-    const query = `
-      SELECT * FROM current_heat 
-      WHERE track_id = $1 
-      ORDER BY best_lap_time ASC NULLS LAST 
-      LIMIT 30;
-    `;
+    let orderBy = "best_lap_time ASC NULLS LAST"; // דיפולט למקצי זמן וסיבולת
+    
+    if (currentHeatSettings.type === 'sprint') {
+      orderBy = "lap_count DESC, best_lap_time ASC NULLS LAST"; // ספרינט: מי שיש לו הכי הרבה הקפות מוביל
+    }
+
+    const query = `SELECT * FROM current_heat WHERE track_id = $1 ORDER BY ${orderBy} LIMIT 30;`;
     const result = await pool.query(query, [req.params.track_id]);
     res.json(result.rows);
   } catch (err) {
@@ -96,6 +127,4 @@ app.get('/live-timing/:track_id', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+app.listen(port, () => console.log(`HAKAFAST Engine running on port ${port}`));

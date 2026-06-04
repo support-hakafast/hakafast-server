@@ -1,41 +1,53 @@
 {
   "he": {
-    "title": "HAKAFAST - זמנים ושיבוצים",
-    "pos": "מיקום",
+    "title": "HAKAFAST",
+    "pos": "#",
     "kart": "קארט",
     "driver": "נהג",
     "last_lap": "זמן אחרון",
     "best_lap": "הכי מהיר",
+    "laps": "הקפות",
     "anonymous": "קארט",
-    "status_waiting": "ממתין למקצה",
+    "status_waiting": "שיבוצי קארטים למקצה הקרוב",
     "level_amateur": "חובבן",
     "level_master": "מאסטר",
-    "level_pro": "פרו"
+    "level_pro": "פרו",
+    "heat_time": "מקצה זמן (Best Lap)",
+    "heat_endurance": "מרוץ סיבולת",
+    "heat_sprint": "מרוץ ספרינט (לפי הקפות)"
   },
   "en": {
-    "title": "HAKAFAST - LIVE TIMING & ASSIGNMENTS",
+    "title": "HAKAFAST",
     "pos": "POS",
     "kart": "KART",
     "driver": "DRIVER",
     "last_lap": "LAST LAP",
     "best_lap": "BEST LAP",
+    "laps": "LAPS",
     "anonymous": "Kart",
-    "status_waiting": "Waiting for Heat",
+    "status_waiting": "Kart Assignments for Upcoming Heat",
     "level_amateur": "Amateur",
     "level_master": "Master",
-    "level_pro": "Pro"
+    "level_pro": "Pro",
+    "heat_time": "Time Attack (Best Lap)",
+    "heat_endurance": "Endurance Race",
+    "heat_sprint": "Sprint Race (Laps Target)"
   },
   "ar": {
-    "title": "HAKAFAST - توقيت مباشر ותוצאות",
+    "title": "HAKAFAST",
     "pos": "#",
     "kart": "كارت",
     "driver": "سائق",
     "last_lap": "الدورة الأخيرة",
     "best_lap": "الأسرع",
+    "laps": "جولات",
     "anonymous": "كارت",
-    "status_waiting": "في الانتظار",
+    "status_waiting": "تخصيص الكارت للمקצה القادم",
     "level_amateur": "هاوي",
     "level_master": "ماستر",
-    "level_pro": "محترف"
+    "level_pro": "محترف",
+    "heat_time": "جولة זמן (Best Lap)",
+    "heat_endurance": "سباق تحمل",
+    "heat_sprint": "سباق سפרינט (حسب الجولات)"
   }
 }
