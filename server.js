@@ -3,17 +3,16 @@ const { Pool } = require('pg');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.static(__dirname));
+
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
 
 // הגדרת חיבור ל-DB
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
-});
-
-// בדיקת תקינות - דף הבית של ה-API
-app.get('/', (req, res) => {
-  res.send('HAKAFAST API is Running - High Contrast Mode Active');
 });
 
 // Endpoint: הוספת נהג למקצה (KISS Assignment)
