@@ -2,127 +2,319 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>HAKAFAST | Admin PRO</title>
+    <title>HAKAFAST | Advanced Track Management</title>
     <style>
         :root { --navy: #000080; --turquoise: #40E0D0; --purple: #800080; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; color: var(--navy); margin: 0; padding: 20px; display: grid; grid-template-columns: 320px 1fr 380px; gap: 20px; }
-        .panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid var(--navy); }
-        .lane { background: #edf2f7; padding: 12px; border-radius: 10px; min-height: 300px; border: 2px dashed #cbd5e0; margin-bottom: 15px; }
-        .lane.inactive { opacity: 0.4; pointer-events: none; }
-        .kart-card { background: white; border: 2px solid var(--navy); padding: 8px; margin: 5px; border-radius: 6px; cursor: grab; font-weight: bold; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .btn { background: var(--navy); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; transition: 0.2s; }
-        .btn:hover { background: var(--turquoise); color: var(--navy); }
-        .section-box { border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-bottom: 15px; background: #fff; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f7fafc; color: var(--navy); margin: 0; padding: 20px; }
+        .admin-header { text-align: center; background: var(--navy); color: white; padding: 15px; border-radius: 12px; margin-bottom: 25px; }
+        .admin-header h1 { margin: 0; font-size: 2.2em; }
+        .main-layout { display: grid; grid-template-columns: 340px 1fr 380px; gap: 20px; align-items: start; max-width: 1650px; margin: 0 auto; }
+        .panel { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .panel h2 { font-size: 1.3em; margin-top: 0; border-bottom: 3px solid var(--turquoise); padding-bottom: 8px; font-weight: 700; }
+        .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+        button { background: var(--navy); color: white; border: none; padding: 11px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background: var(--turquoise); color: var(--navy); }
+        .kart-pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 8px; min-height: 120px; background: #edf2f7; padding: 10px; border-radius: 8px; }
+        .kart-card { background: white; border: 2px solid var(--navy); border-radius: 8px; padding: 8px; text-align: center; font-weight: bold; cursor: grab; user-select: none; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .kart-card.disabled { background: #fed7d7; border-color: #e53e3e; color: #e53e3e; text-decoration: line-through; }
+        .kart-card .toggle-btn { position: absolute; top: -5px; left: -5px; background: red; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pit-lanes-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; margin-top: 15px; }
+        .lane { background: #edf2f7; border-radius: 10px; padding: 12px; min-height: 350px; border: 2px dashed #cbd5e0; transition: 0.2s; }
+        .lane.drag-over { border-color: var(--turquoise); background: #e6fffa; }
+        .lane h3 { text-align: center; margin: 0 0 12px 0; background: var(--navy); color: white; padding: 6px; border-radius: 5px; font-size: 0.95em; }
+        .lane .kart-card { margin-bottom: 10px; }
+        .lane .kart-card:first-of-type { border-color: var(--turquoise); background: #e6fffa; }
+        .queue-list { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; }
+        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; font-weight: bold; }
+        .checkbox-zone { display: flex; gap: 15px; align-items: center; margin: 10px 0; font-weight: bold; font-size: 0.9em; }
+        .checkbox-zone input { width: auto; margin: 0; }
     </style>
 </head>
 <body>
 
-    <div class="panel">
-        <h2>מחסן קארטים</h2>
-        <input type="text" id="kIn" placeholder="מספר או טווח 1-20">
-        <button class="btn" onclick="addK()">הוסף למלאי</button>
-        <div id="pool" ondrop="drop(event, 'pool')" ondragover="allow(event)" style="min-height: 200px; background: #f8f9fa; border-radius: 8px; padding: 10px;"></div>
+    <div class="admin-header">
+        <h1>HAKAFAST - מרכז שליטה ובקרת מרוצים</h1>
     </div>
 
-    <div class="panel">
-        <div style="display:flex; justify-content:space-between; align-items:center">
-            <h2>ניהול ה-Pits</h2>
-            <button class="btn" style="width:auto" onclick="addL()">+ ליין חדש</button>
-        </div>
-        <div id="lDisplay" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"></div>
-    </div>
-
-    <div class="panel">
-        <h2>הגדרות מקצה</h2>
-        <select id="hT"><option value="time">זמן</option><option value="endurance">סיבולת</option><option value="sprint">ספרינט</option></select>
-        <input type="number" id="hV" placeholder="זמן / הקפות יעד">
+    <div class="main-layout">
         
-        <h2 style="margin-top:20px">רישום נהג</h2>
-        <div class="section-box" style="border-color: var(--navy);">
-            <label><b>חובה:</b></label>
-            <input type="text" id="dN" placeholder="שם נהג">
-        </div>
-
-        <div class="section-box" style="background: #f8f9fa;">
-            <label><b>אופציונלי (לקוח שמור):</b></label>
-            <div style="margin: 8px 0;">
-                <label><input type="checkbox" id="cPh" onchange="toggleI()"> טלפון</label>
-                <label><input type="checkbox" id="cEm" onchange="toggleI()"> מייל</label>
+        <!-- עמודה 1: מחסן קארטים חופשיים -->
+        <div class="panel">
+            <h2>מצבת קארטים (מחסן)</h2>
+            <div class="input-group">
+                <input type="text" id="kartInput" placeholder="מספר או טווח (למשל 1-12)">
+                <button onclick="addKartsFromInput()">הוסף</button>
             </div>
-            <input type="text" id="dPh" placeholder="מספר טלפון" style="display:none">
-            <input type="text" id="dEm" placeholder="כתובת מייל" style="display:none">
-            <select id="dL"><option value="Amateur">Amateur</option><option value="Master">Master</option><option value="Pro">Pro</option></select>
+            <div id="kartPool" class="kart-pool" ondragover="allowDrop(event)" ondrop="dropToPool(event)" ondragleave="dragLeave(event)">
+                <!-- קארטים חופשיים -->
+            </div>
         </div>
 
-        <button class="btn" onclick="toQ()">הוסף למקצה</button>
-        <ul id="qL" style="padding:0; list-style:none; font-weight:bold"></ul>
-        <button class="btn" onclick="startH()" style="background:var(--purple); font-size:1.1em; padding:15px;">שבץ הכל וסנכרן 🚀</button>
-        <button class="btn" style="background:#28a745" onclick="finH()">סיום מקצה וייצוא CSV</button>
+        <!-- עמודה 2: ניהול ליינים דינמי וגרפי -->
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>סידור ה-Pits (ליינים דינמיים)</h2>
+                <button onclick="addNewLane()" style="padding: 6px 12px; background: var(--purple);">+ הוסף ליין ב-Pit</button>
+            </div>
+            <div class="pit-lanes-board" id="lanesBoard">
+                <!-- ליינים ייווצרו כאן דינמית -->
+            </div>
+        </div>
+
+        <!-- עמודה 3: סוג המקצה ורישום נהגים -->
+        <div class="panel">
+            <h2>הגדרות מקצה קרוב</h2>
+            <select id="heatType" onchange="toggleHeatTypeFields()">
+                <option value="time">מקצה זמן (Best Lap)</option>
+                <option value="endurance">מרוץ סיבולת (Endurance)</option>
+                <option value="sprint">מרוץ ספרינט (לפי הקפות)</option>
+            </select>
+            
+            <div id="durationField" style="margin-top: 10px;">
+                <input type="number" id="heatDuration" placeholder="אורך מקצה בדקות" value="10">
+            </div>
+            <div id="sprintField" style="margin-top: 10px; display: none;">
+                <input type="number" id="targetLaps" placeholder="כמות הקפות ליעד (ניצחון)">
+            </div>
+
+            <h2 style="margin-top: 25px;">רישום נהג למקצה</h2>
+            <input type="text" id="drName" placeholder="שם הנהג (חובה)">
+            
+            <div class="checkbox-zone">
+                <label><input type="checkbox" id="chkPhone" onchange="toggleIdentFields()"> שמור טלפון</label>
+                <label><input type="checkbox" id="chkEmail" onchange="toggleIdentFields()"> שמור מייל</label>
+            </div>
+            
+            <input type="text" id="drPhone" placeholder="מספר טלפון לקוח" style="display: none; margin-bottom: 8px;">
+            <input type="text" id="drEmail" placeholder="כתובת מייל לקוח" style="display: none; margin-bottom: 8px;">
+
+            <select id="drLevel">
+                <option value="Amateur">Amateur (חובבן)</option>
+                <option value="Master">Master (מאסטר)</option>
+                <option value="Pro">Pro (מקצוען)</option>
+            </select>
+            <button onclick="addDriverToQueue()" style="margin-top: 12px; width: 100%;">רשום למקצה</button>
+            
+            <h3 style="font-size: 1em; margin-top: 15px; margin-bottom: 5px;">רשימת ממתינים במקצה:</h3>
+            <ul id="driverQueue" class="queue-list"></ul>
+            
+            <button onclick="executeAutoAssignment()" style="margin-top: 20px; width: 100%; background: var(--purple); font-size: 1.1em; padding: 14px;">
+                בצע שיבוץ אוטומטי ומסנכרן מסכים! 🚀
+            </button>
+        </div>
+
     </div>
 
     <script>
-        let karts = {}; let lines = []; let queue = [];
-        function toggleI() {
-            document.getElementById('dPh').style.display = document.getElementById('cPh').checked ? 'block' : 'none';
-            document.getElementById('dEm').style.display = document.getElementById('cEm').checked ? 'block' : 'none';
+        let allKarts = {};
+        let linesData = { 1: [], 2: [] }; // ברירת מחדל 2 ליינים
+        let driverQueue = [];
+
+        function toggleHeatTypeFields() {
+            const type = document.getElementById('heatType').value;
+            document.getElementById('durationField').style.display = (type === 'sprint') ? 'none' : 'block';
+            document.getElementById('sprintField').style.display = (type === 'sprint') ? 'block' : 'none';
         }
-        function addK() {
-            let v = document.getElementById('kIn').value;
-            if(v.includes('-')) {
-                let [s,e] = v.split('-').map(Number);
-                for(let i=s; i<=e; i++) karts[i] = {id:i, l:null};
-            } else { karts[v] = {id:v, l:null}; }
-            render();
+
+        function toggleIdentFields() {
+            document.getElementById('drPhone').style.display = document.getElementById('chkPhone').checked ? 'block' : 'none';
+            document.getElementById('drEmail').style.display = document.getElementById('chkEmail').checked ? 'block' : 'none';
         }
-        function addL() { lines.push({id: Date.now(), name: "ליין " + (lines.length+1), active: true, ks: []}); render(); }
-        function allow(e) { e.preventDefault(); }
-        function drag(e) { e.dataTransfer.setData("id", e.target.dataset.id); }
-        function drop(e, t) {
-            e.preventDefault(); let id = e.dataTransfer.getData("id");
-            lines.forEach(l => l.ks = l.ks.filter(k => k != id));
-            if(t === 'pool') { karts[id].l = null; }
-            else { let l = lines.find(x => x.id == t); l.ks.push(id); karts[id].l = t; }
-            render(); sync();
+
+        function addNewLane() {
+            const newLaneId = Object.keys(linesData).length + 1;
+            linesData[newLaneId] = [];
+            renderAll();
+            syncPitsWithServer();
         }
-        function render() {
-            let p = document.getElementById('pool'); p.innerHTML = '';
-            Object.keys(karts).forEach(id => { if(!karts[id].l) p.innerHTML += `<div class="kart-card" draggable="true" ondragstart="drag(event)" data-id="${id}">${id}</div>`; });
-            let b = document.getElementById('lDisplay'); b.innerHTML = '';
-            lines.forEach(l => {
-                b.innerHTML += `<div class="lane ${!l.active?'inactive':''}" ondrop="drop(event, ${l.id})" ondragover="allow(event)">
-                    <input value="${l.name}" onchange="renL(${l.id}, this.value)" style="width:55%; font-weight:bold; border:none; background:transparent">
-                    <button onclick="togL(${l.id})" style="font-size:0.7em">ON/OFF</button>
-                    <button onclick="remL(${l.id})" style="color:red; border:none; background:transparent; font-weight:bold">X</button>
-                    <div style="margin-top:10px">${l.ks.map(k => `<div class="kart-card" draggable="true" ondragstart="drag(event)" data-id="${k}">${k}</div>`).join('')}</div>
-                </div>`;
+
+        function addKartsFromInput() {
+            const val = document.getElementById('kartInput').value.trim();
+            if(!val) return;
+            if (val.includes('-')) {
+                const parts = val.split('-');
+                const start = parseInt(parts[0]); const end = parseInt(parts[1]);
+                if (!isNaN(start) && !isNaN(end)) { for(let i = start; i <= end; i++) addKartEntity(i); }
+            } else {
+                const num = parseInt(val); if (!isNaN(num)) addKartEntity(num);
+            }
+            document.getElementById('kartInput').value = '';
+            renderAll();
+        }
+
+        function addKartEntity(num) {
+            if (!allKarts[num]) allKarts[num] = { number: num, active: true, lane: null };
+        }
+
+        function toggleKartActive(num, event) {
+            event.stopPropagation();
+            if(allKarts[num]) {
+                allKarts[num].active = !allKarts[num].active;
+                if (!allKarts[num].active && allKarts[num].lane) {
+                    const l = allKarts[num].lane;
+                    linesData[l] = linesData[l].filter(x => x !== num);
+                    allKarts[num].lane = null;
+                }
+                renderAll();
+                syncPitsWithServer();
+            }
+        }
+
+        // לוגיקת Drag & Drop מדויקת
+        function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+        function dragLeave(ev) { ev.currentTarget.classList.remove('drag-over'); }
+        function drag(ev, num) { if(!allKarts[num].active) { ev.preventDefault(); return; } ev.dataTransfer.setData("text", num); }
+
+        function dropToLane(ev, laneNum) {
+            ev.preventDefault(); ev.currentTarget.classList.remove('drag-over');
+            const num = parseInt(ev.dataTransfer.getData("text"));
+            if(allKarts[num].lane) {
+                linesData[allKarts[num].lane] = linesData[allKarts[num].lane].filter(x => x !== num);
+            }
+            allKarts[num].lane = laneNum;
+            if(!linesData[laneNum].includes(num)) linesData[laneNum].push(num);
+            renderAll();
+            syncPitsWithServer();
+        }
+
+        function dropToPool(ev) {
+            ev.preventDefault(); ev.currentTarget.classList.remove('drag-over');
+            const num = parseInt(ev.dataTransfer.getData("text"));
+            if(allKarts[num].lane) {
+                linesData[allKarts[num].lane] = linesData[allKarts[num].lane].filter(x => x !== num);
+                allKarts[num].lane = null;
+            }
+            renderAll();
+            syncPitsWithServer();
+        }
+
+        async function syncPitsWithServer() {
+            await fetch('/api/admin/update-pits', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ newLines: linesData })
             });
         }
-        function renL(id, n) { lines.find(x => x.id == id).name = n; sync(); }
-        function togL(id) { let l = lines.find(x => x.id == id); l.active = !l.active; render(); sync(); }
-        function remL(id) { let l = lines.find(x => x.id == id); l.ks.forEach(k => karts[k].l = null); lines = lines.filter(x => x.id != id); render(); sync(); }
-        function sync() { fetch('/api/admin/update-pits', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({newLines:lines})}); }
-        function toQ() {
-            let n = document.getElementById('dN').value; if(!n) return;
-            queue.push({n, ph: document.getElementById('dPh').value, em: document.getElementById('dEm').value, l: document.getElementById('dL').value});
-            document.getElementById('qL').innerHTML += `<li>🏎️ ${n}</li>`;
-            document.getElementById('dN').value = '';
+
+        function renderAll() {
+            const pool = document.getElementById('kartPool'); pool.innerHTML = '';
+            Object.keys(allKarts).forEach(num => {
+                if (allKarts[num].lane === null) {
+                    const card = document.createElement('div');
+                    card.className = `kart-card ${!allKarts[num].active ? 'disabled' : ''}`;
+                    card.draggable = allKarts[num].active;
+                    card.ondragstart = (e) => drag(e, num);
+                    card.innerHTML = `🏎️ ${num} <div class="toggle-btn" onclick="toggleKartActive(${num}, event)">${allKarts[num].active ? 'X' : '+'}</div>`;
+                    pool.appendChild(card);
+                }
+            });
+
+            const board = document.getElementById('lanesBoard'); board.innerHTML = '';
+            Object.keys(linesData).forEach(l => {
+                const laneDiv = document.createElement('div');
+                laneDiv.className = 'lane';
+                laneDiv.ondragover = allowDrop;
+                laneDiv.ondragleave = dragLeave;
+                laneDiv.ondrop = (e) => dropToLane(e, l);
+                laneDiv.innerHTML = `<h3>ליין ${l}</h3>`;
+                
+                linesData[l].forEach(num => {
+                    const card = document.createElement('div');
+                    card.className = `kart-card ${!allKarts[num].active ? 'disabled' : ''}`;
+                    card.draggable = allKarts[num].active;
+                    card.ondragstart = (e) => drag(e, num);
+                    card.innerHTML = `🏎️ ${num} <div class="toggle-btn" onclick="toggleKartActive(${num}, event)">X</div>`;
+                    laneDiv.appendChild(card);
+                });
+                board.appendChild(laneDiv);
+            });
         }
-        async function startH() {
-            if(queue.length == 0) return;
-            await fetch('/api/admin/heat-settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({type:document.getElementById('hT').value, duration:document.getElementById('hV').value, targetLaps:document.getElementById('hV').value})});
-            await fetch('/api/admin/clear-heat', {method:'POST'});
-            for(let d of queue) {
-                let activeLanes = lines.filter(l => l.active && l.ks.length > 0);
-                if(activeLanes.length == 0) break;
-                let l = activeLanes[0]; let k = l.ks.shift();
-                await fetch('/assign-driver', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track_id:1, kart_number:k, driver_name:d.n, phone:d.ph, email:d.em, driver_level:d.l})});
-                l.ks.push(k);
+
+        function addDriverToQueue() {
+            const name = document.getElementById('drName').value.trim();
+            const chkPhone = document.getElementById('chkPhone').checked;
+            const chkEmail = document.getElementById('chkEmail').checked;
+            const phone = document.getElementById('drPhone').value.trim();
+            const email = document.getElementById('drEmail').value.trim();
+            const level = document.getElementById('drLevel').value;
+
+            if(!name) return alert("חובה להזין שם נהג");
+            if(chkPhone && !phone) return alert("סימנת טלפון, אנא הזן מספר");
+            if(chkEmail && !email) return alert("סימנת מייל, אנא הזן כתובת");
+
+            driverQueue.push({ name, phone: chkPhone ? phone : null, email: chkEmail ? email : null, level });
+            document.getElementById('drName').value = '';
+            document.getElementById('drPhone').value = '';
+            document.getElementById('drEmail').value = '';
+            renderQueue();
+        }
+
+        function renderQueue() {
+            const list = document.getElementById('driverQueue'); list.innerHTML = '';
+            driverQueue.forEach((d, i) => {
+                list.innerHTML += `<li class="queue-item"><span>${d.name} (${d.level})</span><button onclick="driverQueue.splice(${i},1); renderQueue();" style="background:red; padding:3px 7px;">X</button></li>`;
+            });
+        }
+
+        async function executeAutoAssignment() {
+            if(driverQueue.length === 0) return alert("אין נהגים במקצה");
+            
+            // עדכון הגדרות המקצה בשרת
+            const type = document.getElementById('heatType').value;
+            const duration = document.getElementById('heatDuration').value;
+            const targetLaps = document.getElementById('targetLaps').value || 0;
+            
+            await fetch('/api/admin/heat-settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ type, duration, targetLaps })
+            });
+
+            // ניקוי המסכים מהמקצה הקודם
+            await fetch('/api/admin/clear-heat', { method: 'POST' });
+
+            let assignedKarts = [];
+            let laneKeys = Object.keys(linesData);
+            let currentLineIdx = 0;
+
+            for(let i = 0; i < driverQueue.length; i++) {
+                let foundKart = null;
+                let loops = 0;
+
+                while(loops < laneKeys.length) {
+                    let currentLaneKey = laneKeys[currentLineIdx];
+                    if(linesData[currentLaneKey] && linesData[currentLaneKey].length > 0) {
+                        foundKart = linesData[currentLaneKey].shift();
+                        assignedKarts.push({ kart: foundKart, lane: currentLaneKey, driver: driverQueue[i] });
+                        currentLineIdx = (currentLineIdx + 1) % laneKeys.length;
+                        break;
+                    }
+                    currentLineIdx = (currentLineIdx + 1) % laneKeys.length;
+                    loops++;
+                }
+
+                if(!foundKart) return alert("אין מספיק קארטים משובצים בליינים בשביל כמות הנהגים!");
             }
-            queue = []; document.getElementById('qL').innerHTML = ''; render(); sync(); alert("המקצה באוויר!");
+
+            for(let assign of assignedKarts) {
+                await fetch('/assign-driver', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        track_id: 1, kart_number: assign.kart, driver_name: assign.driver.name,
+                        phone: assign.driver.phone, email: assign.driver.email, driver_level: assign.driver.level
+                    })
+                });
+                linesData[assign.lane].push(assign.kart); // רוטציה לסוף הליין
+            }
+
+            alert("השיבוץ האוטומטי וסוג המקצה סונכרנו למסכים!");
+            driverQueue = []; renderQueue(); renderAll(); syncPitsWithServer();
         }
-        async function finH() { await fetch('/api/admin/finish-heat', {method:'POST'}); window.location.href = '/api/admin/export-csv'; }
-        render();
+
+        renderAll();
+        syncPitsWithServer();
     </script>
 </body>
 </html>
