@@ -2,11 +2,12 @@ const express = require('express');
 const { Pool } = require('pg');
 const fs = require('fs');
 const session = require('express-session');
+const path = require('path');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(__dirname));
 
 app.use(session({
   secret: 'hakafast_secret_key_2026',
@@ -20,21 +21,11 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// הגשת דף הבית הראשי של השירות (חלון הראווה השיווקי)
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
-});
+// מגיש את כל הקבצים הסטטיים ש-Vite ייצר (JS, CSS, תמונות)
+app.use(express.static(path.join(__dirname, 'dist')));
 
-// הגשת דף הלקוחות הציבורי (צפייה בלבד)
-app.get('/live-timing/:trackName', (req, res) => {
-  res.sendFile(__dirname + '/live-timing.html');
-});
-
-// הגשת דף המנהל (מאובטח בסשן)
-app.get('/admin/:trackName', (req, res) => {
-  // ... (לוגיקת האבטחה הקיימת שלך)
-  res.sendFile(__dirname + '/admin.html');
-});
+// מגיש את קבצי המדיה מתוך public
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 async function migrateDB() {
   try {
@@ -50,13 +41,13 @@ migrateDB();
 let pitLines = [{ id: 1, name: "ליין ימין", active: true, karts: [] }, { id: 2, name: "ליין שמאל", active: true, karts: [] }];
 let heatSettings = { type: 'time', duration: 10, targetLaps: 0 };
 
-// הוספת מסלול kart-demo עם סיסמת דמו ייעודית
 const trackCredentials = {
   'holyland-racing': 'fast123',
   'go-karting': 'track2026',
   'kart-demo': 'demo123'
 };
 
+// API ROUTES
 app.get('/api/translations', (req, res) => res.json(JSON.parse(fs.readFileSync('./translations.json'))));
 app.get('/api/admin/pits', (req, res) => res.json(pitLines));
 app.post('/api/admin/update-pits', (req, res) => { pitLines = req.body.newLines; res.json({success:true}); });
@@ -74,11 +65,7 @@ app.post('/api/admin/login/:trackName', (req, res) => {
   res.status(401).json({ success: false, error: "Password incorrect" });
 });
 
-// הגשת דף הבית הראשי של השירות השיווקי
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/home.html');
-});
-
+// הגדרת Login מאובטח לפאנל הניהול - אם לא מחובר זורק למסך סיסמה, אם כן מחובר מגיש את ה-React מתיקיית dist
 app.get('/admin/:trackName', (req, res) => {
   const { trackName } = req.params;
   
@@ -125,11 +112,8 @@ app.get('/admin/:trackName', (req, res) => {
     `);
   }
   
-  res.sendFile(__dirname + '/admin.html');
-});
-
-app.get('/live-timing/:trackName', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  // ברגע שהוא עבר איתנו ל-React, מסך הניהול הוא חלק מה-SPA בתיקיית dist
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.post('/api/admin/finish-heat', async (req, res) => {
@@ -182,5 +166,13 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
 });
 
 app.post('/api/admin/clear-heat', async (req, res) => { await pool.query('DELETE FROM current_heat WHERE track_id = 1'); res.json({success:true}); });
+
+// CATCH-ALL ROUTE FOR REACT SPA
+// מחזיר את קובץ ה-index.html של ה-React בכל בקשת עמוד שלא קשורה לראוטים של השרת
+app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/live-timing-data') && !req.path.startsWith('/assign-driver')) {
+        res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    }
+});
 
 app.listen(port, () => console.log("HAKAFAST Active"));
