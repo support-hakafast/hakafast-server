@@ -94,6 +94,21 @@ export function getWaitingKartNumbers(lane) {
   return lane.karts.slice(1).map(Number);
 }
 
+export function groupQueueByTeam(queue) {
+  const teams = [];
+  const map = new Map();
+  queue.forEach((d) => {
+    const key = (d.team || '').trim() || d.name;
+    if (!map.has(key)) {
+      const entry = { teamName: key, drivers: [] };
+      map.set(key, entry);
+      teams.push(entry);
+    }
+    map.get(key).drivers.push(d);
+  });
+  return teams;
+}
+
 export function pickKartsForAssignment(workingLines, laneKeys, driverCount) {
   const used = new Set();
   const assigned = [];

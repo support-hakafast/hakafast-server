@@ -63,8 +63,8 @@ const LiveTiming = () => {
     rowsData,
     (row) => `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
     mode === 'timing'
-      ? ['last_lap_time', 'best_lap_time', 'lap_count', 'kart_number', 'avg_lap_time', 'second_best_lap_time']
-      : ['kart_number', 'driver_name'],
+      ? ['last_lap_time', 'lap_count']
+      : ['kart_number', 'driver_name', 'lap_count'],
   );
 
   const rowFlashClass = (row, index) => {
@@ -109,6 +109,7 @@ const LiveTiming = () => {
             mode={mode}
             rows={rowsData}
             timingColumns={cols}
+            heatType={heatType}
             rowFlashClass={rowFlashClass}
           />
         </div>

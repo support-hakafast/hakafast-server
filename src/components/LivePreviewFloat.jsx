@@ -85,6 +85,7 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
               mode={mode}
               rows={rows}
               timingColumns={cols}
+              heatType={heatType}
               rowFlashClass={flash}
               tableClassName="live-preview-table"
             />

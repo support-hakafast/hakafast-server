@@ -6,18 +6,32 @@ import {
   lapToSeconds,
 } from '../utils/liveTimingColumns.js';
 
+function isPersonalBestLap(row) {
+  if (!row?.last_lap_time || !row?.best_lap_time) return false;
+  return row.last_lap_time === row.best_lap_time || row.is_personal_best;
+}
+
+function formatTeamDrivers(row) {
+  if (Array.isArray(row.team_drivers) && row.team_drivers.length) {
+    return row.team_drivers.join(' · ');
+  }
+  return row.driver_name || '';
+}
+
 export default function LiveTimingTable({
   t,
   mode,
   rows,
   timingColumns,
+  heatType = 'time',
   rowFlashClass,
   tableClassName = 'live-timing-table',
 }) {
+  const isEndurance = heatType === 'endurance';
   const leaderBestSec = useMemo(() => {
-    if (mode !== 'timing' || !rows.length) return Infinity;
+    if (mode !== 'timing' || !rows.length || isEndurance) return Infinity;
     return lapToSeconds(rows[0]?.best_lap_time);
-  }, [mode, rows]);
+  }, [mode, rows, isEndurance]);
 
   if (mode === 'assignments') {
     return (
@@ -25,16 +39,20 @@ export default function LiveTimingTable({
         <thead>
           <tr>
             <th>#</th>
+            {isEndurance && <th>{t('team')}</th>}
             <th>{t('kart')}</th>
-            <th>{t('driver')}</th>
+            <th>{isEndurance ? t('team_drivers') : t('driver')}</th>
+            {isEndurance && <th>{t('laps')}</th>}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={`assign-${row.position ?? index}-${row.driver_name}`} className={rowFlashClass(row, index)}>
+            <tr key={`assign-${row.position ?? index}-${row.kart_number || row.driver_name}`} className={rowFlashClass(row, index)}>
               <td className="live-pos">{row.position ?? index + 1}</td>
+              {isEndurance && <td className="live-team-name">{row.team_name || '—'}</td>}
               <td>{row.kart_number ?? '—'}</td>
-              <td style={{ textAlign: 'start' }}>{row.driver_name}</td>
+              <td style={{ textAlign: 'start' }}>{isEndurance ? formatTeamDrivers(row) : row.driver_name}</td>
+              {isEndurance && <td>{row.lap_count ?? 0}</td>}
             </tr>
           ))}
         </tbody>
@@ -49,9 +67,11 @@ export default function LiveTimingTable({
       <thead>
         <tr>
           <th>{t('pos')}</th>
+          {isEndurance && <th>{t('team')}</th>}
           <th>{t('kart')}</th>
-          <th>{t('driver')}</th>
-          <th className="live-col-highlight">{t('best_lap')}</th>
+          <th>{isEndurance ? t('team_drivers') : t('driver')}</th>
+          {isEndurance && <th>{t('laps')}</th>}
+          {!isEndurance && <th className="live-col-highlight">{t('best_lap')}</th>}
           <th className="live-col-highlight">{t('last_lap')}</th>
           {optionalCols.map((col) => (
             <th key={col.id}>{t(col.labelKey)}</th>
@@ -60,19 +80,24 @@ export default function LiveTimingTable({
       </thead>
       <tbody>
         {rows.map((row, index) => {
-          const isLeader = index === 0 && row.best_lap_time;
+          const isLeader = index === 0;
+          const pbLap = isPersonalBestLap(row);
           return (
             <tr key={`timing-${row.kart_number}-${index}`} className={rowFlashClass(row, index)}>
               <td className="live-pos">{index + 1}</td>
+              {isEndurance && <td className="live-team-name">{row.team_name || '—'}</td>}
               <td>{row.kart_number}</td>
               <td style={{ textAlign: 'start' }}>
                 {isLeader && '👑 '}
-                {row.driver_name || t('anonymous')}
+                {isEndurance ? formatTeamDrivers(row) : (row.driver_name || t('anonymous'))}
               </td>
-              <td className={`live-col-highlight live-best-lap${isLeader ? ' live-best-leader' : ''}`}>
-                {formatLapCell(row.best_lap_time)}
-              </td>
-              <td className="live-col-highlight live-last-lap">
+              {isEndurance && <td className="live-lap-count">{row.lap_count ?? row.total_laps ?? 0}</td>}
+              {!isEndurance && (
+                <td className="live-col-highlight">
+                  {formatLapCell(row.best_lap_time)}
+                </td>
+              )}
+              <td className={`live-col-highlight live-last-lap${pbLap ? ' live-last-pb' : ''}`}>
                 {formatLapCell(row.last_lap_time)}
               </td>
               {optionalCols.map((col) => {

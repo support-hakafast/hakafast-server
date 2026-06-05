@@ -19,6 +19,7 @@ import {
   formatHeatClock,
   buildExportFilename,
   pickKartsForAssignment,
+  groupQueueByTeam,
   getExitKartNumber,
   getWaitingKartNumbers,
   sanitizePitLines,
@@ -77,6 +78,7 @@ const AdminPanel = () => {
   const [timingColumns, setTimingColumns] = useState({ ...DEFAULT_TIMING_COLUMNS });
 
   const [drName, setDrName] = useState('');
+  const [drTeam, setDrTeam] = useState('');
   const [showAdvancedReg, setShowAdvancedReg] = useState(false);
   const [chkPhone, setChkPhone] = useState(false);
   const [chkEmail, setChkEmail] = useState(false);
@@ -433,8 +435,11 @@ const AdminPanel = () => {
 
   const addDriverToQueue = () => {
     if (!canAddDriver) { alert(t('admin_alert_name_required')); return; }
+    const team = heatType === 'endurance' ? (drTeam.trim() || null) : null;
     if (isBulkDrivers) {
-      setDriverQueue((q) => [...q, ...driverNames.map((name) => ({ name, phone: null, email: null, level: null, saved: false }))]);
+      setDriverQueue((q) => [...q, ...driverNames.map((name) => ({
+        name, team, phone: null, email: null, level: null, saved: false,
+      }))]);
       setDrName('');
       return;
     }
@@ -445,6 +450,7 @@ const AdminPanel = () => {
     }
     setDriverQueue((q) => [...q, {
       name,
+      team,
       phone: showAdvancedReg ? drPhone.trim() || null : null,
       email: showAdvancedReg ? drEmail.trim() || null : null,
       level: showAdvancedReg ? drLevel : null,
@@ -605,22 +611,42 @@ const AdminPanel = () => {
     const laneKeys = Object.keys(linesData).filter((id) => linesData[id].active);
     if (laneKeys.length === 0) { alert(t('admin_alert_no_lanes')); return; }
     const workingLines = JSON.parse(JSON.stringify(linesData));
-    const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, driverQueue.length);
+    const isEndurance = heatType === 'endurance';
+    const teams = isEndurance ? groupQueueByTeam(driverQueue) : null;
+    const assignCount = isEndurance ? teams.length : driverQueue.length;
+    const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount);
     if (!complete) { alert(t('admin_alert_not_enough_karts')); return; }
-    const assigned = kartSlots.map((slot, i) => ({
-      kart: slot.kart,
-      lane: slot.lane,
-      driver: driverQueue[i],
-    }));
-    for (let i = 0; i < assigned.length; i += 1) {
-      const assign = assigned[i];
+
+    const assignments = isEndurance
+      ? teams.map((team, i) => ({
+        kart: kartSlots[i].kart,
+        lane: kartSlots[i].lane,
+        teamName: team.teamName,
+        teamDrivers: team.drivers.map((d) => d.name),
+        driver: team.drivers[0],
+      }))
+      : kartSlots.map((slot, i) => ({
+        kart: slot.kart,
+        lane: slot.lane,
+        teamName: null,
+        teamDrivers: null,
+        driver: driverQueue[i],
+      }));
+
+    for (let i = 0; i < assignments.length; i += 1) {
+      const assign = assignments[i];
+      const driverLabel = isEndurance
+        ? assign.teamDrivers.join(' · ')
+        : assign.driver.name;
       await apiFetch('/assign-driver', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           track_id: 1,
           kart_number: assign.kart,
-          driver_name: assign.driver.name,
+          driver_name: driverLabel,
+          team_name: assign.teamName,
+          team_drivers: assign.teamDrivers,
           phone: assign.driver.phone,
           email: assign.driver.email,
           registered: Boolean(assign.driver.saved),
@@ -629,9 +655,9 @@ const AdminPanel = () => {
         }),
       }, trackSlug);
     }
-    const heatKarts = new Set(assigned.map((a) => Number(a.kart)));
+    const heatKarts = new Set(assignments.map((a) => Number(a.kart)));
     setAssignedHeatKarts(heatKarts);
-    setHeatDriverCount(assigned.length);
+    setHeatDriverCount(assignments.length);
     alert(t('admin_alert_assign_done'));
     setDriverQueue([]);
     setLinesData(workingLines);
@@ -887,29 +913,15 @@ const AdminPanel = () => {
                     [...onTrack]
                       .sort((a, b) => (a.launchedAt || 0) - (b.launchedAt || 0))
                       .map((ot) => (
-                        <div key={ot.kart_number} className="on-track-kart-card">
-                          <KartCard
-                            num={ot.kart_number}
-                            kart={allKarts[ot.kart_number] || { number: ot.kart_number, active: true }}
-                            draggable={false}
-                            variant="ontrack"
-                          />
-                          <div className="on-track-kart-meta">
-                            <strong>#{ot.kart_number} {ot.driver_name}</strong>
-                            <span className="on-track-laps">
-                              {(ot.lap_count || 0) > 0
-                                ? t('admin_on_track_laps', { count: ot.lap_count })
-                                : t('admin_on_track_no_laps')}
-                            </span>
-                            <button
-                              type="button"
-                              className="btn-on-track-return"
-                              onClick={() => returnKartFromTrack(ot.kart_number, ot.laneId || ot.originLaneId)}
-                            >
-                              {t('admin_kart_return')}
-                            </button>
-                          </div>
-                        </div>
+                        <button
+                          key={ot.kart_number}
+                          type="button"
+                          className="on-track-num"
+                          title={t('admin_kart_return_dblclick')}
+                          onDoubleClick={() => returnKartFromTrack(ot.kart_number, ot.laneId || ot.originLaneId)}
+                        >
+                          {ot.kart_number}
+                        </button>
                       ))
                   )}
                 </div>
@@ -931,6 +943,14 @@ const AdminPanel = () => {
                 placeholder={t('admin_driver_placeholder_bulk')}
               />
               {isBulkDrivers && <p className="bulk-hint">{t('admin_bulk_names_hint')} ({driverNames.length})</p>}
+              {heatType === 'endurance' && (
+                <input
+                  type="text"
+                  value={drTeam}
+                  onChange={(e) => setDrTeam(e.target.value)}
+                  placeholder={t('admin_team_placeholder')}
+                />
+              )}
             </div>
             <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
             <button type="button" className={`btn-register-saved${showAdvancedReg ? ' is-open' : ''}`} onClick={() => setShowAdvancedReg((v) => !v)} disabled={isBulkDrivers}>
@@ -959,7 +979,11 @@ const AdminPanel = () => {
               ) : driverQueue.map((d, i) => (
                 <li key={`${d.name}-${i}`} className={`queue-item${d.saved ? ' queue-item-saved' : ''}`}>
                   <span className="queue-pos">{i + 1}</span>
-                  <span className="queue-name">{d.saved && <span className="saved-badge">★</span>}{d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}</span>
+                  <span className="queue-name">
+                    {d.saved && <span className="saved-badge">★</span>}
+                    {d.team && <span className="queue-team">{d.team} — </span>}
+                    {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}
+                  </span>
                   <button type="button" className="btn-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>X</button>
                 </li>
               ))}

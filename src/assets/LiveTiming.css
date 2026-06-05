@@ -163,18 +163,27 @@
   color: #0f766e;
 }
 
-.live-best-lap {
+.live-last-pb {
   color: var(--hf-purple, #6b21a8);
-  font-weight: 800;
+  font-weight: 900;
 }
 
-.theme-dark .live-best-lap {
+.theme-dark .live-last-pb {
   color: #d8b4fe;
 }
 
-.live-best-leader .live-pos,
-.live-best-leader {
+.live-team-name {
+  font-weight: 800;
+  color: var(--hf-purple, #6b21a8);
+}
+
+.theme-dark .live-team-name {
+  color: #d8b4fe;
+}
+
+.live-lap-count {
   font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
 .live-empty {

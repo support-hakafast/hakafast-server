@@ -445,26 +445,32 @@ html:has(.admin-no-scroll) body {
   font-style: italic;
 }
 
-.on-track-kart-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+.on-track-num {
   z-index: 1;
-}
-
-.on-track-kart-meta {
-  display: flex;
-  flex-direction: column;
+  min-width: 2.4rem;
+  height: 2.4rem;
+  padding: 0 0.5rem;
+  border: 2px solid var(--turquoise);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--turquoise);
+  font-weight: 900;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  line-height: 1;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: #e2e8f0;
-  font-size: 0.72rem;
+  justify-content: center;
 }
 
-.on-track-kart-meta strong {
-  color: #fff;
-  font-size: 0.78rem;
+.on-track-num:hover {
+  background: rgba(64, 224, 208, 0.12);
+}
+
+.queue-team {
+  color: var(--purple);
+  font-weight: 800;
 }
 
 .lane-transponder-zone {
