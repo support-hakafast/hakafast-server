@@ -35,8 +35,10 @@ export function formatHeatClock(clock, notStartedLabel) {
 }
 
 export function parseKartNumbers(input) {
+  const trimmed = String(input ?? '').trim();
+  if (!trimmed) return [];
   const nums = new Set();
-  const parts = input.split(',').map((p) => p.trim()).filter(Boolean);
+  const parts = trimmed.split(',').map((p) => p.trim()).filter(Boolean);
   parts.forEach((part) => {
     if (part.includes('-')) {
       const [rawA, rawB] = part.split('-');
@@ -49,10 +51,22 @@ export function parseKartNumbers(input) {
       }
     } else {
       const n = parseInt(part, 10);
-      if (!Number.isNaN(n)) nums.add(n);
+      if (!Number.isNaN(n) && n > 0) nums.add(n);
     }
   });
+  if (nums.size === 0) {
+    const solo = parseInt(trimmed, 10);
+    if (!Number.isNaN(solo) && solo > 0) nums.add(solo);
+  }
   return [...nums].sort((a, b) => a - b);
+}
+
+export function buildExportFilename(heatType, startedAt, ext = 'csv') {
+  const typeSlug = { time: 'time', endurance: 'endurance', sprint: 'sprint' }[heatType] || 'heat';
+  const ts = startedAt
+    ? new Date(startedAt).toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    : new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  return `HAKAFAST_${typeSlug}_${ts}.${ext}`;
 }
 
 export function parseDriverNames(input) {

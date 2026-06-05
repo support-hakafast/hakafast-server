@@ -19,16 +19,15 @@ export default function KartCard({
   num,
   kart,
   onToggle,
-  onLaunch,
-  launchLabel,
   draggable,
   variant = 'pool',
+  transponderActive = false,
 }) {
   const inactive = !kart.active;
 
   return (
     <div
-      className={`kart-shape kart-variant-${variant}${inactive ? ' is-disabled' : ''}`}
+      className={`kart-shape kart-variant-${variant}${inactive ? ' is-disabled' : ''}${transponderActive ? ' transponder-active' : ''}`}
       draggable={draggable && kart.active}
       onDragStart={(e) => {
         if (!kart.active) { e.preventDefault(); return; }
@@ -38,18 +37,12 @@ export default function KartCard({
     >
       <KartSvg />
       <span className="kart-number">{num}</span>
-      <button type="button" className="kart-toggle-btn" onClick={(e) => onToggle(num, e)}>
-        {kart.active ? '×' : '+'}
-      </button>
-      {variant === 'exiting' && onLaunch && kart.active && (
-        <button
-          type="button"
-          className="kart-launch-btn"
-          onClick={(e) => { e.stopPropagation(); onLaunch(num); }}
-        >
-          {launchLabel}
+      {variant !== 'ontrack' && (
+        <button type="button" className="kart-toggle-btn" onClick={(e) => onToggle(num, e)}>
+          {kart.active ? '×' : '+'}
         </button>
       )}
+      {variant === 'exiting' && transponderActive && <span className="kart-transponder-pulse" aria-hidden />}
       {variant === 'exiting' && <span className="kart-exit-glow" aria-hidden />}
     </div>
   );

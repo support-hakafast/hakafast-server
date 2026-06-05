@@ -15,7 +15,7 @@ function createStore(trackSlug = 'kart-demo') {
     createdAt: Date.now(),
     lastAccess: Date.now(),
     pitLines: defaultPitLines(),
-    heatSettings: { type: 'time', duration: 10, targetLaps: 0 },
+    heatSettings: { type: 'time', duration: 10, targetLaps: 0, exportCsv: true, exportPdf: false },
     heatRuntime: { startedAt: null, avgLapSec: DEFAULT_AVG_LAP_SEC },
     onTrack: [],
     levelSettings: {
@@ -193,21 +193,80 @@ function tickHeatSimulation(store) {
   });
 }
 
+function getHeatDriverCount(store) {
+  return store.currentHeat?.length || 0;
+}
+
 function getHeatClock(store) {
   const durationMin = store.heatSettings?.duration || 10;
   const startedAt = store.heatRuntime?.startedAt;
-  if (!startedAt) {
-    return { running: false, startedAt: null, durationMin, remainingSec: durationMin * 60, elapsedSec: 0 };
+  const hasDrivers = getHeatDriverCount(store) > 0;
+  if (!startedAt || !hasDrivers) {
+    if (startedAt && !hasDrivers) store.heatRuntime.startedAt = null;
+    return {
+      running: false,
+      startedAt: null,
+      durationMin,
+      remainingSec: durationMin * 60,
+      elapsedSec: 0,
+      hasDrivers,
+    };
   }
   const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
   const totalSec = durationMin * 60;
+  const remainingSec = Math.max(0, totalSec - elapsedSec);
   return {
-    running: true,
+    running: remainingSec > 0,
     startedAt,
     durationMin,
     elapsedSec,
-    remainingSec: Math.max(0, totalSec - elapsedSec),
+    remainingSec,
+    hasDrivers,
+    expired: remainingSec <= 0,
   };
+}
+
+function transponderToKart(store, transponderId) {
+  const map = store.transponderMap || {};
+  const tid = String(transponderId).trim();
+  if (map[tid]) return Number(map[tid]);
+  const asNum = parseInt(tid, 10);
+  if (!Number.isNaN(asNum) && asNum > 0) return asNum;
+  return null;
+}
+
+function launchKartByTransponder(store, kartNumber, laneId) {
+  if (!getHeatDriverCount(store)) {
+    return { success: false, error: 'no_drivers_in_heat' };
+  }
+  return launchKart(store, kartNumber, laneId);
+}
+
+function processTransponderPitExit(store, transponderId) {
+  const kartNumber = transponderToKart(store, transponderId);
+  if (!kartNumber) return { success: false, error: 'unknown_transponder' };
+  const laneEntry = Object.entries(store.pitLines).find(([, lane]) => (
+    lane?.karts?.length && Number(lane.karts[0]) === kartNumber
+  ));
+  if (!laneEntry) return { success: false, error: 'not_at_exit' };
+  const [laneId] = laneEntry;
+  const inHeat = store.currentHeat.some((r) => Number(r.kart_number) === kartNumber);
+  if (!inHeat) return { success: false, error: 'not_in_heat' };
+  return launchKartByTransponder(store, kartNumber, laneId);
+}
+
+function scanTransponderExits(store) {
+  if (!getHeatDriverCount(store)) return [];
+  const launched = [];
+  Object.entries(store.pitLines).forEach(([laneId, lane]) => {
+    if (!lane?.karts?.length) return;
+    const kartNumber = Number(lane.karts[0]);
+    if (!store.currentHeat.some((r) => Number(r.kart_number) === kartNumber)) return;
+    if (store.onTrack.some((k) => Number(k.kart_number) === kartNumber)) return;
+    const result = launchKartByTransponder(store, kartNumber, laneId);
+    if (result.success) launched.push(kartNumber);
+  });
+  return launched;
 }
 
 function launchKart(store, kartNumber, laneId) {
@@ -231,7 +290,7 @@ function launchKart(store, kartNumber, laneId) {
     avgLapSec: getAvgLapSec(store),
   });
 
-  if (!store.heatRuntime.startedAt) {
+  if (!store.heatRuntime.startedAt && getHeatDriverCount(store) > 0) {
     store.heatRuntime.startedAt = Date.now();
   }
   return { success: true, heatClock: getHeatClock(store) };
@@ -333,6 +392,7 @@ function clearHeat(store) {
   store.currentHeat = [];
   store.onTrack = [];
   store.heatRuntime.startedAt = null;
+  store.heatAutoFinishTriggered = false;
 }
 
 function finishHeat(store) {
@@ -367,11 +427,25 @@ function updateDriverLevel(store, lookup, level, password) {
   return { success: true };
 }
 
+function checkAutoFinish(store) {
+  const clock = getHeatClock(store);
+  if (!clock.expired || store.heatAutoFinishTriggered || !getHeatDriverCount(store)) {
+    return { autoFinishRequested: false, heatClock: clock };
+  }
+  store.heatAutoFinishTriggered = true;
+  return { autoFinishRequested: true, heatClock: clock };
+}
+
 function getSessionState(store) {
+  scanTransponderExits(store);
+  const { autoFinishRequested, heatClock } = checkAutoFinish(store);
   return {
     heatSettings: store.heatSettings,
     heatRuntime: store.heatRuntime,
-    heatClock: getHeatClock(store),
+    heatClock,
+    heatDriverCount: getHeatDriverCount(store),
+    heatKartNumbers: store.currentHeat.map((r) => Number(r.kart_number)),
+    autoFinishRequested,
     onTrack: store.onTrack,
     pitLines: store.pitLines,
   };
@@ -399,8 +473,11 @@ module.exports = {
   getLivePayload,
   getSessionState,
   getHeatClock,
+  getHeatDriverCount,
   launchKart,
   returnKart,
+  processTransponderPitExit,
+  scanTransponderExits,
   assignDriver,
   clearHeat,
   finishHeat,

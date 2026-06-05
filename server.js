@@ -204,6 +204,21 @@ app.post('/api/admin/kart-launch', (req, res) => {
   });
 });
 
+app.post('/api/transponder/pit-exit', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { transponder_id: transponderId } = req.body;
+  if (!transponderId) return res.json({ success: false, error: 'missing_transponder' });
+  const result = demoStore.processTransponderPitExit(demo, transponderId);
+  if (result.success) notifyWorkspace(req);
+  return res.json({
+    ...result,
+    pitLines: demo.pitLines,
+    onTrack: demo.onTrack,
+    heatClock: demoStore.getHeatClock(demo),
+  });
+});
+
 app.post('/api/admin/kart-return', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });
