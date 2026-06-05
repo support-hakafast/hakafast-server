@@ -69,7 +69,7 @@ export default function LiveTimingTable({
                 {isLeader && '👑 '}
                 {row.driver_name || t('anonymous')}
               </td>
-              <td className={`live-col-highlight${isLeader ? ' live-best' : ''}`}>
+              <td className={`live-col-highlight live-best-lap${isLeader ? ' live-best-leader' : ''}`}>
                 {formatLapCell(row.best_lap_time)}
               </td>
               <td className="live-col-highlight live-last-lap">

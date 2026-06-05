@@ -1,0 +1,39 @@
+{
+  "name": "HAKAFAST On-Premise Kiosk",
+  "version": "1.0.0",
+  "description": "API contract for MSI / embedded admin + transponder bridge on closed networks",
+  "baseUrl": "http://localhost:5000",
+  "requiredHeaders": {
+    "x-hf-track": "Track slug (e.g. kart-demo)",
+    "x-hf-workspace": "UUID workspace id — same device/session as admin UI"
+  },
+  "endpoints": {
+    "health": { "method": "GET", "path": "/api/kiosk/health" },
+    "capabilities": { "method": "GET", "path": "/api/kiosk/capabilities" },
+    "transponderPitExit": {
+      "method": "POST",
+      "path": "/api/transponder/pit-exit",
+      "body": { "transponder_id": "string|number — kart number or mapped transponder id" }
+    },
+    "transponderLap": {
+      "method": "POST",
+      "path": "/api/transponder/lap",
+      "body": {
+        "transponder_id": "string|number",
+        "lap_time_sec": "optional — omit to auto-compute from last crossing"
+      }
+    },
+    "sessionState": { "method": "GET", "path": "/api/admin/session-state" },
+    "liveTiming": { "method": "GET", "path": "/live-timing-data/1?mode=timing" }
+  },
+  "uiRoutes": {
+    "admin": "/admin/kart-demo",
+    "liveTiming": "/live-timing/kart-demo"
+  },
+  "environment": {
+    "PORT": "HTTP port (default 5000)",
+    "HF_KIOSK_MODE": "Set to 1 when packaged as on-premise kiosk",
+    "HF_TRACK_SLUG": "Default track for local MSI install",
+    "HF_WORKSPACE_ID": "Optional fixed workspace UUID for kiosk station"
+  }
+}

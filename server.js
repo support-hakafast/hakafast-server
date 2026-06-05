@@ -135,10 +135,16 @@ async function applyAutoLevelUpgrades(trackId = 1) {
   }
 }
 
+const ISOLATED_TRACKS = new Set(['kart-demo', 'holyland-racing', 'go-karting']);
+
+function adminLoginRequired(trackName) {
+  if (ISOLATED_TRACKS.has(trackName)) return false;
+  return Boolean(levelSettings.editPassword || trackCredentials[trackName]);
+}
+
 const trackCredentials = {
   'holyland-racing': 'fast123',
   'go-karting': 'track2026',
-  'kart-demo': 'demo123',
 };
 
 function sendSpaIndex(res) {
@@ -222,6 +228,46 @@ app.post('/api/transponder/pit-exit', (req, res) => {
     pitLines: demo.pitLines,
     onTrack: demo.onTrack,
     heatClock: demoStore.getHeatClock(demo),
+  });
+});
+
+app.post('/api/transponder/lap', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { transponder_id: transponderId, lap_time_sec: lapTimeSec } = req.body;
+  if (!transponderId) return res.json({ success: false, error: 'missing_transponder' });
+  const result = demoStore.processTransponderLap(demo, transponderId, lapTimeSec);
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
+});
+
+app.get('/api/kiosk/health', (req, res) => {
+  res.json({
+    ok: true,
+    service: 'hakafast',
+    version: '1.0.0',
+    mode: process.env.HF_KIOSK_MODE === '1' ? 'kiosk' : 'server',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/kiosk/capabilities', (req, res) => {
+  res.json({
+    transponder: {
+      pit_exit: 'POST /api/transponder/pit-exit',
+      lap: 'POST /api/transponder/lap',
+      headers: ['x-hf-track', 'x-hf-workspace'],
+    },
+    admin: {
+      session_state: 'GET /api/admin/session-state',
+      heat_settings: 'GET /api/heat-settings',
+      live_timing_ws: 'WebSocket /ws/live-timing',
+    },
+    deployment: {
+      on_premise: true,
+      embedded_browser: 'MSI / Electron / WebView2',
+      env: ['PORT', 'HF_KIOSK_MODE', 'HF_TRACK_SLUG', 'HF_WORKSPACE_ID'],
+    },
   });
 });
 
@@ -356,10 +402,20 @@ app.post('/api/admin/level-settings', (req, res) => {
   return res.json({ success: true });
 });
 
+app.get('/api/admin/login-required/:trackName', (req, res) => {
+  const { trackName } = req.params;
+  return res.json({ required: adminLoginRequired(trackName) });
+});
+
 app.post('/api/admin/login/:trackName', (req, res) => {
   const { trackName } = req.params;
   const { password } = req.body;
-  if (trackCredentials[trackName] && trackCredentials[trackName] === password) {
+  if (!adminLoginRequired(trackName)) {
+    req.session.authenticatedTrack = trackName;
+    return res.json({ success: true });
+  }
+  const expected = levelSettings.editPassword || trackCredentials[trackName];
+  if (expected && expected === password) {
     req.session.authenticatedTrack = trackName;
     return res.json({ success: true });
   }
@@ -462,8 +518,11 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
 
   if (mode === 'assignments') {
     try {
+      const order = heatSettings.type === 'sprint' || heatSettings.type === 'endurance'
+        ? (heatSettings.type === 'sprint' ? 'lap_count DESC, best_lap_time ASC' : 'best_lap_time ASC NULLS LAST')
+        : 'id ASC';
       const result = await pool.query(
-        'SELECT kart_number, driver_name, driver_level FROM current_heat WHERE track_id = $1 ORDER BY kart_number ASC',
+        `SELECT kart_number, driver_name, driver_level FROM current_heat WHERE track_id = $1 ORDER BY ${order}`,
         [trackId],
       );
       if (result.rows.length > 0) {
@@ -513,6 +572,10 @@ app.post('/api/admin/clear-heat', async (req, res) => {
 
 app.get('/admin/:trackName', (req, res) => {
   const { trackName } = req.params;
+  if (!adminLoginRequired(trackName)) {
+    req.session.authenticatedTrack = trackName;
+    return sendSpaIndex(res);
+  }
   if (req.session.authenticatedTrack !== trackName) {
     return res.send(`
       <!DOCTYPE html>

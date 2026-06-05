@@ -123,10 +123,11 @@ export function pickKartsForAssignment(workingLines, laneKeys, driverCount) {
 
 export function buildExportFilename(heatType, startedAt, ext = 'csv') {
   const typeSlug = { time: 'time', endurance: 'endurance', sprint: 'sprint' }[heatType] || 'heat';
-  const ts = startedAt
-    ? new Date(startedAt).toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    : new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  return `HAKAFAST_${typeSlug}_${ts}.${ext}`;
+  const d = startedAt ? new Date(startedAt) : new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const datePart = `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+  const timePart = `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+  return `HF_${typeSlug}_${datePart}_${timePart}.${ext}`;
 }
 
 export function parseDriverNames(input) {

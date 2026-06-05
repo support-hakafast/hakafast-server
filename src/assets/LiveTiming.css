@@ -163,9 +163,18 @@
   color: #0f766e;
 }
 
-.live-best {
-  color: #16a34a;
-  font-weight: 700;
+.live-best-lap {
+  color: var(--hf-purple, #6b21a8);
+  font-weight: 800;
+}
+
+.theme-dark .live-best-lap {
+  color: #d8b4fe;
+}
+
+.live-best-leader .live-pos,
+.live-best-leader {
+  font-weight: 900;
 }
 
 .live-empty {

@@ -495,8 +495,20 @@ const AdminPanel = () => {
     } catch { alert(t('admin_alert_server_error')); }
   };
 
-  const runFinishHeat = useCallback(async (isAuto = false, startedAtOverride = null) => {
-    if (!exportCsv && !exportPdf) {
+  const runFinishHeat = useCallback(async (isAuto = false, startedAtOverride = null, settingsOverride = null) => {
+    let doCsv = exportCsv;
+    let doPdf = exportPdf;
+    let finishHeatType = heatType;
+    let finishStartedAt = startedAtOverride ?? heatClock.startedAt;
+
+    if (settingsOverride) {
+      if (typeof settingsOverride.exportCsv === 'boolean') doCsv = settingsOverride.exportCsv;
+      if (typeof settingsOverride.exportPdf === 'boolean') doPdf = settingsOverride.exportPdf;
+      if (settingsOverride.type) finishHeatType = settingsOverride.type;
+      if (settingsOverride.startedAt != null) finishStartedAt = settingsOverride.startedAt;
+    }
+
+    if (!doCsv && !doPdf) {
       if (!isAuto) alert(t('admin_export_select_one'));
       return;
     }
@@ -508,10 +520,9 @@ const AdminPanel = () => {
         if (!isAuto) alert(t('admin_export_no_data'));
         return;
       }
-      const startedAt = startedAtOverride ?? heatClock.startedAt;
-      const baseName = buildExportFilename(heatType, startedAt, 'csv').replace('.csv', '');
-      if (exportCsv) downloadCsv(rows, `${baseName}.csv`);
-      if (exportPdf) printPdf(rows, `${baseName} — ${t('admin_export_title')}`);
+      const baseName = buildExportFilename(finishHeatType, finishStartedAt, 'csv').replace('.csv', '');
+      if (doCsv) downloadCsv(rows, `${baseName}.csv`);
+      if (doPdf) printPdf(rows, `${baseName} — ${t('admin_export_title')}`);
       if (!isAuto) alert(t('admin_finish_done'));
       else alert(t('admin_finish_auto_done'));
       setHeatDriverCount(0);
@@ -525,7 +536,20 @@ const AdminPanel = () => {
     }
   }, [exportCsv, exportPdf, heatType, heatClock.startedAt, trackSlug, t]);
 
-  const finishHeat = () => runFinishHeat(false);
+  const finishHeat = async () => {
+    try {
+      const res = await apiFetch('/api/heat-settings', {}, trackSlug);
+      const hs = await res.json();
+      runFinishHeat(false, heatClock.startedAt, {
+        exportCsv: typeof hs.exportCsv === 'boolean' ? hs.exportCsv : exportCsv,
+        exportPdf: typeof hs.exportPdf === 'boolean' ? hs.exportPdf : exportPdf,
+        type: hs.type || heatType,
+        startedAt: heatClock.startedAt,
+      });
+    } catch {
+      runFinishHeat(false);
+    }
+  };
 
   useEffect(() => {
     const refreshSession = () => {
@@ -543,7 +567,13 @@ const AdminPanel = () => {
             setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (s.onTrack || []).map((k) => k.kart_number)));
           }
           if (s.autoFinishRequested && !autoFinishHandledRef.current) {
-            runFinishHeat(true, s.heatClock?.startedAt);
+            const hs = s.heatSettings || {};
+            runFinishHeat(true, s.heatClock?.startedAt, {
+              exportCsv: hs.exportCsv,
+              exportPdf: hs.exportPdf,
+              type: hs.type,
+              startedAt: s.heatClock?.startedAt,
+            });
           }
         })
         .catch(() => {});
@@ -582,7 +612,8 @@ const AdminPanel = () => {
       lane: slot.lane,
       driver: driverQueue[i],
     }));
-    for (const assign of assigned) {
+    for (let i = 0; i < assigned.length; i += 1) {
+      const assign = assigned[i];
       await apiFetch('/assign-driver', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -594,6 +625,7 @@ const AdminPanel = () => {
           email: assign.driver.email,
           registered: Boolean(assign.driver.saved),
           driver_level: assign.driver.saved ? (assign.driver.level || 'Amateur') : undefined,
+          assignment_order: i + 1,
         }),
       }, trackSlug);
     }
@@ -947,22 +979,6 @@ const AdminPanel = () => {
               {formatHeatClock(heatClock, t('admin_heat_not_started'))}
             </span>
           </div>
-
-          {onTrack.length > 0 && (
-            <div className="on-track-panel">
-              <span className="field-label">{t('admin_on_track')}</span>
-              <ul className="on-track-list">
-                {onTrack.map((ot) => (
-                  <li key={ot.kart_number} className="on-track-item">
-                    <span>#{ot.kart_number} {ot.driver_name}</span>
-                    <button type="button" className="btn-on-track-return" onClick={() => returnKartFromTrack(ot.kart_number, ot.laneId)}>
-                      {t('admin_kart_return')}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           <div className="heat-type-bar">
             <label className="field-label">{t('admin_heat_settings')}</label>

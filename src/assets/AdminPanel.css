@@ -519,6 +519,7 @@ html:has(.admin-no-scroll) body {
 .kart-variant-ontrack .kart-number {
   color: var(--turquoise);
   font-weight: 900;
+  text-shadow: none;
 }
 
 @keyframes transponder-pulse {
