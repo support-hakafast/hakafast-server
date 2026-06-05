@@ -167,8 +167,12 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
 
 app.post('/api/admin/clear-heat', async (req, res) => { await pool.query('DELETE FROM current_heat WHERE track_id = 1'); res.json({success:true}); });
 
-// CATCH-ALL ROUTE FOR REACT SPA
-// מחזיר את קובץ ה-index.html של ה-React בכל בקשת עמוד שלא קשורה לראוטים של השרת
+// הוסף את זה ממש מעל ה-app.get('*') בסוף הקובץ
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+// ה-Catch-All הקיים שלך
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api') && !req.path.startsWith('/live-timing-data') && !req.path.startsWith('/assign-driver')) {
         res.sendFile(path.join(__dirname, 'dist', 'index.html'));
