@@ -8,14 +8,14 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [karts, setKarts] = useState('');
-  const [skipPassword, setSkipPassword] = useState(false);
+  const [enforceSecurity, setEnforceSecurity] = useState(false);
 
   const submit = async () => {
     if (!karts.trim()) {
       alert(t('admin_setup_karts_required'));
       return;
     }
-    if (!skipPassword) {
+    if (enforceSecurity) {
       if (!isStrongPassword(password)) {
         alert(t('admin_password_weak'));
         return;
@@ -32,7 +32,7 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
         body: JSON.stringify({
           trackSlug,
           kartNumbers: karts.trim(),
-          editPassword: skipPassword ? '' : password,
+          editPassword: enforceSecurity ? password : '',
         }),
       }, trackSlug);
       const data = await res.json();
@@ -40,7 +40,7 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
         alert(t('admin_alert_server_error'));
         return;
       }
-      onComplete({ kartNumbers: karts.trim(), hasPassword: !skipPassword });
+      onComplete({ kartNumbers: karts.trim(), hasPassword: enforceSecurity });
     } catch {
       alert(t('admin_alert_server_error'));
     }
@@ -60,12 +60,20 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
           placeholder="1-10, 16-19"
         />
 
-        <label className="field-label">
-          <input type="checkbox" checked={skipPassword} onChange={(e) => setSkipPassword(e.target.checked)} />
-          {' '}{t('admin_setup_skip_password')}
-        </label>
+        <div className="security-toggle-row">
+          <span className="field-label">{t('admin_setup_enforce_security')}</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enforceSecurity}
+            className={`hf-toggle${enforceSecurity ? ' is-on' : ''}`}
+            onClick={() => setEnforceSecurity((v) => !v)}
+          >
+            <span className="hf-toggle-knob" />
+          </button>
+        </div>
 
-        {!skipPassword && (
+        {enforceSecurity && (
           <>
             <label className="field-label">{t('admin_setup_password')}</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
