@@ -1,0 +1,82 @@
+:root {
+  --hf-navy: #000080;
+  --hf-turquoise: #40e0d0;
+  --hf-purple: #6b21a8;
+  --hf-ink: #0f172a;
+  --hf-muted: #64748b;
+  --hf-surface: #f8fafc;
+  --hf-radius: 0.75rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--hf-ink);
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+.hf-lang-switch {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.hf-lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--hf-muted);
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.hf-lang-btn:hover {
+  color: var(--hf-navy);
+}
+
+.hf-lang-btn.is-active {
+  background: var(--hf-navy);
+  color: #fff;
+}
+
+.hf-page-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.hf-page-bar a {
+  text-decoration: none;
+  font-weight: 800;
+  color: var(--hf-navy);
+  letter-spacing: 0.04em;
+}

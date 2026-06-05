@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: './', // <-- הוסף את השורה הזו! מבטיח שהנתיבים לקבצי ה-JS וה-CSS יהיו יחסיים
+  base: '/',
   server: {
     port: 3000,
     proxy: {
