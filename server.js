@@ -5,7 +5,8 @@ const session = require('express-session');
 const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3000;
+// ב-Render הפורט הדינמי מגיע ב-process.env.PORT. ודא שהוא ברירת המחדל
+const port = process.env.PORT || 5000; 
 
 // הגדרות בסיסיות של השרת
 app.use(express.json());
@@ -23,13 +24,19 @@ const pool = new Pool({
 });
 
 // ==========================================
-// 1. הגשת קבצים סטטיים (סודר מחדש לפרודקשן)
+// 1. הגשת קבצים סטטיים + פתרון ה-CSP לפונטים
 // ==========================================
 
-// קודם כל מגישים את קבצי הפרודקשן של React מתוך תיקיית dist
+// הוספת Middleware שמנקה חסימות CSP פנימיות של שרתים ומאפשרת פונטים וסטייל
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com;");
+  next();
+});
+
+// הגשת קבצי הפרודקשן המקומפלים של React מתוך תיקיית dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// מגיש את קבצי המדיה הישנים מתוך public במידת הצורך
+// מגיש את קבצי המדיה מתוך public במידת הצורך
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 
@@ -129,11 +136,12 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
 
 app.post('/api/admin/clear-heat', async (req, res) => { await pool.query('DELETE FROM current_heat WHERE track_id = 1'); res.json({success:true}); });
 
+
 // ==========================================
-// 4. ניתוב עמודים מותאם ומאובטח (מבוסס סשן)
+// 4. ניתוב עמודים מותאם (SPA Fallback)
 // ==========================================
 
-// דף כניסת המנהל - במידה ולא מחובר זורק לטופס סיסמה, במידה וכן מחובר מעביר ל-React
+// דף כניסת המנהל - אימות ובדיקה
 app.get('/admin/:trackName', (req, res) => {
   const { trackName } = req.params;
   
@@ -183,17 +191,17 @@ app.get('/admin/:trackName', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// ראוט מפורש וייעודי עבור דף הבית הראשי של השירות
+// ראוט מפורש וישיר עבור דף הבית הראשי של האפליקציה
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // GLOBAL CATCH-ALL FOR REACT ROUTER SPA
-// תופס את כל שאר נתיבי ה-Frontend ומגיש את ה-React bundle
+// מנתב את כל שאר בקשות ה-Frontend ל-React ומניעת שגיאות 404 בדפדפן
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api') && !req.path.startsWith('/live-timing-data') && !req.path.startsWith('/assign-driver')) {
         res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     }
 });
 
-app.listen(port, () => console.log("HAKAFAST Active"));
+app.listen(port, () => console.log(`HAKAFAST Active on port ${port}`));
