@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAKAFAST | מערכת ניהול ותזמון מסלולי קארטינג</title>
+    <style>
+        :root { --navy: #000080; --turquoise: #40E0D0; --purple: #800080; --dark: #1a202c; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; color: var(--dark); margin: 0; padding: 0; }
+        
+        /* Navigation & Header */
+        header { 
+            display: flex; 
+            justify-content: center; /* ממרכז את אזור הלוגו לרוחב ה-Header */
+            align-items: center; 
+            padding: 0 40px; 
+            background: #ffffff; 
+            border-bottom: 1px solid #e2e8f0; 
+            height: 80px; /* גובה קבוע ל-Header */
+            position: relative; /* מאפשר גמישות אם תרצה להוסיף אלמנטים בצדדים בעתיד */
+        }
+
+        .logo-zone { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100%; /* הלוגו מותח את עצמו על כל גובה ה-Header */
+            box-sizing: border-box; 
+            padding: 12px 0; /* פדינג אנכי שקובע כמה הלוגו יתרחק מהקצוות (גודל טוב ופרופורציונלי) */
+        }
+
+        /* הגדרות תמונת הלוגו */
+        .logo-zone img {
+            height: 100%;  /* לוקח את כל הגובה הפנוי שנשאר ב-logo-zone אחרי ה-padding */
+            width: auto;   /* שומר על פרופורציות הלוגו המקוריות ללא עיוות */
+            display: block;
+        }
+        nav a:hover { color: var(--turquoise); }
+        
+        /* Hero Section */
+        .hero { text-align: center; padding: 80px 20px; background: linear-gradient(180deg, #f7fafc 0%, #ffffff 100%); }
+        .hero h1 { font-size: 3.5em; font-weight: 800; color: var(--navy); margin-bottom: 15px; }
+        .hero p { font-size: 1.4em; color: #4a5568; max-width: 800px; margin: 0 auto 30px auto; font-weight: 500; }
+        
+        /* Call to Action Buttons */
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-bottom: 40px; }
+        .btn-main { background: var(--navy); color: white; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1em; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,128,0.1); }
+        .btn-main:hover { background: var(--turquoise); color: var(--navy); }
+        .btn-sub { background: white; color: var(--navy); border: 2px solid var(--navy); padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1.1em; transition: 0.2s; }
+        .btn-sub:hover { background: #f7fafc; }
+
+        /* Demo Dashboard Box */
+        .demo-box { max-width: 700px; margin: 0 auto 6px; padding: 25px; border-radius: 12px; background: #e6fffa; border: 2px solid var(--turquoise); text-align: center; }
+        .demo-box h3 { margin-top: 0; color: var(--navy); font-size: 1.4em; }
+        .demo-links { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
+        .demo-links a { background: white; border: 1px solid var(--navy); padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold; color: var(--navy); transition: 0.2s; }
+        .demo-links a:hover { background: var(--navy); color: white; }
+
+        /* Features Section */
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; max-width: 1200px; margin: 60px auto; padding: 0 20px; }
+        .feature-card { background: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: 0.3s; }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+        .feature-card h3 { color: var(--navy); font-size: 1.3em; margin-bottom: 10px; }
+        
+        /* Active Tracks Section */
+        .tracks-section { background: #f7fafc; padding: 60px 20px; text-align: center; }
+        .tracks-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 25px; }
+        .track-badge { background: white; border: 1px solid #cbd5e0; padding: 15px 30px; border-radius: 8px; font-weight: bold; color: var(--navy); display: flex; flex-direction: column; gap: 5px; min-width: 200px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .track-badge a { font-size: 0.85em; color: var(--turquoise); text-decoration: none; font-weight: bold; }
+        .track-badge a:hover { text-decoration: underline; }
+
+        /* Contact Section */
+        .contact-section { max-width: 600px; margin: 80px auto; padding: 0 20px; text-align: center; }
+        .contact-section h2 { color: var(--navy); font-size: 2em; margin-bottom: 10px; }
+        .contact-form { margin-top: 30px; text-align: right; }
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+        
+        footer { background: var(--navy); color: white; text-align: center; padding: 25px; font-size: 0.9em; margin-top: 80px; }
+    </style>
+</head>
+<body>
+
+    <!-- Header & Brand Logo Vector -->
+    <header>
+        <a href="#" class="logo-zone">
+            <img src="/public/assets/logo.png" alt="HAKAFAST Logo">
+        </a>
+        <nav>
+            </nav>
+    </header>
+
+    <!-- Hero Content Section -->
+    <section class="hero">
+        <h1>הקפה אחת מהירה יותר.</h1>
+        <p>המערכת המובילה לניהול ותזמון מסלולי קארטינג מקצועיים. סנכרון מושלם בין ה-Pits למסכי הלקוחות בזמן אמת, מניעת צווארי בקבוק וייעול זמני עלייה למסלול.</p>
+        
+        <div class="btn-group">
+            <a href="/admin/kart-demo" class="btn-main">כניסה למערכת המנהל (Demo)</a>
+            <a href="#contact" class="btn-sub">תיאום פגישת אפיון</a>
+        </div>
+
+        <!-- סביבת הדמו המבוקשת למוצר החיצוני -->
+        <div class="demo-box">
+            <h3>🏁 סביבת הדמו המובנית של המערכת: <code style="color:var(--purple)">kart-demo</code></h3>
+            <p style="margin: 5px 0; font-size: 0.95em; color: #4a5568;">הסיסמה לכניסת ניהול אדמין היא: <b style="color: var(--navy);">demo123</b></p>
+            <div class="demo-links">
+                <a href="/live-timing/kart-demo" target="_blank">📺 מסך לקוחות (Live Timing)</a>
+                <a href="/admin/kart-demo" target="_blank">🛠️ לוח בקרה (Admin Board)</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Analysis Layout -->
+    <section class="features" id="features">
+        <div class="feature-card">
+            <h3>💻 אפליקציית KIOSK ייעודית במסלול</h3>
+            <p>ניהול תפעולי מלא של המסלול ישירות מתחנת המרשל המקומית. עבודה רציפה, יציבה ומותאמת למחשבי קצה ללא עיכובים.</p>
+        </div>
+        <div class="feature-card">
+            <h3>⏱️ חיבור ישיר לטרנספונדרים (TCP)</h3>
+            <p>האזנה רציפה לחומרת המדידה במסלול, סינון "זמני רפאים" ורעשי קליטה, ועדכון מיידי של התוצאות בענן.</p>
+        </div>
+        <div class="feature-card">
+            <h3>🔀 ניהול תור Pits חכם וגרפי</h3>
+            <p>סידור הליינים ב-Drag & Drop, חלוקת עומסים אוטומטית, ורוטציה של כלים בסיום מקצה לחיסכון מקסימלי בזמן.</p>
+        </div>
+    </section>
+
+    <!-- Tracks Active Work Environment -->
+    <section class="tracks-section" id="tracks">
+        <h2>מסלולים מחוברים בזמן אמת</h2>
+        <p>צפה בלוחות ה-Live Timing הפעילים כעת ברחבי הארץ:</p>
+        <div class="tracks-grid">
+            <div class="track-badge">
+                <span>Holyland Racing</span>
+                <a href="/live-timing/holyland-racing" target="_blank">צפה בלוח זמנים 💻</a>
+            </div>
+            <div class="track-badge">
+                <span>Go Karting</span>
+                <a href="/live-timing/go-karting" target="_blank">צפה בלוח זמנים 💻</a>
+            </div>
+            <div class="track-badge" style="border-color: var(--turquoise); background: #f0fffb;">
+                <span>Kart Demo Track</span>
+                <a href="/live-timing/kart-demo" target="_blank">סביבת בדיקה פעילה 🏎️</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Form Linked to Email Context -->
+    <section class="contact-section" id="contact">
+        <h2>הצטרף למהפכת התזמון</h2>
+        <p>השאר פרטים ונחזור אליך עם הצעה מותאמת אישית למסלול שלך.</p>
+        
+        <!-- טופס שליחה ייעודי הפותח קומפוזיציה ב-Gmail לניהול פניות -->
+        <form class="contact-form" action="mailto:yanih@gmail.com" method="post" enctype="text/plain">
+            <label>שם המסלול / חברה:</label>
+            <input type="text" name="Track_Name" required>
+            
+            <label>איש קשר וטלפון:</label>
+            <input type="text" name="Contact_Details" required>
+            
+            <label>הודעה / כמות קארטים במסלול:</label>
+            <textarea name="Message" rows="4" required></textarea>
+            
+            <button type="submit" style="width:100%; padding:14px; background:var(--navy); color:white; border:none; font-weight:bold; border-radius:6px; cursor:pointer;">שלח פנייה למחלקת המכירות ✉️</button>
+        </form>
+    </section>
+
+    <footer>
+        <p>© 2026 HAKAFAST Track Management Solutions. All Rights Reserved.</p>
+    </footer>
+
+</body>
+</html>
