@@ -17,6 +17,11 @@ export default function AdvancedSettingsModal({
   onUpdateDriverLevel,
   showResetWorkspace,
   onResetWorkspace,
+  exportCsv,
+  setExportCsv,
+  exportPdf,
+  setExportPdf,
+  onFinishHeat,
 }) {
   const { t } = useLanguage();
   const [gatePassword, setGatePassword] = useState('');
@@ -103,6 +108,16 @@ export default function AdvancedSettingsModal({
             >
               {t('admin_btn_update_db')}
             </button>
+
+            <hr className="panel-divider" />
+            <div className="finish-section finish-section-modal">
+              <h3>{t('admin_finish_section')}</h3>
+              <div className="export-options">
+                <label><input type="checkbox" checked={exportCsv} onChange={(e) => setExportCsv(e.target.checked)} />{t('admin_export_csv')}</label>
+                <label><input type="checkbox" checked={exportPdf} onChange={(e) => setExportPdf(e.target.checked)} />{t('admin_export_pdf')}</label>
+              </div>
+              <button type="button" className="btn-finish-turquoise" onClick={onFinishHeat}>{t('admin_btn_finish_heat')}</button>
+            </div>
 
             {showResetWorkspace && onResetWorkspace && (
               <>

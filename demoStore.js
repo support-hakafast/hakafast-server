@@ -46,7 +46,7 @@ function createStore(trackSlug = 'kart-demo') {
       editPassword: '',
       masterLapThreshold: '45.500',
       proLapThreshold: '42.000',
-      pitExitPosition: 'top',
+      pitExitPosition: 'bottom',
     },
     trackSetup: null,
     driverQueue: [],
@@ -508,7 +508,7 @@ function getSessionState(store) {
     autoFinishRequested,
     onTrack: enrichOnTrack(store),
     pitLines: store.pitLines,
-    pitExitPosition: store.levelSettings?.pitExitPosition || 'top',
+    pitExitPosition: store.levelSettings?.pitExitPosition || 'bottom',
   };
 }
 

@@ -86,7 +86,7 @@ const AdminPanel = () => {
 
   const [masterLapThreshold, setMasterLapThreshold] = useState('45.500');
   const [proLapThreshold, setProLapThreshold] = useState('42.000');
-  const [pitExitPosition, setPitExitPosition] = useState('top');
+  const [pitExitPosition, setPitExitPosition] = useState('bottom');
 
   const [dragOverLane, setDragOverLane] = useState(null);
   const [dragOverPool, setDragOverPool] = useState(false);
@@ -664,10 +664,8 @@ const AdminPanel = () => {
 
   const renderExitZone = (laneId, exitKart) => (
     <div className="lane-exit-zone lane-transponder-zone">
-      <span className="lane-zone-label">{t('admin_transponder_zone')}</span>
       <div className="transponder-beacon-row">
         <span className="transponder-beacon" aria-hidden />
-        <span className="transponder-hint">{t('admin_transponder_hint')}</span>
       </div>
       <div className="lane-exit-track" />
       {exitKart && allKarts[exitKart] ? (
@@ -682,48 +680,56 @@ const AdminPanel = () => {
           transponderActive={assignedHeatKarts.has(Number(exitKart))}
         />
       ) : (
-        <p className="lane-empty-hint">{t('admin_lane_exit_empty')}</p>
+        <div className="lane-exit-slot" aria-hidden />
       )}
     </div>
   );
 
-  const renderWaitingZone = (laneId, waitingKarts) => (
-    <div className="lane-waiting-zone">
-      <span className="lane-zone-label">{t('admin_lane_waiting')}</span>
-      <span className="lane-flow-hint">{t('admin_lane_flow_hint')}</span>
-      {waitingKarts.length === 0 ? (
-        <p className="lane-empty-hint">{t('admin_lane_waiting_empty')}</p>
-      ) : (
-        waitingKarts.map((num, waitIdx) => {
+  const renderQueueDrop = (laneId, waitingKarts) => (
+    <div
+      className="lane-queue-drop"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => handleDropToLane(e, laneId)}
+    >
+      {waitingKarts.length > 0 && (
+        <button
+          type="button"
+          className="btn-lane-take-end"
+          onClick={() => takeKartFromLaneEnd(laneId)}
+          aria-label={t('admin_lane_take_end')}
+          title={t('admin_lane_take_end')}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+
+  const renderWaitingZone = (laneId, waitingKarts, exitAtBottom) => {
+    const displayKarts = exitAtBottom ? [...waitingKarts].reverse() : waitingKarts;
+    return (
+      <div className="lane-waiting-zone">
+        {exitAtBottom && renderQueueDrop(laneId, waitingKarts)}
+        {displayKarts.map((num, idx) => {
+          const laneIndex = exitAtBottom ? waitingKarts.length - idx : idx + 1;
           const kart = allKarts[num] || allKarts[String(num)];
           if (!kart) return null;
           return (
             <KartCard
-              key={`${laneId}-w-${waitIdx + 1}-${num}`}
+              key={`${laneId}-w-${laneIndex}-${num}`}
               num={num}
               kart={kart}
               draggable
               variant="waiting"
               laneId={laneId}
-              laneIndex={waitIdx + 1}
+              laneIndex={laneIndex}
             />
           );
-        })
-      )}
-      <div
-        className="lane-queue-end"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => handleDropToLane(e, laneId)}
-      >
-        <span>{t('admin_lane_queue_end')}</span>
-        {waitingKarts.length > 0 && (
-          <button type="button" className="btn-lane-take-end" onClick={() => takeKartFromLaneEnd(laneId)}>
-            {t('admin_lane_take_end')}
-          </button>
-        )}
+        })}
+        {!exitAtBottom && renderQueueDrop(laneId, waitingKarts)}
       </div>
-    </div>
-  );
+    );
+  };
 
   const poolKarts = Object.keys(allKarts).filter((num) => {
     const k = allKarts[num];
@@ -749,6 +755,11 @@ const AdminPanel = () => {
           onUpdateDriverLevel={updateDriverLevelInDB}
           showResetWorkspace={usesIsolatedWorkspace(trackSlug)}
           onResetWorkspace={resetWorkspace}
+          exportCsv={exportCsv}
+          setExportCsv={setExportCsv}
+          exportPdf={exportPdf}
+          setExportPdf={setExportPdf}
+          onFinishHeat={finishHeat}
         />
       )}
       {showPreview && <LivePreviewFloat onClose={() => setShowPreview(false)} heatType={heatType} trackSlug={trackSlug} />}
@@ -800,11 +811,11 @@ const AdminPanel = () => {
                   const lane = linesData[laneId];
                   const exitKart = getExitKartNumber(lane);
                   const waitingKarts = getWaitingKartNumbers(lane);
-                  const exitFirst = pitExitPosition !== 'bottom';
+                  const exitAtBottom = pitExitPosition !== 'top';
                   return (
                     <div
                       key={laneId}
-                      className={`lane lane-flow-${pitExitPosition}${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}`}
+                      className={`lane lane-flow-${exitAtBottom ? 'bottom' : 'top'}${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}`}
                       onDragOver={(e) => { e.preventDefault(); setDragOverLane(laneId); }}
                       onDragLeave={() => setDragOverLane(null)}
                       onDrop={(e) => handleDropToLane(e, laneId)}
@@ -816,15 +827,15 @@ const AdminPanel = () => {
                         </button>
                         <button type="button" className="btn-danger" onClick={() => handleRemoveLane(laneId)}>{t('admin_lane_remove')}</button>
                       </div>
-                      {exitFirst ? (
+                      {exitAtBottom ? (
                         <>
+                          {renderWaitingZone(laneId, waitingKarts, true)}
                           {renderExitZone(laneId, exitKart)}
-                          {renderWaitingZone(laneId, waitingKarts)}
                         </>
                       ) : (
                         <>
-                          {renderWaitingZone(laneId, waitingKarts)}
                           {renderExitZone(laneId, exitKart)}
+                          {renderWaitingZone(laneId, waitingKarts, false)}
                         </>
                       )}
                     </div>
@@ -872,14 +883,6 @@ const AdminPanel = () => {
                 </div>
               </div>
             </div>
-          </div>
-          <div className="finish-section finish-section-center">
-            <h3>{t('admin_finish_section')}</h3>
-            <div className="export-options">
-              <label><input type="checkbox" checked={exportCsv} onChange={(e) => setExportCsv(e.target.checked)} />{t('admin_export_csv')}</label>
-              <label><input type="checkbox" checked={exportPdf} onChange={(e) => setExportPdf(e.target.checked)} />{t('admin_export_pdf')}</label>
-            </div>
-            <button type="button" className="btn-finish-turquoise" onClick={finishHeat}>{t('admin_btn_finish_heat')}</button>
           </div>
         </section>
 
@@ -1005,21 +1008,18 @@ const AdminPanel = () => {
 
           <div className="timing-columns-bar">
             <span className="field-label">{t('admin_timing_columns')}</span>
-            <p className="level-hint">{t('admin_timing_columns_hint')}</p>
-            <div className="timing-columns-fixed">
-              <span>{t('best_lap')}</span>
-              <span>{t('last_lap')}</span>
-            </div>
-            <div className="timing-columns-optional">
+            <div className="timing-columns-chips">
+              <span className="timing-chip timing-chip-fixed">{t('best_lap')}</span>
+              <span className="timing-chip timing-chip-fixed">{t('last_lap')}</span>
               {OPTIONAL_TIMING_COLUMNS.map((col) => (
-                <label key={col.id}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(timingColumns[col.id])}
-                    onChange={(e) => setTimingColumns((prev) => ({ ...prev, [col.id]: e.target.checked }))}
-                  />
+                <button
+                  key={col.id}
+                  type="button"
+                  className={`timing-chip${timingColumns[col.id] ? ' active' : ''}`}
+                  onClick={() => setTimingColumns((prev) => ({ ...prev, [col.id]: !prev[col.id] }))}
+                >
                   {t(col.labelKey)}
-                </label>
+                </button>
               ))}
             </div>
           </div>

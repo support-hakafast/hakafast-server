@@ -82,7 +82,7 @@ let levelSettings = {
   editPassword: '',
   masterLapThreshold: '45.500',
   proLapThreshold: '42.000',
-  pitExitPosition: 'top',
+  pitExitPosition: 'bottom',
 };
 const trackSetups = {};
 const driverQueues = {};
@@ -255,7 +255,7 @@ app.get('/api/admin/level-settings', (req, res) => {
   return res.json({
     masterLapThreshold: settings.masterLapThreshold,
     proLapThreshold: settings.proLapThreshold,
-    pitExitPosition: settings.pitExitPosition || 'top',
+    pitExitPosition: settings.pitExitPosition || 'bottom',
     hasPassword: Boolean(settings.editPassword),
   });
 });

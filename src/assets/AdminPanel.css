@@ -76,7 +76,6 @@ html:has(.admin-no-scroll) body {
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   overflow: hidden;
 }
 
@@ -144,11 +143,12 @@ html:has(.admin-no-scroll) body {
 
 .pits-zone {
   max-width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .warehouse-zone,
 .pits-zone {
-  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -324,35 +324,38 @@ html:has(.admin-no-scroll) body {
   margin-bottom: 10px;
 }
 
-.timing-columns-fixed {
+.timing-columns-chips {
   display: flex;
-  gap: 8px;
-  margin: 6px 0 8px;
-  font-size: 0.75rem;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.timing-chip {
+  padding: 5px 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--navy);
-}
-
-.timing-columns-fixed span {
-  flex: 1;
-  padding: 4px 6px;
-  background: var(--turquoise);
-  border-radius: 4px;
-  text-align: center;
-}
-
-.timing-columns-optional {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.78rem;
-}
-
-.timing-columns-optional label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.timing-chip-fixed {
+  cursor: default;
+  background: var(--turquoise);
+  border-color: var(--navy);
+}
+
+.timing-chip.active {
+  background: var(--turquoise);
+  border-color: var(--navy);
+}
+
+.timing-chip:not(.timing-chip-fixed):hover {
+  border-color: var(--turquoise);
 }
 
 .heat-driver-count {
@@ -384,8 +387,8 @@ html:has(.admin-no-scroll) body {
 
 .on-track-strip {
   flex-shrink: 0;
-  margin-top: 12px;
-  padding: 12px;
+  margin-top: 0;
+  padding: 10px 12px;
   background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
   border-radius: 12px;
   border: 2px solid var(--turquoise);
@@ -555,6 +558,16 @@ html:has(.admin-no-scroll) body {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 12px;
+}
+
+.finish-section-modal {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.finish-section-modal .btn-finish-turquoise {
+  margin-top: 4px;
 }
 
 .btn-finish-turquoise {
@@ -976,6 +989,15 @@ html:has(.admin-no-scroll) body {
   border-radius: 8px;
   border-top: 3px solid var(--turquoise);
   position: relative;
+}
+
+.lane-flow-bottom .lane-exit-zone {
+  border-top: none;
+  border-bottom: 3px solid var(--turquoise);
+}
+
+.lane-exit-slot {
+  min-height: 48px;
 }
 
 .lane-exit-track {
