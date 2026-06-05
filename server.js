@@ -71,7 +71,7 @@ async function migrateDB() {
 }
 migrateDB();
 
-let pitLines = [{ id: 1, name: 'ליין ימין', active: true, karts: [] }, { id: 2, name: 'ליין שמאל', active: true, karts: [] }];
+let pitLines = [{ id: 1, name: 'טור ימין', active: true, karts: [] }, { id: 2, name: 'טור שמאל', active: true, karts: [] }];
 let heatSettings = { type: 'time', duration: 10, targetLaps: 0 };
 let levelSettings = {
   editPassword: '',

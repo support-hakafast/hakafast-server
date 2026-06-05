@@ -7,6 +7,7 @@ import HakafastLogo from './HakafastLogo.jsx';
 import AdminSetupModal from './AdminSetupModal.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import LivePreviewFloat from './LivePreviewFloat.jsx';
+import KartCard from './KartCard.jsx';
 import { isStrongPassword } from '../utils/password.js';
 import {
   parseKartNumbers,
@@ -25,8 +26,8 @@ import {
 import { saveLocalSnapshot, loadLocalSnapshot, clearLocalSnapshot } from '../utils/workspaceStorage.js';
 
 const DEFAULT_LINES = {
-  1: { name: 'ליין 1', active: true, karts: [] },
-  2: { name: 'ליין 2', active: true, karts: [] },
+  1: { name: 'טור 1', active: true, karts: [] },
+  2: { name: 'טור 2', active: true, karts: [] },
 };
 
 function normalizeLinesData(data) {
@@ -39,24 +40,6 @@ function normalizeLinesData(data) {
     return Object.keys(obj).length ? obj : { ...DEFAULT_LINES };
   }
   return data;
-}
-
-function KartCard({ num, kart, onToggle, draggable }) {
-  return (
-    <div
-      className={`kart-card${!kart.active ? ' disabled' : ''}`}
-      draggable={draggable && kart.active}
-      onDragStart={(e) => {
-        if (!kart.active) { e.preventDefault(); return; }
-        e.dataTransfer.setData('text', String(num));
-      }}
-    >
-      🏎️ {num}
-      <button type="button" className="toggle-btn" onClick={(e) => onToggle(num, e)}>
-        {kart.active ? 'X' : '+'}
-      </button>
-    </div>
-  );
 }
 
 const AdminPanel = () => {
@@ -465,7 +448,7 @@ const AdminPanel = () => {
       </header>
 
       <div className="admin-workspace">
-        <section className="admin-center">
+        <section className="admin-pits-column">
           <div className="inventory-pits-panel">
             <div className="warehouse-zone">
               <h2>{t('admin_warehouse')}</h2>
@@ -480,7 +463,7 @@ const AdminPanel = () => {
                 onDrop={handleDropToPool}
               >
                 {poolKarts.map((num) => (
-                  <KartCard key={num} num={num} kart={allKarts[num]} onToggle={toggleKartActive} draggable />
+                  <KartCard key={num} num={num} kart={allKarts[num]} onToggle={toggleKartActive} draggable variant="pool" />
                 ))}
               </div>
             </div>
@@ -492,6 +475,8 @@ const AdminPanel = () => {
               <div className="pit-lanes-board">
                 {Object.keys(linesData).map((laneId) => {
                   const lane = linesData[laneId];
+                  const exitKart = lane.karts[0];
+                  const waitingKarts = lane.karts.slice(1);
                   return (
                     <div
                       key={laneId}
@@ -507,9 +492,39 @@ const AdminPanel = () => {
                         </button>
                         <button type="button" className="btn-danger" onClick={() => handleRemoveLane(laneId)}>{t('admin_lane_remove')}</button>
                       </div>
-                      {lane.karts.map((num) => allKarts[num] ? (
-                        <KartCard key={`${laneId}-${num}`} num={num} kart={allKarts[num]} onToggle={toggleKartActive} draggable />
-                      ) : null)}
+                      <div className="lane-waiting-zone">
+                        <span className="lane-zone-label">{t('admin_lane_waiting')}</span>
+                        {waitingKarts.length === 0 ? (
+                          <p className="lane-empty-hint">{t('admin_lane_waiting_empty')}</p>
+                        ) : (
+                          [...waitingKarts].reverse().map((num) => allKarts[num] ? (
+                            <KartCard
+                              key={`${laneId}-w-${num}`}
+                              num={num}
+                              kart={allKarts[num]}
+                              onToggle={toggleKartActive}
+                              draggable
+                              variant="waiting"
+                            />
+                          ) : null)
+                        )}
+                      </div>
+                      <div className="lane-exit-zone">
+                        <span className="lane-zone-label">{t('admin_lane_exit')}</span>
+                        <div className="lane-exit-track" />
+                        {exitKart && allKarts[exitKart] ? (
+                          <KartCard
+                            key={`${laneId}-exit-${exitKart}`}
+                            num={exitKart}
+                            kart={allKarts[exitKart]}
+                            onToggle={toggleKartActive}
+                            draggable
+                            variant="exiting"
+                          />
+                        ) : (
+                          <p className="lane-empty-hint">{t('admin_lane_exit_empty')}</p>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -523,6 +538,49 @@ const AdminPanel = () => {
               <label><input type="checkbox" checked={exportPdf} onChange={(e) => setExportPdf(e.target.checked)} />{t('admin_export_pdf')}</label>
             </div>
             <button type="button" className="btn-finish-turquoise" onClick={finishHeat}>{t('admin_btn_finish_heat')}</button>
+          </div>
+        </section>
+
+        <section className="admin-drivers-column">
+          <div className="driver-column driver-column-main">
+            <h2>{t('admin_register_title')}</h2>
+            <div className="section-box">
+              <label>{t('admin_req_label')}</label>
+              <input type="text" value={drName} onChange={(e) => setDrName(e.target.value)} placeholder={t('admin_driver_placeholder_bulk')} />
+              {isBulkDrivers && <p className="bulk-hint">{t('admin_bulk_names_hint')} ({driverNames.length})</p>}
+            </div>
+            <button type="button" className={`btn-register-saved${showAdvancedReg ? ' is-open' : ''}`} onClick={() => setShowAdvancedReg((v) => !v)} disabled={isBulkDrivers}>
+              {showAdvancedReg ? t('admin_toggle_reg_open') : t('admin_toggle_reg_closed')}
+            </button>
+            {showAdvancedReg && !isBulkDrivers && (
+              <div className="advanced-zone">
+                <div className="checkbox-zone">
+                  <label><input type="checkbox" checked={chkPhone} onChange={(e) => setChkPhone(e.target.checked)} />{t('admin_chk_phone')}</label>
+                  <label><input type="checkbox" checked={chkEmail} onChange={(e) => setChkEmail(e.target.checked)} />{t('admin_chk_email')}</label>
+                </div>
+                {chkPhone && <input type="text" value={drPhone} onChange={(e) => setDrPhone(e.target.value)} placeholder={t('admin_phone_placeholder')} />}
+                {chkEmail && <input type="text" value={drEmail} onChange={(e) => setDrEmail(e.target.value)} placeholder={t('admin_email_placeholder')} />}
+                <select value={drLevel} onChange={(e) => setDrLevel(e.target.value)}>
+                  <option value="Amateur">{t('level_amateur')}</option>
+                  <option value="Master">{t('level_master')}</option>
+                  <option value="Pro">{t('level_pro')}</option>
+                </select>
+              </div>
+            )}
+            <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
+            <h3 className="queue-heading">{t('admin_queue_title')}</h3>
+            <ul className="queue-list queue-list-tall">
+              {driverQueue.length === 0 ? (
+                <li className="queue-empty">{t('admin_queue_empty')}</li>
+              ) : driverQueue.map((d, i) => (
+                <li key={`${d.name}-${i}`} className={`queue-item${d.saved ? ' queue-item-saved' : ''}`}>
+                  <span className="queue-pos">{i + 1}</span>
+                  <span className="queue-name">{d.saved && <span className="saved-badge">★</span>}{d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}</span>
+                  <button type="button" className="btn-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>X</button>
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="btn-execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
           </div>
         </section>
 
@@ -550,44 +608,6 @@ const AdminPanel = () => {
             {heatType === 'sprint' && (
               <input type="number" value={targetLaps} onChange={(e) => setTargetLaps(e.target.value)} placeholder={t('admin_laps_placeholder')} />
             )}
-          </div>
-
-          <div className="driver-column">
-            <h2>{t('admin_register_title')}</h2>
-            <div className="section-box">
-              <label>{t('admin_req_label')}</label>
-              <input type="text" value={drName} onChange={(e) => setDrName(e.target.value)} placeholder={t('admin_driver_placeholder_bulk')} />
-              {isBulkDrivers && <p className="bulk-hint">{t('admin_bulk_names_hint')} ({driverNames.length})</p>}
-            </div>
-            <button type="button" className={`btn-register-saved${showAdvancedReg ? ' is-open' : ''}`} onClick={() => setShowAdvancedReg((v) => !v)} disabled={isBulkDrivers}>
-              {showAdvancedReg ? t('admin_toggle_reg_open') : t('admin_toggle_reg_closed')}
-            </button>
-            {showAdvancedReg && !isBulkDrivers && (
-              <div className="advanced-zone">
-                <div className="checkbox-zone">
-                  <label><input type="checkbox" checked={chkPhone} onChange={(e) => setChkPhone(e.target.checked)} />{t('admin_chk_phone')}</label>
-                  <label><input type="checkbox" checked={chkEmail} onChange={(e) => setChkEmail(e.target.checked)} />{t('admin_chk_email')}</label>
-                </div>
-                {chkPhone && <input type="text" value={drPhone} onChange={(e) => setDrPhone(e.target.value)} placeholder={t('admin_phone_placeholder')} />}
-                {chkEmail && <input type="text" value={drEmail} onChange={(e) => setDrEmail(e.target.value)} placeholder={t('admin_email_placeholder')} />}
-                <select value={drLevel} onChange={(e) => setDrLevel(e.target.value)}>
-                  <option value="Amateur">{t('level_amateur')}</option>
-                  <option value="Master">{t('level_master')}</option>
-                  <option value="Pro">{t('level_pro')}</option>
-                </select>
-              </div>
-            )}
-            <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
-            <h3>{t('admin_queue_title')}</h3>
-            <ul className="queue-list queue-list-tall">
-              {driverQueue.map((d, i) => (
-                <li key={`${d.name}-${i}`} className={`queue-item${d.saved ? ' queue-item-saved' : ''}`}>
-                  <span>{d.saved && <span className="saved-badge">★</span>}{d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}</span>
-                  <button type="button" className="btn-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>X</button>
-                </li>
-              ))}
-            </ul>
-            <button type="button" className="btn-execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
           </div>
 
           <button type="button" className="btn-advanced-link" onClick={() => setShowAdvanced(true)}>{t('admin_advanced_settings')}</button>

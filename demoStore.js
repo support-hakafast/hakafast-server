@@ -3,8 +3,8 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 
 function defaultPitLines() {
   return {
-    1: { name: 'ליין 1', active: true, karts: [] },
-    2: { name: 'ליין 2', active: true, karts: [] },
+    1: { name: 'טור 1', active: true, karts: [] },
+    2: { name: 'טור 2', active: true, karts: [] },
   };
 }
 
