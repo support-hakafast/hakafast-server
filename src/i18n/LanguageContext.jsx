@@ -36,7 +36,15 @@ export function LanguageProvider({ children }) {
     if (SUPPORTED.includes(next)) setLangState(next);
   };
 
-  const t = (key) => dict[key] ?? translations.en[key] ?? key;
+  const t = (key, vars) => {
+    let text = dict[key] ?? translations.en[key] ?? key;
+    if (vars) {
+      Object.entries(vars).forEach(([k, v]) => {
+        text = text.replaceAll(`{{${k}}}`, String(v));
+      });
+    }
+    return text;
+  };
 
   const value = useMemo(() => ({ lang, dir, setLang, t }), [lang, dir, dict]);
 

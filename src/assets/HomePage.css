@@ -226,6 +226,14 @@
   font-size: 1.05rem;
 }
 
+.home-demo-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--hf-muted);
+  max-width: 28rem;
+  line-height: 1.4;
+}
+
 .home-contact {
   max-width: 32rem;
   margin: 0 auto;

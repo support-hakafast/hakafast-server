@@ -1,8 +1,11 @@
 const express = require('express');
+const http = require('http');
 const { Pool } = require('pg');
 const fs = require('fs');
 const session = require('express-session');
 const path = require('path');
+const demoStore = require('./demoStore');
+const { createLiveBroadcast } = require('./liveBroadcast');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -71,10 +74,21 @@ migrateDB();
 let pitLines = [{ id: 1, name: 'ליין ימין', active: true, karts: [] }, { id: 2, name: 'ליין שמאל', active: true, karts: [] }];
 let heatSettings = { type: 'time', duration: 10, targetLaps: 0 };
 let levelSettings = {
-  editPassword: 'HakaFast!Secure2026',
+  editPassword: '',
   masterLapThreshold: '45.500',
   proLapThreshold: '42.000',
 };
+const trackSetups = {};
+const driverQueues = {};
+
+let liveBroadcast = null;
+
+function notifyWorkspace(req) {
+  if (!liveBroadcast) return;
+  const track = req.headers['x-hf-track'];
+  const workspaceId = req.headers['x-hf-workspace'];
+  if (track && workspaceId) liveBroadcast.broadcastWorkspace(track, workspaceId);
+}
 
 function isStrongPassword(password) {
   if (!password || password.length < 12) return false;
@@ -136,27 +150,105 @@ function sendSpaIndex(res) {
 // API routes
 const translationsPath = path.join(__dirname, 'src', 'i18n', 'translations.json');
 app.get('/api/translations', (req, res) => res.json(JSON.parse(fs.readFileSync(translationsPath, 'utf8'))));
-app.get('/api/admin/pits', (req, res) => res.json(pitLines));
-app.post('/api/admin/update-pits', (req, res) => { pitLines = req.body.newLines; res.json({ success: true }); });
-app.get('/api/heat-settings', (req, res) => res.json(heatSettings));
-app.post('/api/admin/heat-settings', (req, res) => { heatSettings = req.body; res.json({ success: true }); });
+app.get('/api/admin/pits', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) return res.json(demo.pitLines);
+  return res.json(pitLines);
+});
+
+app.post('/api/admin/update-pits', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demo.pitLines = req.body.newLines;
+    return res.json({ success: true });
+  }
+  pitLines = req.body.newLines;
+  return res.json({ success: true });
+});
+
+app.get('/api/heat-settings', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) return res.json(demo.heatSettings);
+  return res.json(heatSettings);
+});
+
+app.post('/api/admin/heat-settings', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demo.heatSettings = req.body;
+    notifyWorkspace(req);
+    return res.json({ success: true });
+  }
+  heatSettings = req.body;
+  return res.json({ success: true });
+});
+
 app.get('/api/admin/level-settings', (req, res) => {
-  res.json({
-    masterLapThreshold: levelSettings.masterLapThreshold,
-    proLapThreshold: levelSettings.proLapThreshold,
+  const demo = demoStore.resolveWorkspace(req);
+  const settings = demo ? demo.levelSettings : levelSettings;
+  return res.json({
+    masterLapThreshold: settings.masterLapThreshold,
+    proLapThreshold: settings.proLapThreshold,
+    hasPassword: Boolean(settings.editPassword),
   });
 });
+
+app.get('/api/admin/track-setup/:trackSlug', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) return res.json({ onboarded: Boolean(demo.trackSetup?.onboarded) });
+  const setup = trackSetups[req.params.trackSlug];
+  return res.json({ onboarded: Boolean(setup?.onboarded) });
+});
+
+app.post('/api/admin/track-setup', (req, res) => {
+  const { trackSlug, kartNumbers, editPassword } = req.body;
+  if (!trackSlug || !kartNumbers) {
+    return res.json({ success: false, error: 'missing_fields' });
+  }
+  if (editPassword && !isStrongPassword(editPassword)) {
+    return res.json({ success: false, error: 'weak_password' });
+  }
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demo.trackSetup = { onboarded: true, kartNumbers };
+    if (editPassword) demo.levelSettings.editPassword = editPassword;
+    return res.json({ success: true, kartNumbers });
+  }
+  trackSetups[trackSlug] = { onboarded: true, kartNumbers };
+  if (editPassword) levelSettings.editPassword = editPassword;
+  return res.json({ success: true, kartNumbers });
+});
+
+app.post('/api/admin/verify-settings-password', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  const settings = demo ? demo.levelSettings : levelSettings;
+  if (!settings.editPassword) return res.json({ success: true });
+  return res.json({ success: req.body.password === settings.editPassword });
+});
+
+app.post('/api/admin/sync-queue/:trackSlug', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demo.driverQueue = req.body.queue || [];
+    return res.json({ success: true });
+  }
+  driverQueues[req.params.trackSlug] = req.body.queue || [];
+  return res.json({ success: true });
+});
+
 app.post('/api/admin/level-settings', (req, res) => {
   const { masterLapThreshold, proLapThreshold, editPassword } = req.body;
-  if (masterLapThreshold) levelSettings.masterLapThreshold = masterLapThreshold;
-  if (proLapThreshold) levelSettings.proLapThreshold = proLapThreshold;
+  const demo = demoStore.resolveWorkspace(req);
+  const settings = demo ? demo.levelSettings : levelSettings;
+  if (masterLapThreshold) settings.masterLapThreshold = masterLapThreshold;
+  if (proLapThreshold) settings.proLapThreshold = proLapThreshold;
   if (editPassword) {
     if (!isStrongPassword(editPassword)) {
       return res.json({ success: false, error: 'weak_password' });
     }
-    levelSettings.editPassword = editPassword;
+    settings.editPassword = editPassword;
   }
-  res.json({ success: true });
+  return res.json({ success: true });
 });
 
 app.post('/api/admin/login/:trackName', (req, res) => {
@@ -170,6 +262,12 @@ app.post('/api/admin/login/:trackName', (req, res) => {
 });
 
 app.post('/api/admin/finish-heat', async (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demoStore.finishHeat(demo);
+    notifyWorkspace(req);
+    return res.json({ success: true });
+  }
   try {
     await applyAutoLevelUpgrades(1);
     const data = await pool.query('SELECT * FROM current_heat WHERE track_id = 1');
@@ -183,6 +281,8 @@ app.post('/api/admin/finish-heat', async (req, res) => {
 });
 
 app.get('/api/admin/export-data', async (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) return res.json(demoStore.exportData(demo));
   try {
     const result = await pool.query('SELECT * FROM current_heat WHERE track_id = 1 ORDER BY best_lap_time ASC NULLS LAST');
     res.json(result.rows);
@@ -205,6 +305,12 @@ app.get('/api/admin/export-csv', async (req, res) => {
 });
 
 app.post('/assign-driver', async (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demoStore.assignDriver(demo, req.body);
+    notifyWorkspace(req);
+    return res.status(201).json({ success: true });
+  }
   const { track_id, kart_number, driver_name, driver_level, phone, email } = req.body;
   try {
     await pool.query(`INSERT INTO current_heat (track_id, kart_number, driver_name, driver_level) VALUES ($1, $2, $3, $4)`,
@@ -222,7 +328,11 @@ app.post('/assign-driver', async (req, res) => {
 
 app.post('/api/admin/update-driver-level', async (req, res) => {
   const { lookup, level, password } = req.body;
-  if (password !== levelSettings.editPassword) {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    return res.json(demoStore.updateDriverLevel(demo, lookup, level, password));
+  }
+  if (levelSettings.editPassword && password !== levelSettings.editPassword) {
     return res.json({ success: false, error: 'bad_password' });
   }
   try {
@@ -235,9 +345,46 @@ app.post('/api/admin/update-driver-level', async (req, res) => {
 });
 
 app.get('/live-timing-data/:track_id', async (req, res) => {
+  const mode = req.query.mode || 'timing';
+  const trackId = req.params.track_id;
+  const trackSlug = trackId === '1' ? 'kart-demo' : String(trackId);
+  const demo = demoStore.resolveWorkspace(req);
+
+  if (demo) {
+    if (mode === 'assignments') return res.json(demoStore.getAssignments(demo));
+    return res.json(demoStore.getTimingData(demo));
+  }
+
+  if (mode === 'assignments') {
+    try {
+      const result = await pool.query(
+        'SELECT kart_number, driver_name, driver_level FROM current_heat WHERE track_id = $1 ORDER BY kart_number ASC',
+        [trackId],
+      );
+      if (result.rows.length > 0) {
+        return res.json(result.rows.map((r, i) => ({
+          position: i + 1,
+          kart_number: r.kart_number,
+          driver_name: r.driver_name,
+          driver_level: r.driver_level,
+          status: 'assigned',
+        })));
+      }
+    } catch {
+      /* fall through to queue */
+    }
+    const queue = driverQueues[trackSlug] || [];
+    return res.json(queue.map((d, i) => ({
+      position: i + 1,
+      driver_name: d.name,
+      kart_number: null,
+      status: 'queued',
+    })));
+  }
+
   try {
     const order = heatSettings.type === 'sprint' ? 'lap_count DESC, best_lap_time ASC' : 'best_lap_time ASC NULLS LAST';
-    const result = await pool.query(`SELECT * FROM current_heat WHERE track_id = $1 ORDER BY ${order} LIMIT 30`, [req.params.track_id]);
+    const result = await pool.query(`SELECT * FROM current_heat WHERE track_id = $1 ORDER BY ${order} LIMIT 30`, [trackId]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json([]);
@@ -245,6 +392,12 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
 });
 
 app.post('/api/admin/clear-heat', async (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demoStore.clearHeat(demo);
+    notifyWorkspace(req);
+    return res.json({ success: true });
+  }
   try {
     await pool.query('DELETE FROM current_heat WHERE track_id = 1');
     res.json({ success: true });
@@ -307,6 +460,14 @@ app.get('*', (req, res, next) => {
   return sendSpaIndex(res);
 });
 
-app.listen(port, () => {
+const httpServer = http.createServer(app);
+liveBroadcast = createLiveBroadcast(httpServer, {
+  demoStore,
+  pool,
+  getGlobalHeatSettings: () => heatSettings,
+  driverQueues,
+});
+
+httpServer.listen(port, () => {
   console.log(`HAKAFAST active on port ${port}${hasBuild ? '' : ' (no frontend build — run npm run build)'}`);
 });

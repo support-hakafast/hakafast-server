@@ -1,7 +1,33 @@
+/* Light theme (default) */
 .live-timing {
   min-height: 100vh;
+  background: #f1f5f9;
+  color: #0f172a;
+  --live-surface: #ffffff;
+  --live-border: #e2e8f0;
+  --live-muted: #64748b;
+  --live-row-alt: #f8fafc;
+  --live-row-hover: #e0f7f4;
+  --live-th-bg: rgba(64, 224, 208, 0.2);
+  --live-header-bg: linear-gradient(90deg, var(--hf-navy), #1e3a8a);
+  --live-header-text: #fff;
+  --live-tab-bg: rgba(255, 255, 255, 0.18);
+  --live-tab-text: #fff;
+}
+
+.live-timing.theme-dark {
   background: #0a0a12;
   color: #fff;
+  --live-surface: transparent;
+  --live-border: rgba(255, 255, 255, 0.08);
+  --live-muted: rgba(255, 255, 255, 0.6);
+  --live-row-alt: rgba(255, 255, 255, 0.03);
+  --live-row-hover: rgba(64, 224, 208, 0.08);
+  --live-th-bg: rgba(64, 224, 208, 0.15);
+  --live-header-bg: linear-gradient(90deg, var(--hf-navy), var(--hf-purple));
+  --live-header-text: #fff;
+  --live-tab-bg: rgba(255, 255, 255, 0.15);
+  --live-tab-text: #fff;
 }
 
 .live-timing-header {
@@ -11,7 +37,8 @@
   gap: 1rem;
   flex-wrap: wrap;
   padding: 1rem 1.25rem;
-  background: linear-gradient(90deg, var(--hf-navy), var(--hf-purple));
+  background: var(--live-header-bg);
+  color: var(--live-header-text);
   border-bottom: 3px solid var(--hf-turquoise);
 }
 
@@ -31,6 +58,21 @@
   font-size: 0.9rem;
 }
 
+.live-content-panel {
+  animation: livePanelIn 0.28s ease;
+}
+
+@keyframes livePanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .live-timing-table-wrap {
   padding: 1rem;
   overflow-x: auto;
@@ -40,10 +82,18 @@
   width: 100%;
   border-collapse: collapse;
   font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+  background: var(--live-surface);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+}
+
+.theme-dark .live-timing-table {
+  box-shadow: none;
 }
 
 .live-timing-table th {
-  background: rgba(64, 224, 208, 0.15);
+  background: var(--live-th-bg);
   color: var(--hf-turquoise);
   padding: 0.75rem 0.5rem;
   text-align: center;
@@ -51,18 +101,41 @@
   border-bottom: 2px solid var(--hf-turquoise);
 }
 
+.theme-light .live-timing-table th,
+.live-timing:not(.theme-dark) .live-timing-table th {
+  color: #0f766e;
+}
+
 .live-timing-table td {
   padding: 0.65rem 0.5rem;
   text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--live-border);
 }
 
 .live-timing-table tbody tr:nth-child(odd) {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--live-row-alt);
 }
 
 .live-timing-table tbody tr:hover {
-  background: rgba(64, 224, 208, 0.08);
+  background: var(--live-row-hover);
+}
+
+.live-row-flash td {
+  animation: liveRowFlash 0.7s ease;
+}
+
+@keyframes liveRowFlash {
+  0% { background: rgba(64, 224, 208, 0.55); }
+  100% { background: transparent; }
+}
+
+.theme-dark .live-row-flash td {
+  animation-name: liveRowFlashDark;
+}
+
+@keyframes liveRowFlashDark {
+  0% { background: rgba(64, 224, 208, 0.35); }
+  100% { background: transparent; }
 }
 
 .live-pos {
@@ -70,15 +143,20 @@
   color: var(--hf-turquoise);
 }
 
+.theme-light .live-pos,
+.live-timing:not(.theme-dark) .live-pos {
+  color: #0f766e;
+}
+
 .live-best {
-  color: #4ade80;
+  color: #16a34a;
   font-weight: 700;
 }
 
 .live-empty {
   padding: 4rem 1.5rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--live-muted);
   font-size: 1.15rem;
 }
 
@@ -95,6 +173,56 @@
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.live-mode-tabs {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.live-mode-tabs button {
+  border: none;
+  background: var(--live-tab-bg);
+  color: var(--live-tab-text);
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.live-mode-tabs button.active {
+  background: var(--hf-turquoise, #40e0d0);
+  color: var(--hf-navy, #000080);
+}
+
+.live-theme-toggle {
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.live-demo-badge,
+.live-ws-badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  margin-inline-end: 0.35rem;
+  background: var(--hf-turquoise, #40e0d0);
+  color: var(--hf-navy, #000080);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+}
+
+.live-ws-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
 }
 
 .live-header-logo.hf-logo-img {

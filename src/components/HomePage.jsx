@@ -67,7 +67,10 @@ const HomePage = () => {
             </Link>
           </div>
           <div className="home-track-card alt">
-            <strong>{t('track_demo')}</strong>
+            <div>
+              <strong>{t('track_demo')}</strong>
+              <p className="home-demo-hint">{t('demo_workspace_hint')}</p>
+            </div>
             <Link to="/live-timing/kart-demo" className="home-btn home-btn-primary" style={{ padding: '0.65rem 1.1rem', fontSize: '0.9rem' }}>
               {t('btn_demo')}
             </Link>
