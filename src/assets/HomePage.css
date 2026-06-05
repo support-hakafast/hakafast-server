@@ -35,18 +35,6 @@
   letter-spacing: 0.04em;
 }
 
-.home-logo-mark {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.65rem;
-  background: linear-gradient(135deg, var(--hf-navy), var(--hf-purple));
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 1.1rem;
-  box-shadow: 0 6px 18px rgba(0, 0, 128, 0.35);
-}
-
 .home-nav-links {
   display: flex;
   gap: 0.5rem;

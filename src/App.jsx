@@ -12,6 +12,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin/:trackName" element={<AdminPanel />} />
           <Route path="/admin.html" element={<AdminPanel />} />
           <Route path="/live-timing" element={<LiveTiming />} />
           <Route path="/live-timing/:track" element={<LiveTiming />} />

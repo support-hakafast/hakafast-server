@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import '../assets/LiveTiming.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
+import HakafastLogo from './HakafastLogo.jsx';
 
 const TRACK_IDS = {
   'kart-demo': '1',
@@ -61,11 +62,9 @@ const LiveTiming = () => {
           <h1>{t(titleKey)}</h1>
           <span className="live-session-badge">{sessionLabel}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div className="live-header-actions">
+          <HakafastLogo to="/" className="live-header-logo" />
           <LanguageSwitcher />
-          <Link to="/" style={{ color: '#fff', fontWeight: 700, textDecoration: 'none', opacity: 0.9 }}>
-            {t('nav_home')}
-          </Link>
         </div>
       </header>
 

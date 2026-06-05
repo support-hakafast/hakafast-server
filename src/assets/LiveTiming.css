@@ -89,3 +89,17 @@
   margin-bottom: 0.75rem;
   opacity: 0.5;
 }
+
+.live-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.live-header-logo.hf-logo-img {
+  height: 40px;
+  background: #fff;
+  border-radius: 6px;
+  padding: 3px 6px;
+}

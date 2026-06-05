@@ -80,3 +80,31 @@ a {
   color: var(--hf-navy);
   letter-spacing: 0.04em;
 }
+
+.hf-logo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.hf-logo-img {
+  height: 44px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.home-logo .hf-logo-img {
+  height: 52px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 128, 0.2);
+}
+
+.hf-logo-text {
+  font-weight: 900;
+  color: var(--hf-navy);
+  letter-spacing: 0.04em;
+}

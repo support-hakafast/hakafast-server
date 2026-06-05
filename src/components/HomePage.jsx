@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import '../assets/HomePage.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
+import HakafastLogo from './HakafastLogo.jsx';
 
 const HomePage = () => {
   const { t } = useLanguage();
@@ -19,7 +20,7 @@ const HomePage = () => {
             <a href="#features">{t('nav_features')}</a>
             <a href="#live-tracks">{t('nav_live')}</a>
             <a href="#contact">{t('nav_contact')}</a>
-            <Link to="/admin">{t('nav_admin')}</Link>
+            <Link to="/admin/kart-demo">{t('nav_admin')}</Link>
           </nav>
           <LanguageSwitcher />
         </div>
@@ -30,7 +31,7 @@ const HomePage = () => {
         <h1>{t('hero_title')}</h1>
         <p>{t('hero_desc')}</p>
         <div className="home-cta-row">
-          <Link to="/admin" className="home-btn home-btn-primary">{t('cta_admin')}</Link>
+          <Link to="/admin/kart-demo" className="home-btn home-btn-primary">{t('cta_admin')}</Link>
           <a href="#live-tracks" className="home-btn home-btn-ghost">{t('cta_live')}</a>
         </div>
       </section>
