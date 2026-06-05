@@ -1,61 +1,44 @@
-import React, { useRef, useState } from 'react';
-
-function loadPosition(key, fallback) {
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
-  } catch {
-    /* ignore */
-  }
-  return fallback;
-}
+import React, { useRef } from 'react';
+import { PANEL_SIZES } from '../utils/panelLayout.js';
 
 export default function DraggablePanel({
   panelId,
   title,
   children,
-  defaultPosition,
-  width = 360,
+  position,
+  width,
   className = '',
+  onPositionChange,
+  zIndex = 100,
+  onFocus,
 }) {
-  const storageKey = `hf_panel_${panelId}`;
-  const [pos, setPos] = useState(() => loadPosition(storageKey, defaultPosition));
   const dragging = useRef(false);
   const start = useRef({ x: 0, y: 0, left: 0, top: 0 });
-
-  const savePosition = (next) => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-  };
+  const panelWidth = width || PANEL_SIZES[panelId]?.width || 360;
 
   const onPointerDown = (e) => {
     if (!e.target.closest('[data-drag-handle]')) return;
+    onFocus?.(panelId);
     dragging.current = true;
-    start.current = { x: e.clientX, y: e.clientY, left: pos.x, top: pos.y };
+    start.current = { x: e.clientX, y: e.clientY, left: position.x, top: position.y };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e) => {
     if (!dragging.current) return;
-    const next = {
+    onPositionChange(panelId, {
       x: Math.max(0, start.current.left + e.clientX - start.current.x),
       y: Math.max(80, start.current.top + e.clientY - start.current.y),
-    };
-    setPos(next);
+    }, false);
   };
 
   const onPointerUp = (e) => {
     if (!dragging.current) return;
     dragging.current = false;
-    const next = {
+    onPositionChange(panelId, {
       x: Math.max(0, start.current.left + e.clientX - start.current.x),
       y: Math.max(80, start.current.top + e.clientY - start.current.y),
-    };
-    setPos(next);
-    savePosition(next);
+    }, true);
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
@@ -66,7 +49,7 @@ export default function DraggablePanel({
   return (
     <div
       className={`draggable-panel panel ${className}`.trim()}
-      style={{ left: pos.x, top: pos.y, width }}
+      style={{ left: position.x, top: position.y, width: panelWidth, zIndex }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

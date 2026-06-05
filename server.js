@@ -71,10 +71,19 @@ migrateDB();
 let pitLines = [{ id: 1, name: 'ליין ימין', active: true, karts: [] }, { id: 2, name: 'ליין שמאל', active: true, karts: [] }];
 let heatSettings = { type: 'time', duration: 10, targetLaps: 0 };
 let levelSettings = {
-  editPassword: 'level123',
+  editPassword: 'HakaFast!Secure2026',
   masterLapThreshold: '45.500',
   proLapThreshold: '42.000',
 };
+
+function isStrongPassword(password) {
+  if (!password || password.length < 12) return false;
+  if (!/[A-Z]/.test(password)) return false;
+  if (!/[a-z]/.test(password)) return false;
+  if (!/[0-9]/.test(password)) return false;
+  if (!/[^A-Za-z0-9]/.test(password)) return false;
+  return true;
+}
 
 function lapToSeconds(lap) {
   if (!lap || typeof lap !== 'string') return Infinity;
@@ -141,7 +150,12 @@ app.post('/api/admin/level-settings', (req, res) => {
   const { masterLapThreshold, proLapThreshold, editPassword } = req.body;
   if (masterLapThreshold) levelSettings.masterLapThreshold = masterLapThreshold;
   if (proLapThreshold) levelSettings.proLapThreshold = proLapThreshold;
-  if (editPassword) levelSettings.editPassword = editPassword;
+  if (editPassword) {
+    if (!isStrongPassword(editPassword)) {
+      return res.json({ success: false, error: 'weak_password' });
+    }
+    levelSettings.editPassword = editPassword;
+  }
   res.json({ success: true });
 });
 
@@ -165,6 +179,15 @@ app.post('/api/admin/finish-heat', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false });
+  }
+});
+
+app.get('/api/admin/export-data', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM current_heat WHERE track_id = 1 ORDER BY best_lap_time ASC NULLS LAST');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json([]);
   }
 });
 

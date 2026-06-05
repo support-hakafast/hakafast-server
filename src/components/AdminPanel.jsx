@@ -5,6 +5,22 @@ import { useLanguage } from '../i18n/LanguageContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
 import DraggablePanel from './DraggablePanel.jsx';
+import {
+  computeInitialLayout,
+  resolveCollisions,
+  sanitizeStoredLayout,
+  PANEL_SIZES,
+} from '../utils/panelLayout.js';
+import { isStrongPassword } from '../utils/password.js';
+import {
+  parseKartNumbers,
+  parseDriverNames,
+  isBulkDriverInput,
+  downloadCsv,
+  printPdf,
+} from '../utils/adminHelpers.js';
+
+const PANEL_KEYS = ['heat', 'warehouse', 'pits', 'drivers', 'editLevel'];
 
 const DEFAULT_LINES = {
   1: { name: 'ליין 1', active: true, karts: [] },
@@ -62,18 +78,29 @@ const AdminPanel = () => {
     [trackSlug],
   );
 
-  const panelLayout = useMemo(() => {
-    const w = typeof window !== 'undefined' ? window.innerWidth : 1400;
-    return {
-      heat: { x: Math.max(16, (w - 400) / 2), y: 130 },
-      warehouse: { x: 16, y: 220 },
-      pits: { x: 320, y: 220 },
-      drivers: { x: Math.max(16, w - 400), y: 220 },
-      editLevel: { x: Math.max(16, w - 400), y: 520 },
-    };
-  }, []);
+  const [panelPositions, setPanelPositions] = useState(() => computeInitialLayout());
+  const [activePanel, setActivePanel] = useState(null);
+  const [exportCsv, setExportCsv] = useState(true);
+  const [exportPdf, setExportPdf] = useState(false);
 
   const confirmTwice = (msg1, msg2) => window.confirm(msg1) && window.confirm(msg2);
+
+  const handlePanelPosition = useCallback((panelKey, pos, finalize) => {
+    setPanelPositions((prev) => {
+      let next = { ...prev, [panelKey]: pos };
+      if (finalize) {
+        next = resolveCollisions(panelKey, next, window.innerWidth, window.innerHeight);
+        PANEL_KEYS.forEach((key) => {
+          try {
+            localStorage.setItem(`hf_panel_${trackSlug}-${key}`, JSON.stringify(next[key]));
+          } catch {
+            /* ignore */
+          }
+        });
+      }
+      return next;
+    });
+  }, [trackSlug]);
 
   const [allKarts, setAllKarts] = useState({});
   const [linesData, setLinesData] = useState({ ...DEFAULT_LINES });
@@ -134,7 +161,18 @@ const AdminPanel = () => {
         if (s?.proLapThreshold) setProLapThreshold(s.proLapThreshold);
       })
       .catch(() => {});
-  }, []);
+
+    const stored = {};
+    PANEL_KEYS.forEach((key) => {
+      try {
+        const raw = localStorage.getItem(`hf_panel_${trackSlug}-${key}`);
+        if (raw) stored[key] = JSON.parse(raw);
+      } catch {
+        /* ignore */
+      }
+    });
+    setPanelPositions(sanitizeStoredLayout(stored, window.innerWidth, window.innerHeight));
+  }, [trackSlug]);
 
   const levelLabel = (level) => {
     const key = `level_${(level || 'Amateur').toLowerCase()}`;
@@ -151,17 +189,7 @@ const AdminPanel = () => {
   const addKartsFromInput = () => {
     const val = kartInput.trim();
     if (!val) return;
-    if (val.includes('-')) {
-      const [a, b] = val.split('-');
-      const start = parseInt(a, 10);
-      const end = parseInt(b, 10);
-      if (!Number.isNaN(start) && !Number.isNaN(end)) {
-        for (let i = start; i <= end; i += 1) addKartEntity(i);
-      }
-    } else {
-      const num = parseInt(val, 10);
-      if (!Number.isNaN(num)) addKartEntity(num);
-    }
+    parseKartNumbers(val).forEach((num) => addKartEntity(num));
     setKartInput('');
   };
 
@@ -327,15 +355,28 @@ const AdminPanel = () => {
     removeLane(laneId);
   };
 
+  const driverNames = useMemo(() => parseDriverNames(drName), [drName]);
+  const isBulkDrivers = isBulkDriverInput(drName);
+  const canAddDriver = driverNames.length > 0;
+
   const addDriverToQueue = () => {
-    const name = drName.trim();
-    if (!name) {
+    if (!canAddDriver) {
       alert(t('admin_alert_name_required'));
       return;
     }
+    if (isBulkDrivers) {
+      setDriverQueue((q) => [
+        ...q,
+        ...driverNames.map((name) => ({ name, phone: null, email: null, level: null, saved: false })),
+      ]);
+      setDrName('');
+      return;
+    }
+    const name = driverNames[0];
     let phone = null;
     let email = null;
     let level = null;
+    const saved = showAdvanced;
     if (showAdvanced) {
       phone = drPhone.trim() || null;
       email = drEmail.trim() || null;
@@ -349,7 +390,7 @@ const AdminPanel = () => {
         return;
       }
     }
-    setDriverQueue((q) => [...q, { name, phone, email, level }]);
+    setDriverQueue((q) => [...q, { name, phone, email, level, saved }]);
     setDrName('');
     if (showAdvanced) {
       setDrPhone('');
@@ -361,8 +402,12 @@ const AdminPanel = () => {
   };
 
   const saveLevelSettings = async () => {
+    if (settingsPassword && !isStrongPassword(settingsPassword)) {
+      alert(t('admin_password_weak'));
+      return;
+    }
     try {
-      await fetch('/api/admin/level-settings', {
+      const res = await fetch('/api/admin/level-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -371,6 +416,11 @@ const AdminPanel = () => {
           editPassword: settingsPassword || undefined,
         }),
       });
+      const result = await res.json();
+      if (!result.success && result.error === 'weak_password') {
+        alert(t('admin_password_weak'));
+        return;
+      }
       if (settingsPassword) setSettingsPassword('');
       alert(t('admin_level_settings_saved'));
     } catch {
@@ -407,8 +457,24 @@ const AdminPanel = () => {
   };
 
   const finishHeat = async () => {
-    await fetch('/api/admin/finish-heat', { method: 'POST' });
-    window.location.href = '/api/admin/export-csv';
+    if (!exportCsv && !exportPdf) {
+      alert(t('admin_export_select_one'));
+      return;
+    }
+    try {
+      await fetch('/api/admin/finish-heat', { method: 'POST' });
+      const res = await fetch('/api/admin/export-data');
+      const rows = await res.json();
+      if (!Array.isArray(rows) || rows.length === 0) {
+        alert(t('admin_export_no_data'));
+        return;
+      }
+      if (exportCsv) downloadCsv(rows);
+      if (exportPdf) printPdf(rows, t('admin_export_title'));
+      alert(t('admin_finish_done'));
+    } catch {
+      alert(t('admin_alert_server_error'));
+    }
   };
 
   const executeAutoAssignment = async () => {
@@ -508,10 +574,13 @@ const AdminPanel = () => {
 
       <div className="admin-canvas">
         <DraggablePanel
-          panelId={`${trackSlug}-heat`}
+          panelId="heat"
           title={t('admin_heat_settings')}
-          defaultPosition={panelLayout.heat}
-          width={400}
+          position={panelPositions.heat}
+          width={PANEL_SIZES.heat.width}
+          onPositionChange={handlePanelPosition}
+          zIndex={activePanel === 'heat' ? 200 : 100}
+          onFocus={setActivePanel}
         >
           <select value={heatType} onChange={(e) => setHeatType(e.target.value)}>
             <option value="time">{t('heat_time')}</option>
@@ -557,13 +626,32 @@ const AdminPanel = () => {
               />
             </div>
           )}
+          <div className="finish-section">
+            <h3>{t('admin_finish_section')}</h3>
+            <div className="export-options">
+              <label>
+                <input type="checkbox" checked={exportCsv} onChange={(e) => setExportCsv(e.target.checked)} />
+                {t('admin_export_csv')}
+              </label>
+              <label>
+                <input type="checkbox" checked={exportPdf} onChange={(e) => setExportPdf(e.target.checked)} />
+                {t('admin_export_pdf')}
+              </label>
+            </div>
+            <button type="button" className="btn-finish-inline" onClick={finishHeat}>
+              {t('admin_btn_finish_heat')}
+            </button>
+          </div>
         </DraggablePanel>
 
         <DraggablePanel
-          panelId={`${trackSlug}-warehouse`}
+          panelId="warehouse"
           title={t('admin_warehouse')}
-          defaultPosition={panelLayout.warehouse}
-          width={340}
+          position={panelPositions.warehouse}
+          width={PANEL_SIZES.warehouse.width}
+          onPositionChange={handlePanelPosition}
+          zIndex={activePanel === 'warehouse' ? 200 : 100}
+          onFocus={setActivePanel}
         >
           <div className="input-group">
             <input
@@ -598,11 +686,14 @@ const AdminPanel = () => {
         </DraggablePanel>
 
         <DraggablePanel
-          panelId={`${trackSlug}-pits`}
+          panelId="pits"
           title={t('admin_pits_title')}
-          defaultPosition={panelLayout.pits}
-          width={520}
+          position={panelPositions.pits}
+          width={PANEL_SIZES.pits.width}
           className="panel-pits"
+          onPositionChange={handlePanelPosition}
+          zIndex={activePanel === 'pits' ? 200 : 100}
+          onFocus={setActivePanel}
         >
           <button type="button" className="btn-purple btn-full" onClick={addNewLane}>
             {t('admin_add_lane')}
@@ -653,11 +744,14 @@ const AdminPanel = () => {
         </DraggablePanel>
 
         <DraggablePanel
-          panelId={`${trackSlug}-drivers`}
+          panelId="drivers"
           title={t('admin_register_title')}
-          defaultPosition={panelLayout.drivers}
-          width={380}
+          position={panelPositions.drivers}
+          width={PANEL_SIZES.drivers.width}
           className="panel-drivers"
+          onPositionChange={handlePanelPosition}
+          zIndex={activePanel === 'drivers' ? 200 : 100}
+          onFocus={setActivePanel}
         >
           <div className="section-box">
             <label>{t('admin_req_label')}</label>
@@ -665,17 +759,21 @@ const AdminPanel = () => {
               type="text"
               value={drName}
               onChange={(e) => setDrName(e.target.value)}
-              placeholder={t('admin_driver_placeholder')}
+              placeholder={t('admin_driver_placeholder_bulk')}
             />
+            {isBulkDrivers && (
+              <p className="bulk-hint">{t('admin_bulk_names_hint')} ({driverNames.length})</p>
+            )}
           </div>
           <button
             type="button"
-            className="btn-outline"
+            className={`btn-register-saved${showAdvanced ? ' is-open' : ''}`}
             onClick={() => setShowAdvanced((v) => !v)}
+            disabled={isBulkDrivers}
           >
             {showAdvanced ? t('admin_toggle_reg_open') : t('admin_toggle_reg_closed')}
           </button>
-          {showAdvanced && (
+          {showAdvanced && !isBulkDrivers && (
             <div className="advanced-zone">
               <div className="checkbox-zone">
                 <label>
@@ -710,14 +808,20 @@ const AdminPanel = () => {
               </select>
             </div>
           )}
-          <button type="button" className="btn-full" onClick={addDriverToQueue}>
+          <button
+            type="button"
+            className="btn-full btn-add-queue"
+            onClick={addDriverToQueue}
+            disabled={!canAddDriver}
+          >
             {t('admin_btn_add_queue')}
           </button>
           <h3>{t('admin_queue_title')}</h3>
           <ul className="queue-list queue-list-tall">
             {driverQueue.map((d, i) => (
-              <li key={`${d.name}-${i}`} className="queue-item">
+              <li key={`${d.name}-${i}`} className={`queue-item${d.saved ? ' queue-item-saved' : ''}`}>
                 <span>
+                  {d.saved && <span className="saved-badge">★</span>}
                   {d.name}
                   {d.level ? ` (${levelLabel(d.level)})` : ''}
                 </span>
@@ -737,10 +841,13 @@ const AdminPanel = () => {
         </DraggablePanel>
 
         <DraggablePanel
-          panelId={`${trackSlug}-edit-level`}
+          panelId="editLevel"
           title={t('admin_edit_db_title')}
-          defaultPosition={panelLayout.editLevel}
-          width={380}
+          position={panelPositions.editLevel}
+          width={PANEL_SIZES.editLevel.width}
+          onPositionChange={handlePanelPosition}
+          zIndex={activePanel === 'editLevel' ? 200 : 100}
+          onFocus={setActivePanel}
         >
           <p className="level-hint">{t('admin_lap_auto_upgrade_hint')}</p>
           <label className="field-label">{t('admin_lap_master_threshold')}</label>
@@ -764,6 +871,7 @@ const AdminPanel = () => {
             onChange={(e) => setSettingsPassword(e.target.value)}
             placeholder={t('admin_edit_password_set_placeholder')}
           />
+          <p className="password-hint">{t('admin_password_rules')}</p>
           <button type="button" className="btn-muted btn-full" onClick={saveLevelSettings}>
             {t('admin_save_level_settings')}
           </button>
@@ -790,10 +898,6 @@ const AdminPanel = () => {
           </button>
         </DraggablePanel>
       </div>
-
-      <button type="button" className="btn-finish-floating" onClick={finishHeat}>
-        {t('admin_btn_finish_heat')}
-      </button>
     </div>
   );
 };
