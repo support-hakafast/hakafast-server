@@ -100,7 +100,24 @@ const AdminPanel = () => {
   useEffect(() => {
     apiFetch(`/api/admin/track-setup/${trackSlug}`, {}, trackSlug)
       .then((r) => r.json())
-      .then((s) => { if (!s.onboarded) setShowSetup(true); })
+      .then((s) => {
+        if (!s.onboarded) {
+          setShowSetup(true);
+          return;
+        }
+        if (s.kartNumbers) {
+          const nums = parseKartNumbers(s.kartNumbers);
+          if (nums.length > 0) {
+            setAllKarts((prev) => {
+              const next = { ...prev };
+              nums.forEach((n) => {
+                if (!next[n]) next[n] = { number: n, active: true, lane: null };
+              });
+              return next;
+            });
+          }
+        }
+      })
       .catch(() => {});
 
     apiFetch('/api/admin/pits', {}, trackSlug).then((r) => r.json()).then((d) => setLinesData(normalizeLinesData(d))).catch(() => {});
@@ -121,9 +138,9 @@ const AdminPanel = () => {
         if (local?.allKarts) setAllKarts(local.allKarts);
       });
       apiFetch('/api/workspace/backup', {}, trackSlug)
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
-          if (data?.snapshot?.clientSnapshot?.allKarts) {
+          if (data?.success && data?.snapshot?.clientSnapshot?.allKarts) {
             setAllKarts((prev) => ({ ...data.snapshot.clientSnapshot.allKarts, ...prev }));
           }
         })

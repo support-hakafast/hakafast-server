@@ -42,7 +42,7 @@ app.use((req, res, next) => {
       "font-src 'self' data: blob:",
       "img-src 'self' data: blob:",
       "media-src 'self' data: blob:",
-      "connect-src 'self'",
+      "connect-src 'self' ws: wss:",
     ].join('; '),
   );
   next();
@@ -195,9 +195,17 @@ app.get('/api/admin/level-settings', (req, res) => {
 
 app.get('/api/admin/track-setup/:trackSlug', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
-  if (demo) return res.json({ onboarded: Boolean(demo.trackSetup?.onboarded) });
+  if (demo) {
+    return res.json({
+      onboarded: Boolean(demo.trackSetup?.onboarded),
+      kartNumbers: demo.trackSetup?.kartNumbers || '',
+    });
+  }
   const setup = trackSetups[req.params.trackSlug];
-  return res.json({ onboarded: Boolean(setup?.onboarded) });
+  return res.json({
+    onboarded: Boolean(setup?.onboarded),
+    kartNumbers: setup?.kartNumbers || '',
+  });
 });
 
 app.post('/api/admin/track-setup', (req, res) => {
@@ -230,9 +238,36 @@ app.post('/api/admin/sync-queue/:trackSlug', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     demo.driverQueue = req.body.queue || [];
+    notifyWorkspace(req);
     return res.json({ success: true });
   }
   driverQueues[req.params.trackSlug] = req.body.queue || [];
+  return res.json({ success: true });
+});
+
+app.get('/api/workspace/backup', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  return res.json({ success: true, snapshot: demoStore.exportSnapshot(demo) });
+});
+
+app.post('/api/workspace/backup', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  if (req.body.snapshot) demoStore.applySnapshot(demo, req.body.snapshot);
+  if (req.body.clientSnapshot) demo.clientSnapshot = req.body.clientSnapshot;
+  notifyWorkspace(req);
+  return res.json({ success: true });
+});
+
+app.post('/api/workspace/reset', (req, res) => {
+  const track = req.headers['x-hf-track'];
+  const workspaceId = req.headers['x-hf-workspace'];
+  if (!track || !workspaceId || !demoStore.validateTrackSlug(track) || !demoStore.validateWorkspaceId(workspaceId)) {
+    return res.json({ success: false, error: 'invalid_workspace' });
+  }
+  demoStore.resetStore(track, workspaceId);
+  notifyWorkspace(req);
   return res.json({ success: true });
 });
 
