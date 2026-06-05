@@ -7,6 +7,7 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// הגדרות בסיסיות של השרת
 app.use(express.json());
 
 app.use(session({
@@ -21,11 +22,20 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// מגיש את כל הקבצים הסטטיים ש-Vite ייצר (JS, CSS, תמונות)
+// ==========================================
+// 1. הגשת קבצים סטטיים (סודר מחדש לפרודקשן)
+// ==========================================
+
+// קודם כל מגישים את קבצי הפרודקשן של React מתוך תיקיית dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// מגיש את קבצי המדיה מתוך public
+// מגיש את קבצי המדיה הישנים מתוך public במידת הצורך
 app.use('/public', express.static(path.join(__dirname, 'public')));
+
+
+// ==========================================
+// 2. מיגרציות ובסיס נתונים
+// ==========================================
 
 async function migrateDB() {
   try {
@@ -47,7 +57,10 @@ const trackCredentials = {
   'kart-demo': 'demo123'
 };
 
-// API ROUTES
+// ==========================================
+// 3. ראוטים של ה-API
+// ==========================================
+
 app.get('/api/translations', (req, res) => res.json(JSON.parse(fs.readFileSync('./translations.json'))));
 app.get('/api/admin/pits', (req, res) => res.json(pitLines));
 app.post('/api/admin/update-pits', (req, res) => { pitLines = req.body.newLines; res.json({success:true}); });
@@ -63,57 +76,6 @@ app.post('/api/admin/login/:trackName', (req, res) => {
     return res.json({ success: true });
   }
   res.status(401).json({ success: false, error: "Password incorrect" });
-});
-
-// הגדרת Login מאובטח לפאנל הניהול - אם לא מחובר זורק למסך סיסמה, אם כן מחובר מגיש את ה-React מתיקיית dist
-app.get('/admin/:trackName', (req, res) => {
-  const { trackName } = req.params;
-  
-  if (req.session.authenticatedTrack !== trackName) {
-    return res.send(`
-      <!DOCTYPE html>
-      <html lang="he" dir="rtl">
-      <head>
-        <meta charset="UTF-8">
-        <title>HAKAFAST | Login</title>
-        <style>
-          body { font-family: system-ui, sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #000080; }
-          .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #000080; text-align: center; width: 320px; }
-          input { width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
-          button { background: #000080; color: white; border: none; padding: 11px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; }
-          button:hover { background: #40E0D0; color: #000080; }
-        </style>
-      </head>
-      <body>
-        <div class="login-box">
-          <h2>HAKAFAST LOGIN</h2>
-          <p>ניהול מסלול: <b>${trackName}</b></p>
-          <input type="password" id="pass" placeholder="הזן סיסמת מנהל">
-          <button onclick="login()">התחבר למערכת</button>
-        </div>
-        <script>
-          async function login() {
-            const password = document.getElementById('pass').value;
-            const res = await fetch('/api/admin/login/${trackName}', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ password })
-            });
-            const data = await res.json();
-            if(data.success) {
-              window.location.reload();
-            } else {
-              alert("סיסמה שגויה!");
-            }
-          }
-        </script>
-      </body>
-      </html>
-    `);
-  }
-  
-  // ברגע שהוא עבר איתנו ל-React, מסך הניהול הוא חלק מה-SPA בתיקיית dist
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.post('/api/admin/finish-heat', async (req, res) => {
@@ -167,12 +129,67 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
 
 app.post('/api/admin/clear-heat', async (req, res) => { await pool.query('DELETE FROM current_heat WHERE track_id = 1'); res.json({success:true}); });
 
-// הוסף את זה ממש מעל ה-app.get('*') בסוף הקובץ
+// ==========================================
+// 4. ניתוב עמודים מותאם ומאובטח (מבוסס סשן)
+// ==========================================
+
+// דף כניסת המנהל - במידה ולא מחובר זורק לטופס סיסמה, במידה וכן מחובר מעביר ל-React
+app.get('/admin/:trackName', (req, res) => {
+  const { trackName } = req.params;
+  
+  if (req.session.authenticatedTrack !== trackName) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="he" dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <title>HAKAFAST | Login</title>
+        <style>
+          body { font-family: system-ui, sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #000080; }
+          .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 5px solid #000080; text-align: center; width: 320px; }
+          input { width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; }
+          button { background: #000080; color: white; border: none; padding: 11px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; }
+          button:hover { background: #40E0D0; color: #000080; }
+        </style>
+      </head>
+      <body>
+        <div class="login-box">
+          <h2>HAKAFAST LOGIN</h2>
+          <p>ניהול מסלול: <b>${trackName}</b></p>
+          <input type="password" id="pass" placeholder="הזן סיסמת מנהל">
+          <button onclick="login()">התחבר למערכת</button>
+        </div>
+        <script>
+          async function login() {
+            const password = document.getElementById('pass').value;
+            const res = await fetch('/api/admin/login/${trackName}', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            if(data.success) {
+              window.location.reload();
+            } else {
+              alert("סיסמה שגויה!");
+            }
+          }
+        </script>
+      </body>
+      </html>
+    `);
+  }
+  
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+// ראוט מפורש וייעודי עבור דף הבית הראשי של השירות
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// ה-Catch-All הקיים שלך
+// GLOBAL CATCH-ALL FOR REACT ROUTER SPA
+// תופס את כל שאר נתיבי ה-Frontend ומגיש את ה-React bundle
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api') && !req.path.startsWith('/live-timing-data') && !req.path.startsWith('/assign-driver')) {
         res.sendFile(path.join(__dirname, 'dist', 'index.html'));

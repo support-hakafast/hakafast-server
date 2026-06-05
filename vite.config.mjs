@@ -3,11 +3,12 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  base: './', // <-- הוסף את השורה הזו! מבטיח שהנתיבים לקבצי ה-JS וה-CSS יהיו יחסיים
   server: {
-    port: 3000, // ה-Frontend ירוץ על פורט 3000 בפיתוח
+    port: 3000,
     proxy: {
-      // מנתב את כל קריאות ה-API לשרת ה-Node.js הקיים שלך (בהנחה שהוא רץ על 5000)
       '/api': 'http://localhost:5000',
+      '/live-timing-data': 'http://localhost:5000',
       '/assign-driver': 'http://localhost:5000'
     }
   }
