@@ -24,15 +24,13 @@
   flex-wrap: wrap;
 }
 
-.home-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  text-decoration: none;
-  color: var(--hf-navy);
-  font-weight: 900;
-  font-size: 1.35rem;
-  letter-spacing: 0.04em;
+.home-nav-logo.hf-logo-img {
+  height: 52px;
+  width: auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 128, 0.15);
 }
 
 .home-nav-links {

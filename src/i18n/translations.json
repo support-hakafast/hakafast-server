@@ -105,7 +105,21 @@
     "admin_alert_driver_updated": "רמת הנהג עודכנה בהצלחה",
     "admin_alert_driver_not_found": "נהג לא נמצא או שגיאה בעדכון",
     "admin_alert_server_error": "תקשורת השרת נכשלה",
-    "admin_alert_assign_done": "השיבוץ האוטומטי וסוג המקצה סונכרנו למסכים"
+    "admin_alert_assign_done": "השיבוץ האוטומטי וסוג המקצה סונכרנו למסכים",
+    "admin_confirm_disable_lane": "להשבית את הליין? הקארטים יישארו במקום.",
+    "admin_confirm_disable_lane_final": "אישור סופי: להשבית את הליין?",
+    "admin_confirm_remove_lane": "להסיר את הליין? הקארטים יועברו לליינים אחרים.",
+    "admin_confirm_remove_lane_final": "אישור סופי: להסיר את הליין לצמיתות?",
+    "admin_edit_password_placeholder": "סיסמת עריכת רמה (מנהל)",
+    "admin_edit_password_required": "נדרשת סיסמת מנהל לעריכת רמה",
+    "admin_edit_password_wrong": "סיסמה שגויה",
+    "admin_edit_password_set_label": "סיסמת עריכת רמה חדשה (אופציונלי)",
+    "admin_edit_password_set_placeholder": "הגדר סיסמה לעריכה ידנית",
+    "admin_lap_master_threshold": "זמן הקפה לשדרוג למאסטר (שניות)",
+    "admin_lap_pro_threshold": "זמן הקפה לשדרוג לפרו (שניות)",
+    "admin_lap_auto_upgrade_hint": "שדרוג אוטומטי בסיום מקצה לפי Best Lap, או עריכה ידנית עם סיסמת מנהל.",
+    "admin_save_level_settings": "שמור הגדרות רמות",
+    "admin_level_settings_saved": "הגדרות הרמות נשמרו"
   },
   "en": {
     "title": "HAKAFAST",
@@ -213,7 +227,21 @@
     "admin_alert_driver_updated": "Driver level updated successfully",
     "admin_alert_driver_not_found": "Driver not found or update failed",
     "admin_alert_server_error": "Server communication failed",
-    "admin_alert_assign_done": "Auto-assignment and heat type synced to screens"
+    "admin_alert_assign_done": "Auto-assignment and heat type synced to screens",
+    "admin_confirm_disable_lane": "Disable this lane? Karts will stay in place.",
+    "admin_confirm_disable_lane_final": "Final confirmation: disable this lane?",
+    "admin_confirm_remove_lane": "Remove this lane? Karts will move to other lanes.",
+    "admin_confirm_remove_lane_final": "Final confirmation: permanently remove this lane?",
+    "admin_edit_password_placeholder": "Level-edit password (admin)",
+    "admin_edit_password_required": "Admin password required to edit level",
+    "admin_edit_password_wrong": "Wrong password",
+    "admin_edit_password_set_label": "New level-edit password (optional)",
+    "admin_edit_password_set_placeholder": "Set password for manual edits",
+    "admin_lap_master_threshold": "Lap time for Master upgrade (seconds)",
+    "admin_lap_pro_threshold": "Lap time for Pro upgrade (seconds)",
+    "admin_lap_auto_upgrade_hint": "Auto-upgrade on heat finish by best lap, or manual edit with admin password.",
+    "admin_save_level_settings": "Save level settings",
+    "admin_level_settings_saved": "Level settings saved"
   },
   "ar": {
     "title": "HAKAFAST",
@@ -321,6 +349,20 @@
     "admin_alert_driver_updated": "تم تحديث مستوى السائق بنجاح",
     "admin_alert_driver_not_found": "السائق غير موجود أو فشل التحديث",
     "admin_alert_server_error": "فشل الاتصال بالخادم",
-    "admin_alert_assign_done": "تم التخصيص التلقائي ومزامنة نوع الجولة"
+    "admin_alert_assign_done": "تم التخصيص التلقائي ومزامنة نوع الجولة",
+    "admin_confirm_disable_lane": "تعطيل هذا الممر؟ ستبقى الكارتات في مكانها.",
+    "admin_confirm_disable_lane_final": "تأكيد نهائي: تعطيل الممر؟",
+    "admin_confirm_remove_lane": "إزالة هذا الممر؟ ستنتقل الكارتات لممرات أخرى.",
+    "admin_confirm_remove_lane_final": "تأكيد نهائي: إزالة الممر نهائياً؟",
+    "admin_edit_password_placeholder": "كلمة مرور تعديل المستوى (مدير)",
+    "admin_edit_password_required": "كلمة مرور المدير مطلوبة لتعديل المستوى",
+    "admin_edit_password_wrong": "كلمة مرور خاطئة",
+    "admin_edit_password_set_label": "كلمة مرور جديدة للتعديل (اختياري)",
+    "admin_edit_password_set_placeholder": "تعيين كلمة مرور للتعديل اليدوي",
+    "admin_lap_master_threshold": "زمن اللفة للترقية إلى ماستر (ثوانٍ)",
+    "admin_lap_pro_threshold": "زمن اللفة للترقية إلى محترف (ثوانٍ)",
+    "admin_lap_auto_upgrade_hint": "ترقية تلقائية عند إنهاء الجولة حسب أسرع لفة، أو تعديل يدوي بكلمة مرور المدير.",
+    "admin_save_level_settings": "حفظ إعدادات المستويات",
+    "admin_level_settings_saved": "تم حفظ إعدادات المستويات"
   }
 }

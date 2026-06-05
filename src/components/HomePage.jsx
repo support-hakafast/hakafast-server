@@ -11,10 +11,7 @@ const HomePage = () => {
   return (
     <div className="home">
       <header className="home-nav">
-        <Link to="/" className="home-logo">
-          <span className="home-logo-mark">🏁</span>
-          <span>{t('title')}</span>
-        </Link>
+        <HakafastLogo to="/" className="home-nav-logo" />
         <div className="home-nav-end">
           <nav className="home-nav-links">
             <a href="#features">{t('nav_features')}</a>

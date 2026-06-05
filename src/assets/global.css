@@ -95,12 +95,8 @@ a {
   object-fit: contain;
 }
 
-.home-logo .hf-logo-img {
-  height: 52px;
-  background: #fff;
-  border-radius: 8px;
-  padding: 4px 8px;
-  box-shadow: 0 4px 14px rgba(0, 0, 128, 0.2);
+.hf-logo-link .hf-logo-img {
+  display: block;
 }
 
 .hf-logo-text {

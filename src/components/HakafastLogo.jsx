@@ -1,12 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import logoSrc from '../assets/logo.png';
 
 export default function HakafastLogo({ to = '/', className = '', showText = false }) {
   const img = (
     <img
-      src="/assets/logo.png"
+      src={logoSrc}
       alt="HAKAFAST"
       className={`hf-logo-img ${className}`.trim()}
+      width={160}
+      height={48}
+      decoding="async"
     />
   );
 

@@ -4,6 +4,7 @@ import '../assets/AdminPanel.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
+import DraggablePanel from './DraggablePanel.jsx';
 
 const DEFAULT_LINES = {
   1: { name: 'ליין 1', active: true, karts: [] },
@@ -61,6 +62,19 @@ const AdminPanel = () => {
     [trackSlug],
   );
 
+  const panelLayout = useMemo(() => {
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1400;
+    return {
+      heat: { x: Math.max(16, (w - 400) / 2), y: 130 },
+      warehouse: { x: 16, y: 220 },
+      pits: { x: 320, y: 220 },
+      drivers: { x: Math.max(16, w - 400), y: 220 },
+      editLevel: { x: Math.max(16, w - 400), y: 520 },
+    };
+  }, []);
+
+  const confirmTwice = (msg1, msg2) => window.confirm(msg1) && window.confirm(msg2);
+
   const [allKarts, setAllKarts] = useState({});
   const [linesData, setLinesData] = useState({ ...DEFAULT_LINES });
   const [driverQueue, setDriverQueue] = useState([]);
@@ -82,6 +96,10 @@ const AdminPanel = () => {
 
   const [editLookup, setEditLookup] = useState('');
   const [editLevel, setEditLevel] = useState('Amateur');
+  const [editPassword, setEditPassword] = useState('');
+  const [masterLapThreshold, setMasterLapThreshold] = useState('45.500');
+  const [proLapThreshold, setProLapThreshold] = useState('42.000');
+  const [settingsPassword, setSettingsPassword] = useState('');
 
   const [dragOverLane, setDragOverLane] = useState(null);
   const [dragOverPool, setDragOverPool] = useState(false);
@@ -106,6 +124,14 @@ const AdminPanel = () => {
         if (s?.type) setHeatType(s.type);
         if (s?.duration) setHeatDuration(s.duration);
         if (s?.targetLaps) setTargetLaps(String(s.targetLaps));
+      })
+      .catch(() => {});
+
+    fetch('/api/admin/level-settings')
+      .then((r) => r.json())
+      .then((s) => {
+        if (s?.masterLapThreshold) setMasterLapThreshold(s.masterLapThreshold);
+        if (s?.proLapThreshold) setProLapThreshold(s.proLapThreshold);
       })
       .catch(() => {});
   }, []);
@@ -237,6 +263,15 @@ const AdminPanel = () => {
     });
   };
 
+  const handleToggleLane = (laneId) => {
+    const lane = linesData[laneId];
+    if (!lane) return;
+    if (lane.active) {
+      if (!confirmTwice(t('admin_confirm_disable_lane'), t('admin_confirm_disable_lane_final'))) return;
+    }
+    toggleLaneEnabled(laneId);
+  };
+
   const changeLaneName = (laneId, newName) => {
     setLinesData((lines) => {
       const updated = {
@@ -287,6 +322,11 @@ const AdminPanel = () => {
     syncPitsWithServer(updated);
   };
 
+  const handleRemoveLane = (laneId) => {
+    if (!confirmTwice(t('admin_confirm_remove_lane'), t('admin_confirm_remove_lane_final'))) return;
+    removeLane(laneId);
+  };
+
   const addDriverToQueue = () => {
     const name = drName.trim();
     if (!name) {
@@ -320,19 +360,44 @@ const AdminPanel = () => {
     }
   };
 
+  const saveLevelSettings = async () => {
+    try {
+      await fetch('/api/admin/level-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          masterLapThreshold,
+          proLapThreshold,
+          editPassword: settingsPassword || undefined,
+        }),
+      });
+      if (settingsPassword) setSettingsPassword('');
+      alert(t('admin_level_settings_saved'));
+    } catch {
+      alert(t('admin_alert_server_error'));
+    }
+  };
+
   const updateDriverLevelInDB = async () => {
     const lookup = editLookup.trim();
     if (!lookup) return;
+    if (!editPassword.trim()) {
+      alert(t('admin_edit_password_required'));
+      return;
+    }
     try {
       const response = await fetch('/api/admin/update-driver-level', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lookup, level: editLevel }),
+        body: JSON.stringify({ lookup, level: editLevel, password: editPassword }),
       });
       const result = await response.json();
       if (result.success) {
         alert(t('admin_alert_driver_updated'));
         setEditLookup('');
+        setEditPassword('');
+      } else if (result.error === 'bad_password') {
+        alert(t('admin_edit_password_wrong'));
       } else {
         alert(t('admin_alert_driver_not_found'));
       }
@@ -441,101 +506,18 @@ const AdminPanel = () => {
         </a>
       </div>
 
-      <div className="main-layout">
-        <div className="panel">
-          <h2>{t('admin_warehouse')}</h2>
-          <div className="input-group">
-            <input
-              type="text"
-              value={kartInput}
-              onChange={(e) => setKartInput(e.target.value)}
-              placeholder={t('admin_kart_input_placeholder')}
-            />
-            <button type="button" onClick={addKartsFromInput}>
-              {t('admin_add_inventory')}
-            </button>
-          </div>
-          <div
-            className={`kart-pool${dragOverPool ? ' drag-over' : ''}`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOverPool(true);
-            }}
-            onDragLeave={() => setDragOverPool(false)}
-            onDrop={handleDropToPool}
-          >
-            {poolKarts.map((num) => (
-              <KartCard
-                key={num}
-                num={num}
-                kart={allKarts[num]}
-                onToggle={toggleKartActive}
-                draggable
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-head-row">
-            <h2>{t('admin_pits_title')}</h2>
-            <button type="button" className="btn-purple" onClick={addNewLane}>
-              {t('admin_add_lane')}
-            </button>
-          </div>
-          <div className="pit-lanes-board">
-            {Object.keys(linesData).map((laneId) => {
-              const lane = linesData[laneId];
-              return (
-                <div
-                  key={laneId}
-                  className={`lane${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOverLane(laneId);
-                  }}
-                  onDragLeave={() => setDragOverLane(null)}
-                  onDrop={(e) => handleDropToLane(e, laneId)}
-                >
-                  <input
-                    type="text"
-                    className="lane-header-input"
-                    value={lane.name}
-                    onChange={(e) => changeLaneName(laneId, e.target.value)}
-                  />
-                  <div className="lane-controls">
-                    <button type="button" className="btn-muted" onClick={() => toggleLaneEnabled(laneId)}>
-                      {lane.active ? t('admin_lane_disable') : t('admin_lane_enable')}
-                    </button>
-                    <button type="button" className="btn-danger" onClick={() => removeLane(laneId)}>
-                      {t('admin_lane_remove')}
-                    </button>
-                  </div>
-                  {lane.karts.map((num) =>
-                    allKarts[num] ? (
-                      <KartCard
-                        key={`${laneId}-${num}`}
-                        num={num}
-                        kart={allKarts[num]}
-                        onToggle={toggleKartActive}
-                        draggable
-                      />
-                    ) : null,
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="panel">
-          <h2>{t('admin_heat_settings')}</h2>
+      <div className="admin-canvas">
+        <DraggablePanel
+          panelId={`${trackSlug}-heat`}
+          title={t('admin_heat_settings')}
+          defaultPosition={panelLayout.heat}
+          width={400}
+        >
           <select value={heatType} onChange={(e) => setHeatType(e.target.value)}>
             <option value="time">{t('heat_time')}</option>
             <option value="endurance">{t('heat_endurance')}</option>
             <option value="sprint">{t('heat_sprint')}</option>
           </select>
-
           {heatType === 'time' && (
             <div className="field-block">
               <input
@@ -575,8 +557,108 @@ const AdminPanel = () => {
               />
             </div>
           )}
+        </DraggablePanel>
 
-          <h2 className="section-gap">{t('admin_register_title')}</h2>
+        <DraggablePanel
+          panelId={`${trackSlug}-warehouse`}
+          title={t('admin_warehouse')}
+          defaultPosition={panelLayout.warehouse}
+          width={340}
+        >
+          <div className="input-group">
+            <input
+              type="text"
+              value={kartInput}
+              onChange={(e) => setKartInput(e.target.value)}
+              placeholder={t('admin_kart_input_placeholder')}
+            />
+            <button type="button" onClick={addKartsFromInput}>
+              {t('admin_add_inventory')}
+            </button>
+          </div>
+          <div
+            className={`kart-pool${dragOverPool ? ' drag-over' : ''}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOverPool(true);
+            }}
+            onDragLeave={() => setDragOverPool(false)}
+            onDrop={handleDropToPool}
+          >
+            {poolKarts.map((num) => (
+              <KartCard
+                key={num}
+                num={num}
+                kart={allKarts[num]}
+                onToggle={toggleKartActive}
+                draggable
+              />
+            ))}
+          </div>
+        </DraggablePanel>
+
+        <DraggablePanel
+          panelId={`${trackSlug}-pits`}
+          title={t('admin_pits_title')}
+          defaultPosition={panelLayout.pits}
+          width={520}
+          className="panel-pits"
+        >
+          <button type="button" className="btn-purple btn-full" onClick={addNewLane}>
+            {t('admin_add_lane')}
+          </button>
+          <div className="pit-lanes-board">
+            {Object.keys(linesData).map((laneId) => {
+              const lane = linesData[laneId];
+              return (
+                <div
+                  key={laneId}
+                  className={`lane${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOverLane(laneId);
+                  }}
+                  onDragLeave={() => setDragOverLane(null)}
+                  onDrop={(e) => handleDropToLane(e, laneId)}
+                >
+                  <input
+                    type="text"
+                    className="lane-header-input"
+                    value={lane.name}
+                    onChange={(e) => changeLaneName(laneId, e.target.value)}
+                  />
+                  <div className="lane-controls">
+                    <button type="button" className="btn-muted" onClick={() => handleToggleLane(laneId)}>
+                      {lane.active ? t('admin_lane_disable') : t('admin_lane_enable')}
+                    </button>
+                    <button type="button" className="btn-danger" onClick={() => handleRemoveLane(laneId)}>
+                      {t('admin_lane_remove')}
+                    </button>
+                  </div>
+                  {lane.karts.map((num) =>
+                    allKarts[num] ? (
+                      <KartCard
+                        key={`${laneId}-${num}`}
+                        num={num}
+                        kart={allKarts[num]}
+                        onToggle={toggleKartActive}
+                        draggable
+                      />
+                    ) : null,
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </DraggablePanel>
+
+        <DraggablePanel
+          panelId={`${trackSlug}-drivers`}
+          title={t('admin_register_title')}
+          defaultPosition={panelLayout.drivers}
+          width={380}
+          className="panel-drivers"
+        >
           <div className="section-box">
             <label>{t('admin_req_label')}</label>
             <input
@@ -586,7 +668,6 @@ const AdminPanel = () => {
               placeholder={t('admin_driver_placeholder')}
             />
           </div>
-
           <button
             type="button"
             className="btn-outline"
@@ -594,24 +675,15 @@ const AdminPanel = () => {
           >
             {showAdvanced ? t('admin_toggle_reg_open') : t('admin_toggle_reg_closed')}
           </button>
-
           {showAdvanced && (
             <div className="advanced-zone">
               <div className="checkbox-zone">
                 <label>
-                  <input
-                    type="checkbox"
-                    checked={chkPhone}
-                    onChange={(e) => setChkPhone(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={chkPhone} onChange={(e) => setChkPhone(e.target.checked)} />
                   {t('admin_chk_phone')}
                 </label>
                 <label>
-                  <input
-                    type="checkbox"
-                    checked={chkEmail}
-                    onChange={(e) => setChkEmail(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={chkEmail} onChange={(e) => setChkEmail(e.target.checked)} />
                   {t('admin_chk_email')}
                 </label>
               </div>
@@ -638,13 +710,11 @@ const AdminPanel = () => {
               </select>
             </div>
           )}
-
           <button type="button" className="btn-full" onClick={addDriverToQueue}>
             {t('admin_btn_add_queue')}
           </button>
-
           <h3>{t('admin_queue_title')}</h3>
-          <ul className="queue-list">
+          <ul className="queue-list queue-list-tall">
             {driverQueue.map((d, i) => (
               <li key={`${d.name}-${i}`} className="queue-item">
                 <span>
@@ -661,34 +731,69 @@ const AdminPanel = () => {
               </li>
             ))}
           </ul>
-
           <button type="button" className="btn-execute" onClick={executeAutoAssignment}>
             {t('admin_btn_execute')} 🚀
           </button>
+        </DraggablePanel>
 
-          <div className="edit-db-section">
-            <h3>{t('admin_edit_db_title')}</h3>
-            <input
-              type="text"
-              value={editLookup}
-              onChange={(e) => setEditLookup(e.target.value)}
-              placeholder={t('admin_edit_lookup_placeholder')}
-            />
-            <select value={editLevel} onChange={(e) => setEditLevel(e.target.value)}>
-              <option value="Amateur">{t('level_amateur')}</option>
-              <option value="Master">{t('level_master')}</option>
-              <option value="Pro">{t('level_pro')}</option>
-            </select>
-            <button type="button" className="btn-muted btn-full" onClick={updateDriverLevelInDB}>
-              {t('admin_btn_update_db')}
-            </button>
-          </div>
-
-          <button type="button" className="btn-finish" onClick={finishHeat}>
-            {t('admin_btn_finish_heat')}
+        <DraggablePanel
+          panelId={`${trackSlug}-edit-level`}
+          title={t('admin_edit_db_title')}
+          defaultPosition={panelLayout.editLevel}
+          width={380}
+        >
+          <p className="level-hint">{t('admin_lap_auto_upgrade_hint')}</p>
+          <label className="field-label">{t('admin_lap_master_threshold')}</label>
+          <input
+            type="text"
+            value={masterLapThreshold}
+            onChange={(e) => setMasterLapThreshold(e.target.value)}
+            placeholder="45.500"
+          />
+          <label className="field-label">{t('admin_lap_pro_threshold')}</label>
+          <input
+            type="text"
+            value={proLapThreshold}
+            onChange={(e) => setProLapThreshold(e.target.value)}
+            placeholder="42.000"
+          />
+          <label className="field-label">{t('admin_edit_password_set_label')}</label>
+          <input
+            type="password"
+            value={settingsPassword}
+            onChange={(e) => setSettingsPassword(e.target.value)}
+            placeholder={t('admin_edit_password_set_placeholder')}
+          />
+          <button type="button" className="btn-muted btn-full" onClick={saveLevelSettings}>
+            {t('admin_save_level_settings')}
           </button>
-        </div>
+          <hr className="panel-divider" />
+          <input
+            type="text"
+            value={editLookup}
+            onChange={(e) => setEditLookup(e.target.value)}
+            placeholder={t('admin_edit_lookup_placeholder')}
+          />
+          <select value={editLevel} onChange={(e) => setEditLevel(e.target.value)}>
+            <option value="Amateur">{t('level_amateur')}</option>
+            <option value="Master">{t('level_master')}</option>
+            <option value="Pro">{t('level_pro')}</option>
+          </select>
+          <input
+            type="password"
+            value={editPassword}
+            onChange={(e) => setEditPassword(e.target.value)}
+            placeholder={t('admin_edit_password_placeholder')}
+          />
+          <button type="button" className="btn-muted btn-full" onClick={updateDriverLevelInDB}>
+            {t('admin_btn_update_db')}
+          </button>
+        </DraggablePanel>
       </div>
+
+      <button type="button" className="btn-finish-floating" onClick={finishHeat}>
+        {t('admin_btn_finish_heat')}
+      </button>
     </div>
   );
 };

@@ -70,6 +70,41 @@ migrateDB();
 
 let pitLines = [{ id: 1, name: 'ליין ימין', active: true, karts: [] }, { id: 2, name: 'ליין שמאל', active: true, karts: [] }];
 let heatSettings = { type: 'time', duration: 10, targetLaps: 0 };
+let levelSettings = {
+  editPassword: 'level123',
+  masterLapThreshold: '45.500',
+  proLapThreshold: '42.000',
+};
+
+function lapToSeconds(lap) {
+  if (!lap || typeof lap !== 'string') return Infinity;
+  const trimmed = lap.trim();
+  if (trimmed.includes(':')) {
+    const [mins, secs] = trimmed.split(':');
+    return (parseInt(mins, 10) || 0) * 60 + (parseFloat(secs) || 0);
+  }
+  const value = parseFloat(trimmed);
+  return Number.isNaN(value) ? Infinity : value;
+}
+
+async function applyAutoLevelUpgrades(trackId = 1) {
+  if (!process.env.DATABASE_URL) return;
+  const proSec = lapToSeconds(levelSettings.proLapThreshold);
+  const masterSec = lapToSeconds(levelSettings.masterLapThreshold);
+  const heat = await pool.query('SELECT * FROM current_heat WHERE track_id = $1', [trackId]);
+  for (const row of heat.rows) {
+    const bestSec = lapToSeconds(row.best_lap_time);
+    if (bestSec === Infinity) continue;
+    let newLevel = null;
+    if (bestSec <= proSec) newLevel = 'Pro';
+    else if (bestSec <= masterSec) newLevel = 'Master';
+    if (!newLevel) continue;
+    await pool.query(
+      'UPDATE drivers SET driver_level = $1 WHERE full_name = $2 AND (driver_level IS NULL OR driver_level != $1)',
+      [newLevel, row.driver_name],
+    );
+  }
+}
 
 const trackCredentials = {
   'holyland-racing': 'fast123',
@@ -96,6 +131,19 @@ app.get('/api/admin/pits', (req, res) => res.json(pitLines));
 app.post('/api/admin/update-pits', (req, res) => { pitLines = req.body.newLines; res.json({ success: true }); });
 app.get('/api/heat-settings', (req, res) => res.json(heatSettings));
 app.post('/api/admin/heat-settings', (req, res) => { heatSettings = req.body; res.json({ success: true }); });
+app.get('/api/admin/level-settings', (req, res) => {
+  res.json({
+    masterLapThreshold: levelSettings.masterLapThreshold,
+    proLapThreshold: levelSettings.proLapThreshold,
+  });
+});
+app.post('/api/admin/level-settings', (req, res) => {
+  const { masterLapThreshold, proLapThreshold, editPassword } = req.body;
+  if (masterLapThreshold) levelSettings.masterLapThreshold = masterLapThreshold;
+  if (proLapThreshold) levelSettings.proLapThreshold = proLapThreshold;
+  if (editPassword) levelSettings.editPassword = editPassword;
+  res.json({ success: true });
+});
 
 app.post('/api/admin/login/:trackName', (req, res) => {
   const { trackName } = req.params;
@@ -109,6 +157,7 @@ app.post('/api/admin/login/:trackName', (req, res) => {
 
 app.post('/api/admin/finish-heat', async (req, res) => {
   try {
+    await applyAutoLevelUpgrades(1);
     const data = await pool.query('SELECT * FROM current_heat WHERE track_id = 1');
     if (data.rows.length > 0) {
       await pool.query('INSERT INTO heat_history (track_id, heat_type, results) VALUES ($1, $2, $3)', [1, heatSettings.type, JSON.stringify(data.rows)]);
@@ -149,7 +198,10 @@ app.post('/assign-driver', async (req, res) => {
 });
 
 app.post('/api/admin/update-driver-level', async (req, res) => {
-  const { lookup, level } = req.body;
+  const { lookup, level, password } = req.body;
+  if (password !== levelSettings.editPassword) {
+    return res.json({ success: false, error: 'bad_password' });
+  }
   try {
     const result = await pool.query(`UPDATE drivers SET driver_level = $1 WHERE phone = $2 OR email = $2 RETURNING *`, [level, lookup]);
     if (result.rowCount > 0) res.json({ success: true });
