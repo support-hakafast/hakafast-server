@@ -22,6 +22,9 @@ export default function KartCard({
   draggable,
   variant = 'pool',
   transponderActive = false,
+  showToggle = false,
+  laneId = null,
+  laneIndex = -1,
 }) {
   const inactive = !kart.active;
 
@@ -31,13 +34,17 @@ export default function KartCard({
       draggable={draggable && kart.active}
       onDragStart={(e) => {
         if (!kart.active) { e.preventDefault(); return; }
-        e.dataTransfer.setData('text', String(num));
+        if (laneId != null && laneIndex >= 0) {
+          e.dataTransfer.setData('text', JSON.stringify({ num, laneId, laneIndex }));
+        } else {
+          e.dataTransfer.setData('text', String(num));
+        }
       }}
       title={`#${num}`}
     >
       <KartSvg />
       <span className="kart-number">{num}</span>
-      {variant !== 'ontrack' && (
+      {showToggle && onToggle && (
         <button type="button" className="kart-toggle-btn" onClick={(e) => onToggle(num, e)}>
           {kart.active ? '×' : '+'}
         </button>

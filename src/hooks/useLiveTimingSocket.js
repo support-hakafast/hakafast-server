@@ -16,6 +16,7 @@ export function useLiveTimingSocket({
 }) {
   const [rows, setRows] = useState([]);
   const [heatType, setHeatType] = useState('time');
+  const [timingColumns, setTimingColumns] = useState(null);
   const [connected, setConnected] = useState(false);
   const wsRef = useRef(null);
   const pollRef = useRef(null);
@@ -87,6 +88,7 @@ export function useLiveTimingSocket({
           if (msg.type === 'update') {
             setRows(Array.isArray(msg.rows) ? msg.rows : []);
             if (msg.heatType) setHeatType(msg.heatType);
+            if (msg.timingColumns) setTimingColumns(msg.timingColumns);
           }
         } catch {
           /* ignore */
@@ -130,5 +132,5 @@ export function useLiveTimingSocket({
     }));
   }, [mode, trackSlug, trackId]);
 
-  return { rows, heatType, connected };
+  return { rows, heatType, timingColumns, connected };
 }

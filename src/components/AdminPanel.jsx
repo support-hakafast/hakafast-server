@@ -18,7 +18,12 @@ import {
   reconcileKartsFromLines,
   formatHeatClock,
   buildExportFilename,
+  pickKartsForAssignment,
+  getExitKartNumber,
+  getWaitingKartNumbers,
+  sanitizePitLines,
 } from '../utils/adminHelpers.js';
+import { DEFAULT_TIMING_COLUMNS, OPTIONAL_TIMING_COLUMNS, normalizeTimingColumns } from '../utils/liveTimingColumns.js';
 import { apiFetch } from '../utils/apiClient.js';
 import {
   usesIsolatedWorkspace,
@@ -69,6 +74,7 @@ const AdminPanel = () => {
   const [targetLaps, setTargetLaps] = useState('');
   const [exportCsv, setExportCsv] = useState(true);
   const [exportPdf, setExportPdf] = useState(false);
+  const [timingColumns, setTimingColumns] = useState({ ...DEFAULT_TIMING_COLUMNS });
 
   const [drName, setDrName] = useState('');
   const [showAdvancedReg, setShowAdvancedReg] = useState(false);
@@ -80,6 +86,7 @@ const AdminPanel = () => {
 
   const [masterLapThreshold, setMasterLapThreshold] = useState('45.500');
   const [proLapThreshold, setProLapThreshold] = useState('42.000');
+  const [pitExitPosition, setPitExitPosition] = useState('top');
 
   const [dragOverLane, setDragOverLane] = useState(null);
   const [dragOverPool, setDragOverPool] = useState(false);
@@ -132,7 +139,7 @@ const AdminPanel = () => {
       .catch(() => {});
 
     apiFetch('/api/admin/pits', {}, trackSlug).then((r) => r.json()).then((d) => {
-      const lines = normalizeLinesData(d);
+      const lines = sanitizePitLines(normalizeLinesData(d));
       setLinesData(lines);
       setAllKarts((prev) => reconcileKartsFromLines(prev, lines, onTrack.map((k) => k.kart_number)));
     }).catch(() => {});
@@ -142,6 +149,7 @@ const AdminPanel = () => {
       if (s?.targetLaps) setTargetLaps(String(s.targetLaps));
       if (typeof s?.exportCsv === 'boolean') setExportCsv(s.exportCsv);
       if (typeof s?.exportPdf === 'boolean') setExportPdf(s.exportPdf);
+      if (s?.timingColumns) setTimingColumns(normalizeTimingColumns(s.timingColumns));
       if (s?.heatClock) setHeatClock(s.heatClock);
       if (s?.onTrack) {
         setOnTrack(s.onTrack);
@@ -151,6 +159,7 @@ const AdminPanel = () => {
     apiFetch('/api/admin/level-settings', {}, trackSlug).then((r) => r.json()).then((s) => {
       if (s?.masterLapThreshold) setMasterLapThreshold(s.masterLapThreshold);
       if (s?.proLapThreshold) setProLapThreshold(s.proLapThreshold);
+      if (s?.pitExitPosition) setPitExitPosition(s.pitExitPosition);
       setHasPassword(Boolean(s?.hasPassword));
     }).catch(() => {});
 
@@ -187,11 +196,12 @@ const AdminPanel = () => {
           targetLaps: parseInt(targetLaps, 10) || 0,
           exportCsv,
           exportPdf,
+          timingColumns,
         }),
       }, trackSlug).catch(() => {});
     }, 600);
     return () => clearTimeout(timer);
-  }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, exportCsv, exportPdf, trackSlug]);
+  }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, exportCsv, exportPdf, timingColumns, trackSlug]);
 
   useEffect(() => {
     if (!usesIsolatedWorkspace(trackSlug)) return undefined;
@@ -282,20 +292,67 @@ const AdminPanel = () => {
     setAllKarts((prev) => ({ ...prev, [num]: { ...kart, active: nextActive, lane: nextActive ? kart.lane : null } }));
   };
 
-  const dropKart = (num, laneNum) => {
-    const kart = allKarts[num];
-    if (!kart) return;
-    const updatedLines = { ...linesData };
-    if (kart.lane != null && updatedLines[kart.lane]) {
-      updatedLines[kart.lane] = { ...updatedLines[kart.lane], karts: updatedLines[kart.lane].karts.filter((x) => Number(x) !== Number(num)) };
+  const parseDragPayload = (e) => {
+    const raw = e.dataTransfer.getData('text');
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.num != null) return parsed;
+    } catch {
+      /* plain number */
     }
+    const num = parseInt(raw, 10);
+    return Number.isNaN(num) ? null : { num, laneId: null, laneIndex: -1 };
+  };
+
+  const removeKartFromLaneAt = (lines, laneId, laneIndex, num) => {
+    const lane = lines[laneId];
+    if (!lane?.karts) return lines;
+    const next = { ...lines };
+    const karts = [...lane.karts];
+    if (laneIndex >= 0 && laneIndex < karts.length && Number(karts[laneIndex]) === Number(num)) {
+      karts.splice(laneIndex, 1);
+    } else {
+      const idx = karts.findIndex((x) => Number(x) === Number(num));
+      if (idx >= 0) karts.splice(idx, 1);
+    }
+    next[laneId] = { ...lane, karts };
+    return next;
+  };
+
+  const dropKart = (num, laneNum, fromLaneId = null, fromLaneIndex = -1) => {
+    const key = String(num);
+    const kart = allKarts[key] || allKarts[num];
+    let updatedLines = { ...linesData };
+
+    if (fromLaneId != null && fromLaneIndex >= 0) {
+      updatedLines = removeKartFromLaneAt(updatedLines, fromLaneId, fromLaneIndex, num);
+    } else if (kart?.lane != null && updatedLines[kart.lane]) {
+      updatedLines = removeKartFromLaneAt(updatedLines, kart.lane, -1, num);
+    }
+
     if (laneNum != null && updatedLines[laneNum]) {
-      const karts = updatedLines[laneNum].karts;
-      if (!karts.map(Number).includes(Number(num))) {
-        updatedLines[laneNum] = { ...updatedLines[laneNum], karts: [...karts, Number(num)] };
+      const n = Number(num);
+      const onTrackNow = onTrack.some((ot) => Number(ot.kart_number) === n);
+      const alreadyInLane = updatedLines[laneNum].karts.some((k) => Number(k) === n);
+      const inOtherLane = Object.entries(updatedLines).some(([id, lane]) => (
+        id !== String(laneNum) && (lane.karts || []).some((k) => Number(k) === n)
+      ));
+      if (!onTrackNow && !alreadyInLane && !inOtherLane) {
+        updatedLines[laneNum] = {
+          ...updatedLines[laneNum],
+          karts: [...updatedLines[laneNum].karts, n],
+        };
       }
     }
-    setAllKarts((prev) => ({ ...prev, [num]: { ...kart, lane: laneNum } }));
+
+    updatedLines = sanitizePitLines(updatedLines);
+
+    setAllKarts((prev) => {
+      const existing = prev[key] || prev[num];
+      const base = existing || { number: num, active: true, lane: null, onTrack: false };
+      return { ...prev, [key]: { ...base, number: num, lane: laneNum, onTrack: false } };
+    });
     setLinesData(updatedLines);
     syncPitsWithServer(updatedLines);
   };
@@ -303,15 +360,15 @@ const AdminPanel = () => {
   const handleDropToLane = (e, laneNum) => {
     e.preventDefault();
     setDragOverLane(null);
-    const num = parseInt(e.dataTransfer.getData('text'), 10);
-    if (!Number.isNaN(num)) dropKart(num, laneNum);
+    const payload = parseDragPayload(e);
+    if (payload) dropKart(payload.num, laneNum, payload.laneId, payload.laneIndex);
   };
 
   const handleDropToPool = (e) => {
     e.preventDefault();
     setDragOverPool(false);
-    const num = parseInt(e.dataTransfer.getData('text'), 10);
-    if (!Number.isNaN(num)) dropKart(num, null);
+    const payload = parseDragPayload(e);
+    if (payload) dropKart(payload.num, null, payload.laneId, payload.laneIndex);
   };
 
   const addNewLane = () => {
@@ -408,7 +465,12 @@ const AdminPanel = () => {
       const res = await apiFetch('/api/admin/level-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ masterLapThreshold, proLapThreshold, editPassword: settingsPassword || undefined }),
+        body: JSON.stringify({
+          masterLapThreshold,
+          proLapThreshold,
+          pitExitPosition,
+          editPassword: settingsPassword || undefined,
+        }),
       }, trackSlug);
       const result = await res.json();
       if (!result.success && result.error === 'weak_password') { alert(t('admin_password_weak')); return; }
@@ -474,6 +536,7 @@ const AdminPanel = () => {
           if (typeof s.heatDriverCount === 'number') setHeatDriverCount(s.heatDriverCount);
           if (s.heatKartNumbers) setAssignedHeatKarts(new Set(s.heatKartNumbers));
           if (s.onTrack) setOnTrack(s.onTrack);
+          if (s.pitExitPosition) setPitExitPosition(s.pitExitPosition);
           if (s.pitLines) {
             const lines = normalizeLinesData(s.pitLines);
             setLinesData(lines);
@@ -503,6 +566,7 @@ const AdminPanel = () => {
         targetLaps: parseInt(targetLaps, 10) || 0,
         exportCsv,
         exportPdf,
+        timingColumns,
       }),
     }, trackSlug);
     await apiFetch('/api/admin/clear-heat', { method: 'POST' }, trackSlug);
@@ -511,24 +575,13 @@ const AdminPanel = () => {
     const laneKeys = Object.keys(linesData).filter((id) => linesData[id].active);
     if (laneKeys.length === 0) { alert(t('admin_alert_no_lanes')); return; }
     const workingLines = JSON.parse(JSON.stringify(linesData));
-    const assigned = [];
-    let currentLineIdx = 0;
-    for (let i = 0; i < driverQueue.length; i += 1) {
-      let foundKart = null;
-      let loops = 0;
-      while (loops < laneKeys.length) {
-        const key = laneKeys[currentLineIdx];
-        if (workingLines[key]?.karts?.length > 0) {
-          foundKart = workingLines[key].karts[0];
-          assigned.push({ kart: foundKart, lane: key, driver: driverQueue[i] });
-          currentLineIdx = (currentLineIdx + 1) % laneKeys.length;
-          break;
-        }
-        currentLineIdx = (currentLineIdx + 1) % laneKeys.length;
-        loops += 1;
-      }
-      if (!foundKart) { alert(t('admin_alert_not_enough_karts')); return; }
-    }
+    const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, driverQueue.length);
+    if (!complete) { alert(t('admin_alert_not_enough_karts')); return; }
+    const assigned = kartSlots.map((slot, i) => ({
+      kart: slot.kart,
+      lane: slot.lane,
+      driver: driverQueue[i],
+    }));
     for (const assign of assigned) {
       await apiFetch('/assign-driver', {
         method: 'POST',
@@ -602,6 +655,76 @@ const AdminPanel = () => {
     }
   };
 
+  const takeKartFromLaneEnd = (laneId) => {
+    const lane = linesData[laneId];
+    if (!lane?.karts || lane.karts.length <= 1) return;
+    const num = lane.karts[lane.karts.length - 1];
+    dropKart(num, null);
+  };
+
+  const renderExitZone = (laneId, exitKart) => (
+    <div className="lane-exit-zone lane-transponder-zone">
+      <span className="lane-zone-label">{t('admin_transponder_zone')}</span>
+      <div className="transponder-beacon-row">
+        <span className="transponder-beacon" aria-hidden />
+        <span className="transponder-hint">{t('admin_transponder_hint')}</span>
+      </div>
+      <div className="lane-exit-track" />
+      {exitKart && allKarts[exitKart] ? (
+        <KartCard
+          key={`${laneId}-exit-${exitKart}-0`}
+          num={exitKart}
+          kart={allKarts[exitKart]}
+          draggable={false}
+          variant="exiting"
+          laneId={laneId}
+          laneIndex={0}
+          transponderActive={assignedHeatKarts.has(Number(exitKart))}
+        />
+      ) : (
+        <p className="lane-empty-hint">{t('admin_lane_exit_empty')}</p>
+      )}
+    </div>
+  );
+
+  const renderWaitingZone = (laneId, waitingKarts) => (
+    <div className="lane-waiting-zone">
+      <span className="lane-zone-label">{t('admin_lane_waiting')}</span>
+      <span className="lane-flow-hint">{t('admin_lane_flow_hint')}</span>
+      {waitingKarts.length === 0 ? (
+        <p className="lane-empty-hint">{t('admin_lane_waiting_empty')}</p>
+      ) : (
+        waitingKarts.map((num, waitIdx) => {
+          const kart = allKarts[num] || allKarts[String(num)];
+          if (!kart) return null;
+          return (
+            <KartCard
+              key={`${laneId}-w-${waitIdx + 1}-${num}`}
+              num={num}
+              kart={kart}
+              draggable
+              variant="waiting"
+              laneId={laneId}
+              laneIndex={waitIdx + 1}
+            />
+          );
+        })
+      )}
+      <div
+        className="lane-queue-end"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => handleDropToLane(e, laneId)}
+      >
+        <span>{t('admin_lane_queue_end')}</span>
+        {waitingKarts.length > 0 && (
+          <button type="button" className="btn-lane-take-end" onClick={() => takeKartFromLaneEnd(laneId)}>
+            {t('admin_lane_take_end')}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   const poolKarts = Object.keys(allKarts).filter((num) => {
     const k = allKarts[num];
     return k && k.lane == null && !k.onTrack;
@@ -620,6 +743,8 @@ const AdminPanel = () => {
           setMasterLapThreshold={setMasterLapThreshold}
           proLapThreshold={proLapThreshold}
           setProLapThreshold={setProLapThreshold}
+          pitExitPosition={pitExitPosition}
+          setPitExitPosition={setPitExitPosition}
           onSaveSettings={saveLevelSettings}
           onUpdateDriverLevel={updateDriverLevelInDB}
           showResetWorkspace={usesIsolatedWorkspace(trackSlug)}
@@ -645,7 +770,13 @@ const AdminPanel = () => {
             <div className="warehouse-zone">
               <h2>{t('admin_warehouse')}</h2>
               <div className="input-group">
-                <input type="text" value={kartInput} onChange={(e) => setKartInput(e.target.value)} placeholder={t('admin_kart_input_placeholder')} />
+                <input
+                  type="text"
+                  value={kartInput}
+                  onChange={(e) => setKartInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addKartsFromInput(); } }}
+                  placeholder={t('admin_kart_input_placeholder')}
+                />
                 <button type="button" onClick={addKartsFromInput}>{t('admin_add_inventory')}</button>
               </div>
               <div
@@ -655,7 +786,7 @@ const AdminPanel = () => {
                 onDrop={handleDropToPool}
               >
                 {poolKarts.map((num) => (
-                  <KartCard key={num} num={num} kart={allKarts[num]} onToggle={toggleKartActive} draggable variant="pool" />
+                  <KartCard key={num} num={num} kart={allKarts[num]} onToggle={toggleKartActive} draggable variant="pool" showToggle />
                 ))}
               </div>
             </div>
@@ -667,12 +798,13 @@ const AdminPanel = () => {
               <div className="pit-lanes-board">
                 {Object.keys(linesData).map((laneId) => {
                   const lane = linesData[laneId];
-                  const exitKart = lane.karts[0];
-                  const waitingKarts = lane.karts.slice(1);
+                  const exitKart = getExitKartNumber(lane);
+                  const waitingKarts = getWaitingKartNumbers(lane);
+                  const exitFirst = pitExitPosition !== 'bottom';
                   return (
                     <div
                       key={laneId}
-                      className={`lane${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}`}
+                      className={`lane lane-flow-${pitExitPosition}${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}`}
                       onDragOver={(e) => { e.preventDefault(); setDragOverLane(laneId); }}
                       onDragLeave={() => setDragOverLane(null)}
                       onDrop={(e) => handleDropToLane(e, laneId)}
@@ -684,44 +816,17 @@ const AdminPanel = () => {
                         </button>
                         <button type="button" className="btn-danger" onClick={() => handleRemoveLane(laneId)}>{t('admin_lane_remove')}</button>
                       </div>
-                      <div className="lane-waiting-zone">
-                        <span className="lane-zone-label">{t('admin_lane_waiting')}</span>
-                        {waitingKarts.length === 0 ? (
-                          <p className="lane-empty-hint">{t('admin_lane_waiting_empty')}</p>
-                        ) : (
-                          [...waitingKarts].reverse().map((num) => allKarts[num] ? (
-                            <KartCard
-                              key={`${laneId}-w-${num}`}
-                              num={num}
-                              kart={allKarts[num]}
-                              onToggle={toggleKartActive}
-                              draggable
-                              variant="waiting"
-                            />
-                          ) : null)
-                        )}
-                      </div>
-                      <div className="lane-exit-zone lane-transponder-zone">
-                        <span className="lane-zone-label">{t('admin_transponder_zone')}</span>
-                        <div className="transponder-beacon-row">
-                          <span className="transponder-beacon" aria-hidden />
-                          <span className="transponder-hint">{t('admin_transponder_hint')}</span>
-                        </div>
-                        <div className="lane-exit-track" />
-                        {exitKart && allKarts[exitKart] ? (
-                          <KartCard
-                            key={`${laneId}-exit-${exitKart}`}
-                            num={exitKart}
-                            kart={allKarts[exitKart]}
-                            onToggle={toggleKartActive}
-                            draggable={false}
-                            variant="exiting"
-                            transponderActive={assignedHeatKarts.has(Number(exitKart))}
-                          />
-                        ) : (
-                          <p className="lane-empty-hint">{t('admin_lane_exit_empty')}</p>
-                        )}
-                      </div>
+                      {exitFirst ? (
+                        <>
+                          {renderExitZone(laneId, exitKart)}
+                          {renderWaitingZone(laneId, waitingKarts)}
+                        </>
+                      ) : (
+                        <>
+                          {renderWaitingZone(laneId, waitingKarts)}
+                          {renderExitZone(laneId, exitKart)}
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -736,27 +841,33 @@ const AdminPanel = () => {
                   {onTrack.length === 0 ? (
                     <p className="on-track-strip-empty">{t('admin_on_track_empty')}</p>
                   ) : (
-                    onTrack.map((ot) => (
-                      <div key={ot.kart_number} className="on-track-kart-card">
-                        <KartCard
-                          num={ot.kart_number}
-                          kart={allKarts[ot.kart_number] || { number: ot.kart_number, active: true }}
-                          onToggle={() => {}}
-                          draggable={false}
-                          variant="ontrack"
-                        />
-                        <div className="on-track-kart-meta">
-                          <strong>{ot.driver_name}</strong>
-                          <button
-                            type="button"
-                            className="btn-on-track-return"
-                            onClick={() => returnKartFromTrack(ot.kart_number, ot.laneId)}
-                          >
-                            {t('admin_kart_return')}
-                          </button>
+                    [...onTrack]
+                      .sort((a, b) => (a.launchedAt || 0) - (b.launchedAt || 0))
+                      .map((ot) => (
+                        <div key={ot.kart_number} className="on-track-kart-card">
+                          <KartCard
+                            num={ot.kart_number}
+                            kart={allKarts[ot.kart_number] || { number: ot.kart_number, active: true }}
+                            draggable={false}
+                            variant="ontrack"
+                          />
+                          <div className="on-track-kart-meta">
+                            <strong>#{ot.kart_number} {ot.driver_name}</strong>
+                            <span className="on-track-laps">
+                              {(ot.lap_count || 0) > 0
+                                ? t('admin_on_track_laps', { count: ot.lap_count })
+                                : t('admin_on_track_no_laps')}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn-on-track-return"
+                              onClick={() => returnKartFromTrack(ot.kart_number, ot.laneId || ot.originLaneId)}
+                            >
+                              {t('admin_kart_return')}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))
                   )}
                 </div>
               </div>
@@ -777,9 +888,16 @@ const AdminPanel = () => {
             <h2>{t('admin_register_title')}</h2>
             <div className="section-box">
               <label>{t('admin_req_label')}</label>
-              <input type="text" value={drName} onChange={(e) => setDrName(e.target.value)} placeholder={t('admin_driver_placeholder_bulk')} />
+              <input
+                type="text"
+                value={drName}
+                onChange={(e) => setDrName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && canAddDriver) { e.preventDefault(); addDriverToQueue(); } }}
+                placeholder={t('admin_driver_placeholder_bulk')}
+              />
               {isBulkDrivers && <p className="bulk-hint">{t('admin_bulk_names_hint')} ({driverNames.length})</p>}
             </div>
+            <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
             <button type="button" className={`btn-register-saved${showAdvancedReg ? ' is-open' : ''}`} onClick={() => setShowAdvancedReg((v) => !v)} disabled={isBulkDrivers}>
               {showAdvancedReg ? t('admin_toggle_reg_open') : t('admin_toggle_reg_closed')}
             </button>
@@ -798,7 +916,6 @@ const AdminPanel = () => {
                 </select>
               </div>
             )}
-            <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
             <p className="level-hint">{t('admin_level_from_laps_hint')}</p>
             <h3 className="queue-heading">{t('admin_queue_title')}</h3>
             <ul className="queue-list queue-list-tall">
@@ -884,6 +1001,27 @@ const AdminPanel = () => {
             {heatType === 'sprint' && (
               <input type="number" value={targetLaps} onChange={(e) => setTargetLaps(e.target.value)} placeholder={t('admin_laps_placeholder')} />
             )}
+          </div>
+
+          <div className="timing-columns-bar">
+            <span className="field-label">{t('admin_timing_columns')}</span>
+            <p className="level-hint">{t('admin_timing_columns_hint')}</p>
+            <div className="timing-columns-fixed">
+              <span>{t('best_lap')}</span>
+              <span>{t('last_lap')}</span>
+            </div>
+            <div className="timing-columns-optional">
+              {OPTIONAL_TIMING_COLUMNS.map((col) => (
+                <label key={col.id}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(timingColumns[col.id])}
+                    onChange={(e) => setTimingColumns((prev) => ({ ...prev, [col.id]: e.target.checked }))}
+                  />
+                  {t(col.labelKey)}
+                </label>
+              ))}
+            </div>
           </div>
 
           <button type="button" className="btn-advanced-link" onClick={() => setShowAdvanced(true)}>{t('admin_advanced_settings')}</button>

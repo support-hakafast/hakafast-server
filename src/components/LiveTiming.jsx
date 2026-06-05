@@ -4,6 +4,7 @@ import '../assets/LiveTiming.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
+import LiveTimingTable from './LiveTimingTable.jsx';
 import { apiFetch } from '../utils/apiClient.js';
 import {
   usesIsolatedWorkspace,
@@ -13,6 +14,7 @@ import {
 import { useLiveTimingSocket } from '../hooks/useLiveTimingSocket.js';
 import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useLiveTheme } from '../hooks/useLiveTheme.js';
+import { normalizeTimingColumns } from '../utils/liveTimingColumns.js';
 
 const HEAT_LABEL_KEYS = { time: 'heat_time', endurance: 'heat_endurance', sprint: 'heat_sprint' };
 
@@ -36,15 +38,17 @@ const LiveTiming = () => {
     if (!res.ok) return null;
     const rows = await res.json();
     let heat = 'time';
+    let timingColumns = null;
     const hs = await apiFetch('/api/heat-settings', {}, isolated ? trackSlug : null);
     if (hs.ok) {
       const s = await hs.json();
       heat = s?.type || 'time';
+      timingColumns = normalizeTimingColumns(s?.timingColumns);
     }
-    return { rows: Array.isArray(rows) ? rows : [], heatType: heat };
+    return { rows: Array.isArray(rows) ? rows : [], heatType: heat, timingColumns };
   }, [trackId, mode, trackSlug, isolated]);
 
-  const { rows: rowsData, heatType } = useLiveTimingSocket({
+  const { rows: rowsData, heatType, timingColumns } = useLiveTimingSocket({
     trackSlug: isolated ? trackSlug : (track || 'default'),
     trackId,
     mode,
@@ -53,15 +57,18 @@ const LiveTiming = () => {
   });
 
   const sessionLabel = t(HEAT_LABEL_KEYS[heatType] || 'session_practice');
+  const cols = normalizeTimingColumns(timingColumns);
 
   const flashingKeys = useRowFlash(
     rowsData,
-    (row) => `${row.kart_number || row.driver_name}-${row.position || ''}`,
-    ['last_lap_time', 'best_lap_time', 'lap_count', 'kart_number'],
+    (row) => `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
+    mode === 'timing'
+      ? ['last_lap_time', 'best_lap_time', 'lap_count', 'kart_number', 'avg_lap_time', 'second_best_lap_time']
+      : ['kart_number', 'driver_name'],
   );
 
   const rowFlashClass = (row, index) => {
-    const key = `${row.kart_number || row.driver_name}-${row.position || index}`;
+    const key = `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`;
     return flashingKeys.has(key) ? 'live-row-flash' : '';
   };
 
@@ -97,57 +104,13 @@ const LiveTiming = () => {
         <p className="live-empty">{t('live_waiting')}</p>
       ) : (
         <div key={mode} className="live-content-panel live-timing-table-wrap">
-          {mode === 'assignments' ? (
-            <table className="live-timing-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>{t('driver')}</th>
-                  <th>{t('kart')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rowsData.map((row, index) => (
-                  <tr key={`${row.driver_name}-${index}`} className={rowFlashClass(row, index)}>
-                    <td className="live-pos">{row.position || index + 1}</td>
-                    <td style={{ textAlign: 'start' }}>{row.driver_name}</td>
-                    <td>{row.kart_number ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <table className="live-timing-table">
-              <thead>
-                <tr>
-                  <th>{t('pos')}</th>
-                  <th>{t('kart')}</th>
-                  <th>{t('driver')}</th>
-                  <th>{t('last_lap')}</th>
-                  <th>{t('best_lap')}</th>
-                  <th>{t('laps')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rowsData.map((row, index) => {
-                  const isOverallBest = index === 0 && row.best_lap_time;
-                  return (
-                    <tr key={`${row.kart_number}-${index}`} className={rowFlashClass(row, index)}>
-                      <td className="live-pos">{index + 1}</td>
-                      <td>{row.kart_number}</td>
-                      <td style={{ textAlign: 'start' }}>
-                        {isOverallBest && '👑 '}
-                        {row.driver_name || t('anonymous')}
-                      </td>
-                      <td>{row.last_lap_time || '--.---'}</td>
-                      <td className={isOverallBest ? 'live-best' : ''}>{row.best_lap_time || '--.---'}</td>
-                      <td>{row.lap_count ?? row.total_laps ?? 0}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+          <LiveTimingTable
+            t={t}
+            mode={mode}
+            rows={rowsData}
+            timingColumns={cols}
+            rowFlashClass={rowFlashClass}
+          />
         </div>
       )}
     </div>

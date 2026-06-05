@@ -72,11 +72,17 @@ async function migrateDB() {
 migrateDB();
 
 let pitLines = [{ id: 1, name: 'טור ימין', active: true, karts: [] }, { id: 2, name: 'טור שמאל', active: true, karts: [] }];
-let heatSettings = { type: 'time', duration: 10, targetLaps: 0 };
+let heatSettings = {
+  type: 'time',
+  duration: 10,
+  targetLaps: 0,
+  timingColumns: { laps: true, second_best: false, avg_lap: false, level: false, gap: false },
+};
 let levelSettings = {
   editPassword: '',
   masterLapThreshold: '45.500',
   proLapThreshold: '42.000',
+  pitExitPosition: 'top',
 };
 const trackSetups = {};
 const driverQueues = {};
@@ -159,7 +165,7 @@ app.get('/api/admin/pits', (req, res) => {
 app.post('/api/admin/update-pits', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
-    demo.pitLines = req.body.newLines;
+    demo.pitLines = demoStore.sanitizePitLines(req.body.newLines);
     return res.json({ success: true });
   }
   pitLines = req.body.newLines;
@@ -249,6 +255,7 @@ app.get('/api/admin/level-settings', (req, res) => {
   return res.json({
     masterLapThreshold: settings.masterLapThreshold,
     proLapThreshold: settings.proLapThreshold,
+    pitExitPosition: settings.pitExitPosition || 'top',
     hasPassword: Boolean(settings.editPassword),
   });
 });
@@ -332,11 +339,14 @@ app.post('/api/workspace/reset', (req, res) => {
 });
 
 app.post('/api/admin/level-settings', (req, res) => {
-  const { masterLapThreshold, proLapThreshold, editPassword } = req.body;
+  const { masterLapThreshold, proLapThreshold, editPassword, pitExitPosition } = req.body;
   const demo = demoStore.resolveWorkspace(req);
   const settings = demo ? demo.levelSettings : levelSettings;
   if (masterLapThreshold) settings.masterLapThreshold = masterLapThreshold;
   if (proLapThreshold) settings.proLapThreshold = proLapThreshold;
+  if (pitExitPosition === 'top' || pitExitPosition === 'bottom') {
+    settings.pitExitPosition = pitExitPosition;
+  }
   if (editPassword) {
     if (!isStrongPassword(editPassword)) {
       return res.json({ success: false, error: 'weak_password' });

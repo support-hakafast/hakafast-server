@@ -11,6 +11,8 @@ export default function AdvancedSettingsModal({
   setMasterLapThreshold,
   proLapThreshold,
   setProLapThreshold,
+  pitExitPosition,
+  setPitExitPosition,
   onSaveSettings,
   onUpdateDriverLevel,
   showResetWorkspace,
@@ -63,6 +65,12 @@ export default function AdvancedSettingsModal({
         ) : (
           <>
             <p className="level-hint">{t('admin_lap_auto_upgrade_hint')}</p>
+            <label className="field-label">{t('admin_pit_exit_position')}</label>
+            <select value={pitExitPosition} onChange={(e) => setPitExitPosition(e.target.value)}>
+              <option value="top">{t('admin_pit_exit_top')}</option>
+              <option value="bottom">{t('admin_pit_exit_bottom')}</option>
+            </select>
+            <p className="level-hint">{t('admin_pit_exit_position_hint')}</p>
             <label className="field-label">{t('admin_lap_master_threshold')}</label>
             <input type="text" value={masterLapThreshold} onChange={(e) => setMasterLapThreshold(e.target.value)} />
             <label className="field-label">{t('admin_lap_pro_threshold')}</label>

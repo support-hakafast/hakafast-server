@@ -6,6 +6,8 @@ import { resolveTrackId } from '../utils/workspace.js';
 import { useLiveTimingSocket } from '../hooks/useLiveTimingSocket.js';
 import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useDraggableResizable } from '../hooks/useDraggableResizable.js';
+import LiveTimingTable from './LiveTimingTable.jsx';
+import { normalizeTimingColumns } from '../utils/liveTimingColumns.js';
 
 export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-demo' }) {
   const { t } = useLanguage();
@@ -24,10 +26,16 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
     const res = await apiFetch(`/live-timing-data/${trackId}?mode=${mode}`, {}, trackSlug);
     if (!res.ok) return null;
     const rows = await res.json();
-    return { rows: Array.isArray(rows) ? rows : [], heatType };
+    const hs = await apiFetch('/api/heat-settings', {}, trackSlug);
+    let timingColumns = null;
+    if (hs.ok) {
+      const s = await hs.json();
+      timingColumns = normalizeTimingColumns(s?.timingColumns);
+    }
+    return { rows: Array.isArray(rows) ? rows : [], heatType, timingColumns };
   }, [trackId, mode, trackSlug, heatType]);
 
-  const { rows } = useLiveTimingSocket({
+  const { rows, timingColumns } = useLiveTimingSocket({
     trackSlug,
     trackId,
     mode,
@@ -35,14 +43,18 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
     fetchFallback,
   });
 
+  const cols = normalizeTimingColumns(timingColumns);
+
   const flashingKeys = useRowFlash(
     rows,
-    (row) => `${row.kart_number || row.driver_name}-${row.position || ''}`,
-    ['last_lap_time', 'best_lap_time', 'lap_count', 'kart_number'],
+    (row) => `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
+    mode === 'timing'
+      ? ['last_lap_time', 'best_lap_time', 'lap_count', 'kart_number']
+      : ['kart_number', 'driver_name'],
   );
 
   const flash = (row, i) => {
-    const key = `${row.kart_number || row.driver_name}-${row.position || i}`;
+    const key = `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`;
     return flashingKeys.has(key) ? 'live-row-flash' : '';
   };
 
@@ -67,48 +79,15 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
         <div key={mode} className="live-content-panel">
           {rows.length === 0 ? (
             <p className="live-preview-empty">{t('live_waiting')}</p>
-          ) : mode === 'assignments' ? (
-            <table className="live-preview-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>{t('driver')}</th>
-                  <th>{t('kart')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={`${r.driver_name}-${i}`} className={flash(r, i)}>
-                    <td>{r.position || i + 1}</td>
-                    <td>{r.driver_name}</td>
-                    <td>{r.kart_number ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           ) : (
-            <table className="live-preview-table">
-              <thead>
-                <tr>
-                  <th>{t('pos')}</th>
-                  <th>{t('kart')}</th>
-                  <th>{t('driver')}</th>
-                  <th>{t('best_lap')}</th>
-                  <th>{t('laps')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={`${r.kart_number}-${i}`} className={flash(r, i)}>
-                    <td>{i + 1}</td>
-                    <td>{r.kart_number}</td>
-                    <td>{r.driver_name || t('anonymous')}</td>
-                    <td>{r.best_lap_time || '—'}</td>
-                    <td>{r.lap_count ?? 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <LiveTimingTable
+              t={t}
+              mode={mode}
+              rows={rows}
+              timingColumns={cols}
+              rowFlashClass={flash}
+              tableClassName="live-preview-table"
+            />
           )}
         </div>
         <p className="live-preview-heat">

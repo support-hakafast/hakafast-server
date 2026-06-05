@@ -106,6 +106,21 @@
   color: #0f766e;
 }
 
+.live-timing-table th.live-col-highlight,
+.live-timing-table td.live-col-highlight {
+  background: rgba(64, 224, 208, 0.12);
+  font-weight: 800;
+}
+
+.theme-dark .live-timing-table th.live-col-highlight,
+.theme-dark .live-timing-table td.live-col-highlight {
+  background: rgba(64, 224, 208, 0.18);
+}
+
+.live-last-lap {
+  font-variant-numeric: tabular-nums;
+}
+
 .live-timing-table td {
   padding: 0.65rem 0.5rem;
   text-align: center;
