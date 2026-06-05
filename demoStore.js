@@ -1,5 +1,6 @@
 const stores = new Map();
 const TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_AVG_LAP_SEC = 45;
 
 function defaultPitLines() {
   return {
@@ -15,6 +16,8 @@ function createStore(trackSlug = 'kart-demo') {
     lastAccess: Date.now(),
     pitLines: defaultPitLines(),
     heatSettings: { type: 'time', duration: 10, targetLaps: 0 },
+    heatRuntime: { startedAt: null, avgLapSec: DEFAULT_AVG_LAP_SEC },
+    onTrack: [],
     levelSettings: {
       editPassword: '',
       masterLapThreshold: '45.500',
@@ -24,7 +27,6 @@ function createStore(trackSlug = 'kart-demo') {
     driverQueue: [],
     currentHeat: [],
     drivers: [],
-    heatSim: {},
     heatHistory: [],
     clientSnapshot: null,
   };
@@ -75,6 +77,8 @@ function exportSnapshot(store) {
     trackSlug: store.trackSlug,
     pitLines: store.pitLines,
     heatSettings: store.heatSettings,
+    heatRuntime: store.heatRuntime,
+    onTrack: store.onTrack,
     levelSettings: store.levelSettings,
     trackSetup: store.trackSetup,
     driverQueue: store.driverQueue,
@@ -89,6 +93,8 @@ function applySnapshot(store, snapshot) {
   if (!store || !snapshot) return;
   if (snapshot.pitLines) store.pitLines = snapshot.pitLines;
   if (snapshot.heatSettings) store.heatSettings = snapshot.heatSettings;
+  if (snapshot.heatRuntime) store.heatRuntime = snapshot.heatRuntime;
+  if (snapshot.onTrack) store.onTrack = snapshot.onTrack;
   if (snapshot.levelSettings) store.levelSettings = { ...store.levelSettings, ...snapshot.levelSettings };
   if (snapshot.trackSetup) store.trackSetup = snapshot.trackSetup;
   if (snapshot.driverQueue) store.driverQueue = snapshot.driverQueue;
@@ -122,39 +128,139 @@ function formatLap(seconds) {
   return Math.max(0, seconds).toFixed(3);
 }
 
+function getAvgLapSec(store) {
+  return store.heatRuntime?.avgLapSec || DEFAULT_AVG_LAP_SEC;
+}
+
+function levelFromBestLap(store, bestLap, fallback = 'Amateur') {
+  const bestSec = lapToSeconds(bestLap);
+  if (bestSec === Infinity) return fallback;
+  const proSec = lapToSeconds(store.levelSettings.proLapThreshold);
+  const masterSec = lapToSeconds(store.levelSettings.masterLapThreshold);
+  if (bestSec <= proSec) return 'Pro';
+  if (bestSec <= masterSec) return 'Master';
+  return 'Amateur';
+}
+
+function resolveDriverLevel(store, row) {
+  if (row.best_lap_time) {
+    const fallback = row.registered ? (row.driver_level || 'Amateur') : 'Amateur';
+    return levelFromBestLap(store, row.best_lap_time, fallback);
+  }
+  if (row.registered && row.driver_level) return row.driver_level;
+  return 'Amateur';
+}
+
+function simulatedBestSec(avgLap, kartNumber) {
+  const spread = [3.8, 2.4, 1.2, 0.4, -1.6];
+  const tier = Number(kartNumber) % spread.length;
+  const jitter = ((Number(kartNumber) * 3) % 7) * 0.08;
+  return avgLap - spread[tier] + jitter;
+}
+
+function withResolvedLevel(store, row) {
+  return { ...row, driver_level: resolveDriverLevel(store, row) };
+}
+
 function tickHeatSimulation(store) {
-  store.currentHeat.forEach((row) => {
-    const kart = row.kart_number;
-    if (!store.heatSim[kart]) {
-      store.heatSim[kart] = { base: 40 + Math.random() * 8, laps: 0 };
-    }
-    const sim = store.heatSim[kart];
-    if (Math.random() > 0.35) {
-      sim.laps += 1;
-      const last = sim.base + (Math.random() - 0.5) * 0.9;
-      row.last_lap_time = formatLap(last);
-      row.lap_count = sim.laps;
-      const best = parseFloat(row.best_lap_time);
-      if (!row.best_lap_time || Number.isNaN(best) || last < best) {
-        row.best_lap_time = formatLap(last);
+  if (!store.onTrack.length) return;
+  const now = Date.now();
+  const avgLap = getAvgLapSec(store);
+
+  store.onTrack.forEach((ot) => {
+    const row = store.currentHeat.find((r) => Number(r.kart_number) === Number(ot.kart_number));
+    if (!row) return;
+
+    const elapsedSec = (now - ot.launchedAt) / 1000;
+    const laps = Math.floor(elapsedSec / avgLap);
+    const inLapSec = elapsedSec % avgLap;
+
+    row.lap_count = laps;
+    row.last_lap_time = formatLap(inLapSec);
+
+    if (laps > 0) {
+      const bestSec = simulatedBestSec(avgLap, ot.kart_number);
+      const currentBest = lapToSeconds(row.best_lap_time);
+      if (currentBest === Infinity || bestSec < currentBest) {
+        row.best_lap_time = formatLap(bestSec);
+      }
+      if (!row.registered) {
+        row.driver_level = levelFromBestLap(store, row.best_lap_time, 'Amateur');
+      } else {
+        row.driver_level = resolveDriverLevel(store, row);
       }
     }
   });
 }
 
+function getHeatClock(store) {
+  const durationMin = store.heatSettings?.duration || 10;
+  const startedAt = store.heatRuntime?.startedAt;
+  if (!startedAt) {
+    return { running: false, startedAt: null, durationMin, remainingSec: durationMin * 60, elapsedSec: 0 };
+  }
+  const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
+  const totalSec = durationMin * 60;
+  return {
+    running: true,
+    startedAt,
+    durationMin,
+    elapsedSec,
+    remainingSec: Math.max(0, totalSec - elapsedSec),
+  };
+}
+
+function launchKart(store, kartNumber, laneId) {
+  const lid = String(laneId);
+  const lane = store.pitLines[lid];
+  if (!lane?.karts?.length || Number(lane.karts[0]) !== Number(kartNumber)) {
+    return { success: false, error: 'not_at_exit' };
+  }
+  if (store.onTrack.some((k) => Number(k.kart_number) === Number(kartNumber))) {
+    return { success: false, error: 'already_on_track' };
+  }
+
+  lane.karts.shift();
+  const heatRow = store.currentHeat.find((r) => Number(r.kart_number) === Number(kartNumber));
+  store.onTrack.push({
+    kart_number: Number(kartNumber),
+    laneId: Number(laneId),
+    launchedAt: Date.now(),
+    driver_name: heatRow?.driver_name || `Kart ${kartNumber}`,
+    driver_level: heatRow?.driver_level || 'Amateur',
+    avgLapSec: getAvgLapSec(store),
+  });
+
+  if (!store.heatRuntime.startedAt) {
+    store.heatRuntime.startedAt = Date.now();
+  }
+  return { success: true, heatClock: getHeatClock(store) };
+}
+
+function returnKart(store, kartNumber, laneId) {
+  const idx = store.onTrack.findIndex((k) => Number(k.kart_number) === Number(kartNumber));
+  if (idx < 0) return { success: false, error: 'not_on_track' };
+
+  store.onTrack.splice(idx, 1);
+  const lid = String(laneId);
+  if (store.pitLines[lid]) {
+    store.pitLines[lid].karts.push(Number(kartNumber));
+  }
+
+  const row = store.currentHeat.find((r) => Number(r.kart_number) === Number(kartNumber));
+  if (row) {
+    row.lap_count = row.lap_count || 0;
+  }
+
+  return { success: true, onTrack: store.onTrack };
+}
+
 function applyAutoLevelUpgrades(store) {
-  const proSec = lapToSeconds(store.levelSettings.proLapThreshold);
-  const masterSec = lapToSeconds(store.levelSettings.masterLapThreshold);
   store.currentHeat.forEach((row) => {
-    const bestSec = lapToSeconds(row.best_lap_time);
-    if (bestSec === Infinity) return;
-    let newLevel = null;
-    if (bestSec <= proSec) newLevel = 'Pro';
-    else if (bestSec <= masterSec) newLevel = 'Master';
-    if (!newLevel) return;
-    row.driver_level = newLevel;
+    row.driver_level = resolveDriverLevel(store, row);
+    if (!row.registered) return;
     const driver = store.drivers.find((d) => d.full_name === row.driver_name);
-    if (driver) driver.driver_level = newLevel;
+    if (driver) driver.driver_level = row.driver_level;
   });
 }
 
@@ -168,7 +274,7 @@ function getAssignments(store) {
         kart_number: r.kart_number,
         driver_name: r.driver_name,
         driver_level: r.driver_level,
-        status: 'assigned',
+        status: store.onTrack.some((k) => Number(k.kart_number) === Number(r.kart_number)) ? 'on_track' : 'assigned',
       }));
   }
   return store.driverQueue.map((d, i) => ({
@@ -184,34 +290,49 @@ function getTimingData(store) {
   const order = store.heatSettings.type === 'sprint'
     ? (a, b) => (b.lap_count || 0) - (a.lap_count || 0) || lapToSeconds(a.best_lap_time) - lapToSeconds(b.best_lap_time)
     : (a, b) => lapToSeconds(a.best_lap_time) - lapToSeconds(b.best_lap_time);
-  return store.currentHeat.slice().sort(order).slice(0, 30);
+  return store.currentHeat
+    .filter((r) => store.onTrack.some((k) => Number(k.kart_number) === Number(r.kart_number)))
+    .slice()
+    .sort(order)
+    .map((r) => withResolvedLevel(store, r))
+    .slice(0, 30);
 }
 
 function assignDriver(store, body) {
-  const { kart_number, driver_name, driver_level, phone, email } = body;
+  const { kart_number, driver_name, driver_level, phone, email, registered } = body;
+  const isRegistered = Boolean(registered || phone || email);
+  const savedLevel = isRegistered ? (driver_level || 'Amateur') : 'Amateur';
+  const existing = store.currentHeat.find((r) => Number(r.kart_number) === Number(kart_number));
+  if (existing) {
+    existing.driver_name = driver_name;
+    existing.registered = isRegistered;
+    existing.driver_level = savedLevel;
+    return;
+  }
   store.currentHeat.push({
     track_id: 1,
     kart_number,
     driver_name,
-    driver_level: driver_level || 'Amateur',
+    driver_level: savedLevel,
+    registered: isRegistered,
     last_lap_time: null,
     best_lap_time: null,
     lap_count: 0,
   });
-  if (phone || email) {
+  if (isRegistered && (phone || email)) {
     store.drivers.push({
       full_name: driver_name,
       phone: phone || null,
       email: email || null,
-      driver_level: driver_level || 'Amateur',
+      driver_level: savedLevel,
     });
   }
-  delete store.heatSim[kart_number];
 }
 
 function clearHeat(store) {
   store.currentHeat = [];
-  store.heatSim = {};
+  store.onTrack = [];
+  store.heatRuntime.startedAt = null;
 }
 
 function finishHeat(store) {
@@ -223,6 +344,8 @@ function finishHeat(store) {
       created_at: new Date().toISOString(),
     });
   }
+  store.onTrack = [];
+  store.heatRuntime.startedAt = null;
 }
 
 function exportData(store) {
@@ -244,9 +367,23 @@ function updateDriverLevel(store, lookup, level, password) {
   return { success: true };
 }
 
+function getSessionState(store) {
+  return {
+    heatSettings: store.heatSettings,
+    heatRuntime: store.heatRuntime,
+    heatClock: getHeatClock(store),
+    onTrack: store.onTrack,
+    pitLines: store.pitLines,
+  };
+}
+
 function getLivePayload(store, mode) {
   const rows = mode === 'assignments' ? getAssignments(store) : getTimingData(store);
-  return { rows, heatType: store.heatSettings?.type || 'time' };
+  return {
+    rows,
+    heatType: store.heatSettings?.type || 'time',
+    heatClock: getHeatClock(store),
+  };
 }
 
 module.exports = {
@@ -260,6 +397,10 @@ module.exports = {
   getAssignments,
   getTimingData,
   getLivePayload,
+  getSessionState,
+  getHeatClock,
+  launchKart,
+  returnKart,
   assignDriver,
   clearHeat,
   finishHeat,

@@ -1,3 +1,39 @@
+export function reconcileKartsFromLines(allKarts, linesData, onTrackNums = []) {
+  const onSet = new Set(onTrackNums.map(Number));
+  const inLane = new Map();
+  Object.entries(linesData || {}).forEach(([laneId, lane]) => {
+    (lane.karts || []).forEach((num) => inLane.set(Number(num), Number(laneId)));
+  });
+
+  const next = { ...allKarts };
+  Object.keys(next).forEach((key) => {
+    const n = Number(key);
+    const prev = next[key];
+    if (!prev) return;
+    if (onSet.has(n)) {
+      next[key] = { ...prev, number: n, lane: null, onTrack: true };
+    } else if (inLane.has(n)) {
+      next[key] = { ...prev, number: n, lane: inLane.get(n), onTrack: false };
+    } else {
+      next[key] = { ...prev, number: n, lane: null, onTrack: false };
+    }
+  });
+
+  inLane.forEach((laneId, num) => {
+    if (!next[num] && !onSet.has(num)) {
+      next[num] = { number: num, active: true, lane: laneId, onTrack: false };
+    }
+  });
+  return next;
+}
+
+export function formatHeatClock(clock, notStartedLabel) {
+  if (!clock?.running) return notStartedLabel;
+  const m = Math.floor(clock.remainingSec / 60);
+  const s = clock.remainingSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 export function parseKartNumbers(input) {
   const nums = new Set();
   const parts = input.split(',').map((p) => p.trim()).filter(Boolean);

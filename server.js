@@ -168,8 +168,53 @@ app.post('/api/admin/update-pits', (req, res) => {
 
 app.get('/api/heat-settings', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
-  if (demo) return res.json(demo.heatSettings);
+  if (demo) {
+    return res.json({
+      ...demo.heatSettings,
+      heatRuntime: demo.heatRuntime,
+      heatClock: demoStore.getHeatClock(demo),
+      onTrack: demo.onTrack,
+    });
+  }
   return res.json(heatSettings);
+});
+
+app.get('/api/admin/session-state', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) return res.json(demoStore.getSessionState(demo));
+  return res.json({
+    heatSettings,
+    heatRuntime: { startedAt: null, avgLapSec: 45 },
+    heatClock: demoStore.getHeatClock({ heatSettings, heatRuntime: { startedAt: null } }),
+    onTrack: [],
+    pitLines,
+  });
+});
+
+app.post('/api/admin/kart-launch', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { kart_number: kartNumber, laneId } = req.body;
+  const result = demoStore.launchKart(demo, kartNumber, laneId);
+  if (result.success) notifyWorkspace(req);
+  return res.json({
+    ...result,
+    pitLines: demo.pitLines,
+    onTrack: demo.onTrack,
+  });
+});
+
+app.post('/api/admin/kart-return', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { kart_number: kartNumber, laneId } = req.body;
+  const result = demoStore.returnKart(demo, kartNumber, laneId);
+  if (result.success) notifyWorkspace(req);
+  return res.json({
+    ...result,
+    pitLines: demo.pitLines,
+    onTrack: demo.onTrack,
+  });
 });
 
 app.post('/api/admin/heat-settings', (req, res) => {

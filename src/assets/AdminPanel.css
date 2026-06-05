@@ -245,19 +245,135 @@ html:has(.admin-no-scroll) body {
   cursor: pointer;
 }
 
-.btn-reset-workspace {
-  flex-shrink: 0;
-  background: #fff5f5;
-  color: #c53030;
-  border: 1px solid #fc8181;
-  padding: 8px;
-  border-radius: 8px;
-  font-weight: 700;
+.btn-reset-workspace-subtle {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  background: transparent;
+  color: #a0aec0;
+  border: none;
+  padding: 4px 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: underline;
   cursor: pointer;
+  text-align: center;
 }
 
-.btn-reset-workspace:hover {
-  background: #fed7d7;
+.btn-reset-workspace-subtle:hover {
+  color: #c53030;
+}
+
+.heat-clock-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.heat-clock-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #718096;
+}
+
+.heat-clock-value.is-running {
+  color: var(--navy);
+}
+
+.duration-unit-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #718096;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.duration-presets {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.duration-chip {
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--navy);
+}
+
+.duration-chip.active {
+  background: var(--turquoise);
+  border-color: var(--navy);
+}
+
+.on-track-panel {
+  padding: 8px;
+  background: #ebf8ff;
+  border: 1px solid #90cdf4;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.on-track-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.on-track-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  padding: 4px 0;
+}
+
+.btn-on-track-return {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  border: 1px solid var(--navy);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-on-track-return:hover {
+  background: var(--turquoise);
+}
+
+.kart-launch-btn {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 2px 6px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  border: 1px solid var(--navy);
+  border-radius: 4px;
+  background: var(--turquoise);
+  color: var(--navy);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.kart-variant-exiting {
+  position: relative;
+  padding-bottom: 14px;
 }
 
 .finish-section-center {

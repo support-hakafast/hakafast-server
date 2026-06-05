@@ -13,6 +13,8 @@ export default function AdvancedSettingsModal({
   setProLapThreshold,
   onSaveSettings,
   onUpdateDriverLevel,
+  showResetWorkspace,
+  onResetWorkspace,
 }) {
   const { t } = useLanguage();
   const [gatePassword, setGatePassword] = useState('');
@@ -93,6 +95,15 @@ export default function AdvancedSettingsModal({
             >
               {t('admin_btn_update_db')}
             </button>
+
+            {showResetWorkspace && onResetWorkspace && (
+              <>
+                <hr className="panel-divider panel-divider-subtle" />
+                <button type="button" className="btn-reset-workspace-subtle" onClick={onResetWorkspace}>
+                  {t('admin_reset_workspace')}
+                </button>
+              </>
+            )}
           </>
         )}
       </div>

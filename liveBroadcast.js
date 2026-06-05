@@ -99,6 +99,7 @@ function createLiveBroadcast(httpServer, deps) {
       mode: ws.subscription.mode,
       rows: payload.rows,
       heatType: payload.heatType,
+      heatClock: payload.heatClock || null,
       ts: Date.now(),
     }));
   }

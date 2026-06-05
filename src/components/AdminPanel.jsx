@@ -15,6 +15,8 @@ import {
   isBulkDriverInput,
   downloadCsv,
   printPdf,
+  reconcileKartsFromLines,
+  formatHeatClock,
 } from '../utils/adminHelpers.js';
 import { apiFetch } from '../utils/apiClient.js';
 import {
@@ -29,6 +31,8 @@ const DEFAULT_LINES = {
   1: { name: 'טור 1', active: true, karts: [] },
   2: { name: 'טור 2', active: true, karts: [] },
 };
+
+const HEAT_DURATIONS = [10, 15, 20, 30];
 
 function normalizeLinesData(data) {
   if (!data) return { ...DEFAULT_LINES };
@@ -78,6 +82,8 @@ const AdminPanel = () => {
 
   const [dragOverLane, setDragOverLane] = useState(null);
   const [dragOverPool, setDragOverPool] = useState(false);
+  const [heatClock, setHeatClock] = useState({ running: false, remainingSec: 600, durationMin: 10 });
+  const [onTrack, setOnTrack] = useState([]);
 
   const confirmTwice = (msg1, msg2) => window.confirm(msg1) && window.confirm(msg2);
 
@@ -120,11 +126,20 @@ const AdminPanel = () => {
       })
       .catch(() => {});
 
-    apiFetch('/api/admin/pits', {}, trackSlug).then((r) => r.json()).then((d) => setLinesData(normalizeLinesData(d))).catch(() => {});
+    apiFetch('/api/admin/pits', {}, trackSlug).then((r) => r.json()).then((d) => {
+      const lines = normalizeLinesData(d);
+      setLinesData(lines);
+      setAllKarts((prev) => reconcileKartsFromLines(prev, lines, onTrack.map((k) => k.kart_number)));
+    }).catch(() => {});
     apiFetch('/api/heat-settings', {}, trackSlug).then((r) => r.json()).then((s) => {
       if (s?.type) setHeatType(s.type);
       if (s?.duration) setHeatDuration(s.duration);
       if (s?.targetLaps) setTargetLaps(String(s.targetLaps));
+      if (s?.heatClock) setHeatClock(s.heatClock);
+      if (s?.onTrack) {
+        setOnTrack(s.onTrack);
+        setAllKarts((prev) => reconcileKartsFromLines(prev, linesData, s.onTrack.map((k) => k.kart_number)));
+      }
     }).catch(() => {});
     apiFetch('/api/admin/level-settings', {}, trackSlug).then((r) => r.json()).then((s) => {
       if (s?.masterLapThreshold) setMasterLapThreshold(s.masterLapThreshold);
@@ -146,6 +161,26 @@ const AdminPanel = () => {
         })
         .catch(() => {});
     }
+  }, [trackSlug]);
+
+  useEffect(() => {
+    const refreshSession = () => {
+      apiFetch('/api/admin/session-state', {}, trackSlug)
+        .then((r) => r.json())
+        .then((s) => {
+          if (s.heatClock) setHeatClock(s.heatClock);
+          if (s.onTrack) setOnTrack(s.onTrack);
+          if (s.pitLines) {
+            const lines = normalizeLinesData(s.pitLines);
+            setLinesData(lines);
+            setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (s.onTrack || []).map((k) => k.kart_number)));
+          }
+        })
+        .catch(() => {});
+    };
+    refreshSession();
+    const timer = setInterval(refreshSession, 1000);
+    return () => clearInterval(timer);
   }, [trackSlug]);
 
   useEffect(() => { syncQueue(driverQueue); }, [driverQueue, syncQueue]);
@@ -170,13 +205,51 @@ const AdminPanel = () => {
   const canAddDriver = driverNames.length > 0;
 
   const addKartEntity = (num) => {
-    setAllKarts((prev) => (prev[num] ? prev : { ...prev, [num]: { number: num, active: true, lane: null } }));
+    setAllKarts((prev) => {
+      const existing = prev[num];
+      if (existing?.onTrack) return prev;
+      if (existing?.lane != null) return prev;
+      if (existing) return { ...prev, [num]: { ...existing, active: true, lane: null, onTrack: false } };
+      return { ...prev, [num]: { number: num, active: true, lane: null, onTrack: false } };
+    });
   };
 
   const addKartsFromInput = () => {
     const val = kartInput.trim();
     if (!val) return;
-    parseKartNumbers(val).forEach((num) => addKartEntity(num));
+    const nums = parseKartNumbers(val);
+    let added = 0;
+    let reactivated = 0;
+    let inPits = 0;
+    let onTrackCount = 0;
+    let alreadyInPool = 0;
+
+    setAllKarts((prev) => {
+      const next = { ...prev };
+      nums.forEach((num) => {
+        const k = next[num];
+        if (k?.onTrack) { onTrackCount += 1; return; }
+        if (k?.lane != null) { inPits += 1; return; }
+        if (k?.active) { alreadyInPool += 1; return; }
+        if (k && !k.active) {
+          next[num] = { ...k, active: true, lane: null, onTrack: false };
+          reactivated += 1;
+        } else {
+          next[num] = { number: num, active: true, lane: null, onTrack: false };
+          added += 1;
+        }
+      });
+      return next;
+    });
+
+    const msgs = [];
+    if (added > 0) msgs.push(t('admin_karts_added', { count: added }));
+    if (reactivated > 0) msgs.push(t('admin_karts_reactivated', { count: reactivated }));
+    if (inPits > 0) msgs.push(t('admin_karts_in_pits', { count: inPits }));
+    if (onTrackCount > 0) msgs.push(t('admin_karts_on_track', { count: onTrackCount }));
+    if (alreadyInPool > 0) msgs.push(t('admin_karts_already_pool', { count: alreadyInPool }));
+    if (msgs.length) alert(msgs.join('\n'));
+    else alert(t('admin_karts_none_added'));
     setKartInput('');
   };
 
@@ -381,7 +454,7 @@ const AdminPanel = () => {
       while (loops < laneKeys.length) {
         const key = laneKeys[currentLineIdx];
         if (workingLines[key]?.karts?.length > 0) {
-          foundKart = workingLines[key].karts.shift();
+          foundKart = workingLines[key].karts[0];
           assigned.push({ kart: foundKart, lane: key, driver: driverQueue[i] });
           currentLineIdx = (currentLineIdx + 1) % laneKeys.length;
           break;
@@ -401,10 +474,10 @@ const AdminPanel = () => {
           driver_name: assign.driver.name,
           phone: assign.driver.phone,
           email: assign.driver.email,
-          driver_level: assign.driver.level || 'Amateur',
+          registered: Boolean(assign.driver.saved),
+          driver_level: assign.driver.saved ? (assign.driver.level || 'Amateur') : undefined,
         }),
       }, trackSlug);
-      workingLines[assign.lane].karts.push(assign.kart);
     }
     alert(t('admin_alert_assign_done'));
     setDriverQueue([]);
@@ -416,6 +489,55 @@ const AdminPanel = () => {
     setShowSetup(false);
     if (pwSet) setHasPassword(true);
     parseKartNumbers(kartNumbers).forEach((n) => addKartEntity(n));
+  };
+
+  const applySessionPayload = (data) => {
+    if (data.pitLines) {
+      const lines = normalizeLinesData(data.pitLines);
+      setLinesData(lines);
+      setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (data.onTrack || []).map((k) => k.kart_number)));
+    }
+    if (data.onTrack) setOnTrack(data.onTrack);
+    if (data.heatClock) setHeatClock(data.heatClock);
+  };
+
+  const launchKartToTrack = async (kartNum, laneId) => {
+    try {
+      const res = await apiFetch('/api/admin/kart-launch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kart_number: kartNum, laneId }),
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) {
+        if (data.error === 'not_at_exit') alert(t('admin_launch_error_exit'));
+        else if (data.error === 'already_on_track') alert(t('admin_launch_error_track'));
+        else alert(t('admin_alert_server_error'));
+        return;
+      }
+      applySessionPayload(data);
+    } catch {
+      alert(t('admin_alert_server_error'));
+    }
+  };
+
+  const returnKartFromTrack = async (kartNum, laneId) => {
+    try {
+      const res = await apiFetch('/api/admin/kart-return', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kart_number: kartNum, laneId }),
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) {
+        if (data.error === 'not_on_track') alert(t('admin_return_error_track'));
+        else alert(t('admin_alert_server_error'));
+        return;
+      }
+      applySessionPayload(data);
+    } catch {
+      alert(t('admin_alert_server_error'));
+    }
   };
 
   const resetWorkspace = async () => {
@@ -432,7 +554,10 @@ const AdminPanel = () => {
     }
   };
 
-  const poolKarts = Object.keys(allKarts).filter((num) => allKarts[num].lane === null);
+  const poolKarts = Object.keys(allKarts).filter((num) => {
+    const k = allKarts[num];
+    return k && k.lane == null && !k.onTrack;
+  });
   const isolated = usesIsolatedWorkspace(trackSlug);
 
   return (
@@ -449,6 +574,8 @@ const AdminPanel = () => {
           setProLapThreshold={setProLapThreshold}
           onSaveSettings={saveLevelSettings}
           onUpdateDriverLevel={updateDriverLevelInDB}
+          showResetWorkspace={usesIsolatedWorkspace(trackSlug)}
+          onResetWorkspace={resetWorkspace}
         />
       )}
       {showPreview && <LivePreviewFloat onClose={() => setShowPreview(false)} heatType={heatType} trackSlug={trackSlug} />}
@@ -535,6 +662,8 @@ const AdminPanel = () => {
                             num={exitKart}
                             kart={allKarts[exitKart]}
                             onToggle={toggleKartActive}
+                            onLaunch={(num) => launchKartToTrack(num, laneId)}
+                            launchLabel={t('admin_kart_launch')}
                             draggable
                             variant="exiting"
                           />
@@ -585,6 +714,7 @@ const AdminPanel = () => {
               </div>
             )}
             <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
+            <p className="level-hint">{t('admin_level_from_laps_hint')}</p>
             <h3 className="queue-heading">{t('admin_queue_title')}</h3>
             <ul className="queue-list queue-list-tall">
               {driverQueue.length === 0 ? (
@@ -606,6 +736,29 @@ const AdminPanel = () => {
             {showPreview ? t('admin_preview_close') : t('admin_preview')}
           </button>
 
+          <div className="heat-clock-bar">
+            <span className="field-label">{t('admin_heat_timer')}</span>
+            <span className={`heat-clock-value${heatClock.running ? ' is-running' : ''}`}>
+              {formatHeatClock(heatClock, t('admin_heat_not_started'))}
+            </span>
+          </div>
+
+          {onTrack.length > 0 && (
+            <div className="on-track-panel">
+              <span className="field-label">{t('admin_on_track')}</span>
+              <ul className="on-track-list">
+                {onTrack.map((ot) => (
+                  <li key={ot.kart_number} className="on-track-item">
+                    <span>#{ot.kart_number} {ot.driver_name}</span>
+                    <button type="button" className="btn-on-track-return" onClick={() => returnKartFromTrack(ot.kart_number, ot.laneId)}>
+                      {t('admin_kart_return')}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="heat-type-bar">
             <label className="field-label">{t('admin_heat_settings')}</label>
             <select value={heatType} onChange={(e) => setHeatType(e.target.value)}>
@@ -614,7 +767,22 @@ const AdminPanel = () => {
               <option value="sprint">{t('heat_sprint')}</option>
             </select>
             {heatType === 'time' && (
-              <input type="number" value={heatDuration} onChange={(e) => setHeatDuration(e.target.value)} placeholder={t('admin_duration_placeholder')} />
+              <>
+                <span className="duration-unit-label">{t('admin_duration_unit')}</span>
+                <div className="duration-presets">
+                  {HEAT_DURATIONS.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`duration-chip${Number(heatDuration) === m ? ' active' : ''}`}
+                      onClick={() => setHeatDuration(m)}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+                <input type="number" min="1" value={heatDuration} onChange={(e) => setHeatDuration(e.target.value)} placeholder={t('admin_duration_placeholder')} />
+              </>
             )}
             {heatType === 'endurance' && (
               <div className="endurance-row">
@@ -628,9 +796,6 @@ const AdminPanel = () => {
           </div>
 
           <button type="button" className="btn-advanced-link" onClick={() => setShowAdvanced(true)}>{t('admin_advanced_settings')}</button>
-          {isolated && (
-            <button type="button" className="btn-reset-workspace" onClick={resetWorkspace}>{t('admin_reset_workspace')}</button>
-          )}
         </aside>
       </div>
     </div>

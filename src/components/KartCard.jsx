@@ -15,7 +15,15 @@ function KartSvg() {
   );
 }
 
-export default function KartCard({ num, kart, onToggle, draggable, variant = 'pool' }) {
+export default function KartCard({
+  num,
+  kart,
+  onToggle,
+  onLaunch,
+  launchLabel,
+  draggable,
+  variant = 'pool',
+}) {
   const inactive = !kart.active;
 
   return (
@@ -33,6 +41,15 @@ export default function KartCard({ num, kart, onToggle, draggable, variant = 'po
       <button type="button" className="kart-toggle-btn" onClick={(e) => onToggle(num, e)}>
         {kart.active ? '×' : '+'}
       </button>
+      {variant === 'exiting' && onLaunch && kart.active && (
+        <button
+          type="button"
+          className="kart-launch-btn"
+          onClick={(e) => { e.stopPropagation(); onLaunch(num); }}
+        >
+          {launchLabel}
+        </button>
+      )}
       {variant === 'exiting' && <span className="kart-exit-glow" aria-hidden />}
     </div>
   );
