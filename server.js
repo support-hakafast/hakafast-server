@@ -4,8 +4,50 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const session = require('express-session');
 const path = require('path');
+const nodemailer = require('nodemailer');
 const demoStore = require('./demoStore');
 const { createLiveBroadcast } = require('./liveBroadcast');
+
+const HF_CONTACT_EMAIL = process.env.HF_CONTACT_EMAIL || 'support.hakafast@gmail.com';
+const contactRateLimit = new Map();
+
+function createMailTransporter() {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) return null;
+  if (process.env.SMTP_HOST) {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user, pass },
+    });
+  }
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+  });
+}
+
+function contactRateOk(ip) {
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000;
+  const max = 8;
+  const entry = contactRateLimit.get(ip) || { count: 0, resetAt: now + windowMs };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + windowMs;
+  }
+  entry.count += 1;
+  contactRateLimit.set(ip, entry);
+  return entry.count <= max;
+}
+
+function extractReplyEmail(text) {
+  if (!text || typeof text !== 'string') return null;
+  const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  return match ? match[0] : null;
+}
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -162,6 +204,51 @@ function sendSpaIndex(res) {
 // API routes
 const translationsPath = path.join(__dirname, 'src', 'i18n', 'translations.json');
 app.get('/api/translations', (req, res) => res.json(JSON.parse(fs.readFileSync(translationsPath, 'utf8'))));
+
+app.post('/api/contact', async (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (!contactRateOk(ip)) {
+    return res.status(429).json({ success: false, error: 'rate_limited' });
+  }
+
+  const trackName = String(req.body?.trackName || '').trim().slice(0, 200);
+  const contactDetails = String(req.body?.contactDetails || '').trim().slice(0, 300);
+  const message = String(req.body?.message || '').trim().slice(0, 4000);
+
+  if (!trackName || !contactDetails || !message) {
+    return res.status(400).json({ success: false, error: 'missing_fields' });
+  }
+
+  const transporter = createMailTransporter();
+  if (!transporter) {
+    return res.status(503).json({ success: false, error: 'email_not_configured' });
+  }
+
+  const replyTo = extractReplyEmail(contactDetails);
+  const mailText = [
+    `Track / Company: ${trackName}`,
+    `Contact: ${contactDetails}`,
+    '',
+    'Message:',
+    message,
+    '',
+    `— Sent via HAKAFAST contact form (${new Date().toISOString()})`,
+  ].join('\n');
+
+  try {
+    await transporter.sendMail({
+      from: `"HAKAFAST" <${process.env.SMTP_USER}>`,
+      to: HF_CONTACT_EMAIL,
+      replyTo: replyTo || undefined,
+      subject: `HAKAFAST — ${trackName}`,
+      text: mailText,
+    });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Contact email failed:', err.message);
+    return res.status(500).json({ success: false, error: 'send_failed' });
+  }
+});
 app.get('/api/admin/pits', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) return res.json(demo.pitLines);
