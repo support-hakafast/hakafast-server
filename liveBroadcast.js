@@ -101,8 +101,7 @@ function createLiveBroadcast(httpServer, deps) {
       heatType: payload.heatType,
       heatClock: payload.heatClock || null,
       timingColumns: payload.timingColumns || null,
-      livePreviewActive: Boolean(payload.livePreviewActive),
-      effectiveMode: payload.effectiveMode || ws.subscription.mode,
+      hasPreparedHeat: Boolean(payload.hasPreparedHeat),
       ts: Date.now(),
     }));
   }

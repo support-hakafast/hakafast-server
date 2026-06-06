@@ -6,6 +6,7 @@ import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
 
 const SUPPORT_EMAIL = 'support.hakafast@gmail.com';
+const CONTACT_TIMEOUT_MS = 10000;
 
 function buildMailtoFallback(trackName, contactDetails, message) {
   const subject = encodeURIComponent(`HAKAFAST — ${trackName}`);
@@ -13,6 +14,16 @@ function buildMailtoFallback(trackName, contactDetails, message) {
     `Track / Company: ${trackName}\nContact: ${contactDetails}\n\nMessage:\n${message}`,
   );
   return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+}
+
+function openMailtoFallback(trackName, contactDetails, message) {
+  const url = buildMailtoFallback(trackName, contactDetails, message);
+  const link = document.createElement('a');
+  link.href = url;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 const HomePage = () => {
@@ -29,29 +40,41 @@ const HomePage = () => {
     if (!trackName || !contactDetails || !message) return;
 
     setContactStatus('sending');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONTACT_TIMEOUT_MS);
+
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trackName, contactDetails, message }),
+        signal: controller.signal,
       });
-      const data = await res.json();
+      clearTimeout(timeoutId);
 
-      if (data.success) {
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
+      if (res.ok && data.success) {
         setContactStatus('success');
         form.reset();
         return;
       }
 
-      if (data.error === 'email_not_configured') {
-        window.location.href = buildMailtoFallback(trackName, contactDetails, message);
+      if (data.error === 'email_not_configured' || data.error === 'send_failed' || !res.ok) {
+        openMailtoFallback(trackName, contactDetails, message);
         setContactStatus('mailto');
         return;
       }
 
       setContactStatus('error');
     } catch {
-      window.location.href = buildMailtoFallback(trackName, contactDetails, message);
+      clearTimeout(timeoutId);
+      openMailtoFallback(trackName, contactDetails, message);
       setContactStatus('mailto');
     }
   };

@@ -17,8 +17,7 @@ export function useLiveTimingSocket({
   const [rows, setRows] = useState([]);
   const [heatType, setHeatType] = useState('time');
   const [timingColumns, setTimingColumns] = useState(null);
-  const [livePreviewActive, setLivePreviewActive] = useState(false);
-  const [effectiveMode, setEffectiveMode] = useState(mode);
+  const [hasPreparedHeat, setHasPreparedHeat] = useState(false);
   const [connected, setConnected] = useState(false);
   const wsRef = useRef(null);
   const pollRef = useRef(null);
@@ -56,8 +55,7 @@ export function useLiveTimingSocket({
             setRows(data.rows || []);
             if (data.heatType) setHeatType(data.heatType);
             if (data.timingColumns) setTimingColumns(data.timingColumns);
-            setLivePreviewActive(Boolean(data.livePreviewActive));
-            setEffectiveMode(data.effectiveMode || modeRef.current);
+            setHasPreparedHeat(Boolean(data.hasPreparedHeat));
           }
         } catch {
           /* ignore */
@@ -94,8 +92,7 @@ export function useLiveTimingSocket({
             setRows(Array.isArray(msg.rows) ? msg.rows : []);
             if (msg.heatType) setHeatType(msg.heatType);
             if (msg.timingColumns) setTimingColumns(msg.timingColumns);
-            setLivePreviewActive(Boolean(msg.livePreviewActive));
-            setEffectiveMode(msg.effectiveMode || modeRef.current);
+            setHasPreparedHeat(Boolean(msg.hasPreparedHeat));
           }
         } catch {
           /* ignore */
@@ -139,5 +136,5 @@ export function useLiveTimingSocket({
     }));
   }, [mode, trackSlug, trackId]);
 
-  return { rows, heatType, timingColumns, connected, livePreviewActive, effectiveMode };
+  return { rows, heatType, timingColumns, connected, hasPreparedHeat };
 }

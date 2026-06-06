@@ -39,8 +39,7 @@ const LiveTiming = () => {
     const rows = await res.json();
     let heat = 'time';
     let timingColumns = null;
-    let livePreviewActive = false;
-    let effectiveMode = mode;
+    let hasPreparedHeat = false;
     const hs = await apiFetch('/api/heat-settings', {}, isolated ? trackSlug : null);
     if (hs.ok) {
       const s = await hs.json();
@@ -50,17 +49,13 @@ const LiveTiming = () => {
     const session = await apiFetch('/api/admin/session-state', {}, isolated ? trackSlug : null);
     if (session.ok) {
       const s = await session.json();
-      if (s.livePreviewActive) {
-        livePreviewActive = true;
-        effectiveMode = 'assignments';
-      }
+      hasPreparedHeat = Boolean(s.hasPreparedHeat);
     }
     return {
       rows: Array.isArray(rows) ? rows : [],
       heatType: heat,
       timingColumns,
-      livePreviewActive,
-      effectiveMode,
+      hasPreparedHeat,
     };
   }, [trackId, mode, trackSlug, isolated]);
 
@@ -68,8 +63,7 @@ const LiveTiming = () => {
     rows: rowsData,
     heatType,
     timingColumns,
-    livePreviewActive,
-    effectiveMode,
+    hasPreparedHeat,
   } = useLiveTimingSocket({
     trackSlug: isolated ? trackSlug : (track || 'default'),
     trackId,
@@ -80,18 +74,17 @@ const LiveTiming = () => {
 
   const sessionLabel = t(HEAT_LABEL_KEYS[heatType] || 'session_practice');
   const cols = normalizeTimingColumns(timingColumns);
-  const displayMode = livePreviewActive ? (effectiveMode || 'assignments') : mode;
 
   const flashingKeys = useRowFlash(
     rowsData,
-    (row) => `${displayMode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
-    displayMode === 'timing'
+    (row) => `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
+    mode === 'timing'
       ? ['last_lap_time', 'lap_count']
       : ['kart_number', 'driver_name', 'lap_count'],
   );
 
   const rowFlashClass = (row, index) => {
-    const key = `${displayMode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`;
+    const key = `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`;
     return flashingKeys.has(key) ? 'live-row-flash' : '';
   };
 
@@ -105,8 +98,8 @@ const LiveTiming = () => {
             <span className="live-demo-badge">{t('demo_workspace_badge', { id: getWorkspaceLabel(trackSlug) })}</span>
           )}
           <span className="live-ws-badge">{t('live_ws_realtime')}</span>
-          {livePreviewActive && (
-            <span className="live-preview-badge">{t('live_next_heat_preview')}</span>
+          {hasPreparedHeat && mode === 'assignments' && (
+            <span className="live-preview-badge">{t('live_next_heat_ready')}</span>
           )}
         </div>
         <div className="live-header-actions">
@@ -129,10 +122,10 @@ const LiveTiming = () => {
       {rowsData.length === 0 ? (
         <p className="live-empty">{t('live_waiting')}</p>
       ) : (
-        <div key={displayMode} className="live-content-panel live-timing-table-wrap">
+        <div key={mode} className="live-content-panel live-timing-table-wrap">
           <LiveTimingTable
             t={t}
-            mode={displayMode}
+            mode={mode}
             rows={rowsData}
             timingColumns={cols}
             heatType={heatType}

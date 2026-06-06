@@ -718,16 +718,8 @@ html:has(.admin-no-scroll) body {
 
 .btn-full { width: 100%; margin-top: 4px; }
 
-.btn-prepare-next {
-  margin-top: 10px;
-  width: 100%;
-  background: #6b21a8;
-  font-size: 0.95em;
-  padding: 10px;
-}
-
 .btn-execute {
-  margin-top: 8px;
+  margin-top: 10px;
   width: 100%;
   background: var(--purple);
   font-size: 1.05em;

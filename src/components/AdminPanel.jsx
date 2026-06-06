@@ -581,7 +581,13 @@ const AdminPanel = () => {
         .then((s) => {
           if (s.heatClock) setHeatClock(s.heatClock);
           if (typeof s.heatDriverCount === 'number') setHeatDriverCount(s.heatDriverCount);
-          if (s.heatKartNumbers) setAssignedHeatKarts(new Set(s.heatKartNumbers));
+          if (s.heatKartNumbers || s.nextHeatKartNumbers) {
+            const karts = new Set([
+              ...(s.heatKartNumbers || []),
+              ...(s.nextHeatKartNumbers || []),
+            ]);
+            setAssignedHeatKarts(karts);
+          }
           if (s.onTrack) setOnTrack(s.onTrack);
           if (s.pitExitPosition) setPitExitPosition(s.pitExitPosition);
           if (s.pitLines) {
@@ -610,21 +616,6 @@ const AdminPanel = () => {
     if (driverQueue.length === 0) { alert(t('admin_alert_no_drivers')); return; }
     let duration = heatDuration;
     if (heatType === 'endurance') duration = (parseInt(enduranceHours, 10) || 0) * 60 + (parseInt(enduranceMinutes, 10) || 0);
-    await apiFetch('/api/admin/heat-settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: heatType,
-        duration,
-        targetLaps: parseInt(targetLaps, 10) || 0,
-        exportCsv,
-        exportPdf,
-        timingColumns,
-      }),
-    }, trackSlug);
-    await apiFetch('/api/admin/clear-heat', { method: 'POST' }, trackSlug);
-    autoFinishHandledRef.current = false;
-    setAutoFinishHandled(false);
     const laneKeys = Object.keys(linesData).filter((id) => linesData[id].active);
     if (laneKeys.length === 0) { alert(t('admin_alert_no_lanes')); return; }
     const workingLines = JSON.parse(JSON.stringify(linesData));
@@ -650,44 +641,39 @@ const AdminPanel = () => {
         driver: driverQueue[i],
       }));
 
-    for (let i = 0; i < assignments.length; i += 1) {
-      const assign = assignments[i];
+    const payload = assignments.map((assign, i) => {
       const driverLabel = isEndurance
         ? assign.teamDrivers.join(' · ')
         : assign.driver.name;
-      await apiFetch('/assign-driver', {
+      return {
+        kart_number: assign.kart,
+        driver_name: driverLabel,
+        team_name: assign.teamName,
+        team_drivers: assign.teamDrivers,
+        phone: assign.driver.phone,
+        email: assign.driver.email,
+        registered: Boolean(assign.driver.saved),
+        driver_level: assign.driver.saved ? (assign.driver.level || 'Amateur') : undefined,
+        assignment_order: i + 1,
+      };
+    });
+
+    try {
+      const res = await apiFetch('/api/admin/assign-heat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          track_id: 1,
-          kart_number: assign.kart,
-          driver_name: driverLabel,
-          team_name: assign.teamName,
-          team_drivers: assign.teamDrivers,
-          phone: assign.driver.phone,
-          email: assign.driver.email,
-          registered: Boolean(assign.driver.saved),
-          driver_level: assign.driver.saved ? (assign.driver.level || 'Amateur') : undefined,
-          assignment_order: i + 1,
+          assignments: payload,
+          heatSettings: {
+            type: heatType,
+            duration,
+            targetLaps: parseInt(targetLaps, 10) || 0,
+            exportCsv,
+            exportPdf,
+            timingColumns,
+          },
+          pitLines: workingLines,
         }),
-      }, trackSlug);
-    }
-    const heatKarts = new Set(assignments.map((a) => Number(a.kart)));
-    setAssignedHeatKarts(heatKarts);
-    setHeatDriverCount(assignments.length);
-    alert(t('admin_alert_assign_done'));
-    setDriverQueue([]);
-    setLinesData(workingLines);
-    syncPitsWithServer(workingLines);
-  };
-
-  const prepareNextHeatPreview = async () => {
-    if (driverQueue.length === 0) { alert(t('admin_alert_no_drivers')); return; }
-    try {
-      const res = await apiFetch('/api/admin/prepare-next-heat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displaySec: 30 }),
       }, trackSlug);
       const data = await res.json();
       if (!data.success) {
@@ -695,7 +681,19 @@ const AdminPanel = () => {
         else alert(t('admin_alert_server_error'));
         return;
       }
-      alert(t('admin_alert_prepare_done'));
+
+      const heatKarts = new Set(assignments.map((a) => Number(a.kart)));
+      setAssignedHeatKarts(heatKarts);
+      if (data.prepared) {
+        setHeatDriverCount(heatDriverCount);
+        alert(t('admin_alert_assign_prepared'));
+      } else {
+        setHeatDriverCount(assignments.length);
+        alert(t('admin_alert_assign_done'));
+      }
+      setDriverQueue([]);
+      setLinesData(workingLines);
+      syncPitsWithServer(workingLines);
     } catch {
       alert(t('admin_alert_server_error'));
     }
@@ -1025,7 +1023,6 @@ const AdminPanel = () => {
                 </li>
               ))}
             </ul>
-            <button type="button" className="btn-prepare-next" onClick={prepareNextHeatPreview}>{t('admin_btn_prepare_next')}</button>
             <button type="button" className="btn-execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
           </div>
         </section>

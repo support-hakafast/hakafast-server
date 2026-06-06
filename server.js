@@ -21,11 +21,17 @@ function createMailTransporter() {
       port: Number(process.env.SMTP_PORT) || 587,
       secure: process.env.SMTP_SECURE === 'true',
       auth: { user, pass },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 12000,
     });
   }
   return nodemailer.createTransport({
     service: 'gmail',
     auth: { user, pass },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 12000,
   });
 }
 
@@ -236,13 +242,17 @@ app.post('/api/contact', async (req, res) => {
   ].join('\n');
 
   try {
-    await transporter.sendMail({
+    const sendPromise = transporter.sendMail({
       from: `"HAKAFAST" <${process.env.SMTP_USER}>`,
       to: HF_CONTACT_EMAIL,
       replyTo: replyTo || undefined,
       subject: `HAKAFAST — ${trackName}`,
       text: mailText,
     });
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('send_timeout')), 12000);
+    });
+    await Promise.race([sendPromise, timeoutPromise]);
     return res.json({ success: true });
   } catch (err) {
     console.error('Contact email failed:', err.message);
@@ -642,12 +652,19 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
   }
 });
 
-app.post('/api/admin/prepare-next-heat', (req, res) => {
+app.post('/api/admin/assign-heat', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });
-  const displaySec = Number(req.body?.displaySec) || 30;
-  const result = demoStore.prepareNextHeat(demo, displaySec);
-  if (result.success) notifyWorkspace(req);
+  const { assignments, heatSettings, pitLines } = req.body;
+  if (!Array.isArray(assignments) || assignments.length === 0) {
+    return res.json({ success: false, error: 'no_assignments' });
+  }
+  if (pitLines) demo.pitLines = demoStore.sanitizePitLines(pitLines);
+  const result = demoStore.assignHeatBatch(demo, assignments, heatSettings);
+  if (result.success) {
+    demo.driverQueue = [];
+    notifyWorkspace(req);
+  }
   return res.json(result);
 });
 

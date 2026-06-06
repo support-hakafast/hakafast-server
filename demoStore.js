@@ -54,8 +54,8 @@ function createStore(trackSlug = 'kart-demo') {
     drivers: [],
     heatHistory: [],
     clientSnapshot: null,
-    nextHeatPreview: null,
-    livePreviewUntil: 0,
+    nextHeat: [],
+    nextHeatSettings: null,
   };
 }
 
@@ -110,6 +110,8 @@ function exportSnapshot(store) {
     trackSetup: store.trackSetup,
     driverQueue: store.driverQueue,
     currentHeat: store.currentHeat,
+    nextHeat: store.nextHeat,
+    nextHeatSettings: store.nextHeatSettings,
     drivers: store.drivers,
     clientSnapshot: store.clientSnapshot,
     exportedAt: Date.now(),
@@ -126,6 +128,8 @@ function applySnapshot(store, snapshot) {
   if (snapshot.trackSetup) store.trackSetup = snapshot.trackSetup;
   if (snapshot.driverQueue) store.driverQueue = snapshot.driverQueue;
   if (snapshot.currentHeat) store.currentHeat = snapshot.currentHeat;
+  if (snapshot.nextHeat) store.nextHeat = snapshot.nextHeat;
+  if (snapshot.nextHeatSettings) store.nextHeatSettings = snapshot.nextHeatSettings;
   if (snapshot.drivers) store.drivers = snapshot.drivers;
   if (snapshot.clientSnapshot) store.clientSnapshot = snapshot.clientSnapshot;
   store.lastAccess = Date.now();
@@ -308,6 +312,49 @@ function getHeatDriverCount(store) {
   return store.currentHeat?.length || 0;
 }
 
+function hasActiveTimingSession(store) {
+  if (store.onTrack.length > 0) return true;
+  if (!store.currentHeat.length || !store.heatRuntime?.startedAt) return false;
+  const elapsedSec = Math.floor((Date.now() - store.heatRuntime.startedAt) / 1000);
+  const totalSec = (store.heatSettings?.duration || 10) * 60;
+  return elapsedSec < totalSec;
+}
+
+function getLaunchHeatRows(store) {
+  if (hasActiveTimingSession(store)) return store.currentHeat;
+  if (store.nextHeat.length > 0) return store.nextHeat;
+  return store.currentHeat;
+}
+
+function kartHeatTarget(store, kartNumber) {
+  const n = Number(kartNumber);
+  if (store.nextHeat.some((r) => Number(r.kart_number) === n)) return 'next';
+  if (store.currentHeat.some((r) => Number(r.kart_number) === n)) return 'current';
+  return null;
+}
+
+function promoteNextHeat(store) {
+  if (!store.nextHeat.length) return false;
+  if (store.currentHeat.length) {
+    applyAutoLevelUpgrades(store);
+    store.heatHistory.push({
+      heat_type: store.heatSettings.type,
+      results: JSON.parse(JSON.stringify(store.currentHeat)),
+      created_at: new Date().toISOString(),
+    });
+  }
+  store.currentHeat = JSON.parse(JSON.stringify(store.nextHeat));
+  store.nextHeat = [];
+  if (store.nextHeatSettings) {
+    store.heatSettings = { ...store.heatSettings, ...store.nextHeatSettings };
+    store.nextHeatSettings = null;
+  }
+  store.onTrack = [];
+  store.heatRuntime.startedAt = null;
+  store.heatAutoFinishTriggered = false;
+  return true;
+}
+
 function getHeatClock(store) {
   const durationMin = store.heatSettings?.duration || 10;
   const startedAt = store.heatRuntime?.startedAt;
@@ -347,7 +394,7 @@ function transponderToKart(store, transponderId) {
 }
 
 function launchKartByTransponder(store, kartNumber, laneId) {
-  if (!getHeatDriverCount(store)) {
+  if (!getLaunchHeatRows(store).length) {
     return { success: false, error: 'no_drivers_in_heat' };
   }
   return launchKart(store, kartNumber, laneId);
@@ -361,8 +408,11 @@ function processTransponderPitExit(store, transponderId) {
   ));
   if (!laneEntry) return { success: false, error: 'not_at_exit' };
   const [laneId] = laneEntry;
-  const inHeat = store.currentHeat.some((r) => Number(r.kart_number) === kartNumber);
-  if (!inHeat) return { success: false, error: 'not_in_heat' };
+  const target = kartHeatTarget(store, kartNumber);
+  if (!target) return { success: false, error: 'not_in_heat' };
+  if (target === 'next' && hasActiveTimingSession(store)) {
+    return { success: false, error: 'session_still_active' };
+  }
   return launchKartByTransponder(store, kartNumber, laneId);
 }
 
@@ -393,9 +443,10 @@ function processTransponderLap(store, transponderId, lapTimeSec = null) {
 }
 
 function scanTransponderExits(store) {
-  if (!getHeatDriverCount(store)) return [];
+  const launchRows = getLaunchHeatRows(store);
+  if (!launchRows.length) return [];
   const launched = [];
-  const heatKarts = new Set(store.currentHeat.map((r) => Number(r.kart_number)));
+  const heatKarts = new Set(launchRows.map((r) => Number(r.kart_number)));
   const onTrackKarts = new Set(store.onTrack.map((k) => Number(k.kart_number)));
 
   Object.entries(store.pitLines).forEach(([laneId, lane]) => {
@@ -421,8 +472,19 @@ function launchKart(store, kartNumber, laneId) {
     return { success: false, error: 'already_on_track' };
   }
 
+  const n = Number(kartNumber);
+  const target = kartHeatTarget(store, n);
+  if (target === 'next') {
+    if (hasActiveTimingSession(store)) {
+      return { success: false, error: 'session_still_active' };
+    }
+    promoteNextHeat(store);
+  } else if (target !== 'current') {
+    return { success: false, error: 'not_in_heat' };
+  }
+
   lane.karts.shift();
-  const heatRow = store.currentHeat.find((r) => Number(r.kart_number) === Number(kartNumber));
+  const heatRow = store.currentHeat.find((r) => Number(r.kart_number) === n);
   store.onTrack.push({
     kart_number: Number(kartNumber),
     originLaneId: Number(laneId),
@@ -487,7 +549,28 @@ function sortAssignmentRows(store) {
   return rows.sort((a, b) => (a.assignmentOrder ?? 0) - (b.assignmentOrder ?? 0));
 }
 
+function sortNextHeatRows(store, rows) {
+  const heatType = store.nextHeatSettings?.type || store.heatSettings?.type || 'time';
+  if (heatType === 'sprint' || heatType === 'endurance') {
+    return rows.slice().sort((a, b) => (a.assignmentOrder ?? 0) - (b.assignmentOrder ?? 0));
+  }
+  return rows.slice().sort((a, b) => (a.assignmentOrder ?? 0) - (b.assignmentOrder ?? 0));
+}
+
 function getAssignments(store) {
+  if (store.nextHeat.length > 0) {
+    return sortNextHeatRows(store, store.nextHeat)
+      .map((r, i) => ({
+        position: i + 1,
+        kart_number: r.kart_number,
+        driver_name: r.driver_name,
+        team_name: r.team_name || null,
+        team_drivers: r.team_drivers || null,
+        driver_level: r.driver_level,
+        lap_count: 0,
+        status: 'prepared',
+      }));
+  }
   if (store.currentHeat.length > 0) {
     return sortAssignmentRows(store)
       .map((r, i) => ({
@@ -554,6 +637,76 @@ function getTimingData(store) {
     .slice(0, 30);
 }
 
+function buildHeatRow(body, index) {
+  const isRegistered = Boolean(body.registered || body.phone || body.email);
+  const savedLevel = isRegistered ? (body.driver_level || 'Amateur') : 'Amateur';
+  return {
+    track_id: 1,
+    kart_number: body.kart_number,
+    driver_name: body.driver_name,
+    team_name: body.team_name || null,
+    team_drivers: Array.isArray(body.team_drivers) && body.team_drivers.length ? body.team_drivers : null,
+    driver_level: savedLevel,
+    registered: isRegistered,
+    assignmentOrder: body.assignment_order ?? index + 1,
+    last_lap_time: null,
+    best_lap_time: null,
+    lap_count: 0,
+    lap_times: [],
+  };
+}
+
+function registerDriverIfNeeded(store, body) {
+  const isRegistered = Boolean(body.registered || body.phone || body.email);
+  if (!isRegistered || (!body.phone && !body.email)) return;
+  const exists = store.drivers.some((d) => d.full_name === body.driver_name);
+  if (!exists) {
+    store.drivers.push({
+      full_name: body.driver_name,
+      phone: body.phone || null,
+      email: body.email || null,
+      driver_level: body.driver_level || 'Amateur',
+    });
+  }
+}
+
+function assignHeatBatch(store, assignmentRows, settings) {
+  if (!assignmentRows?.length) return { success: false, error: 'no_assignments' };
+
+  assignmentRows.forEach((body, i) => {
+    registerDriverIfNeeded(store, body);
+  });
+
+  const rows = assignmentRows.map((body, i) => buildHeatRow(body, i));
+  const prepare = hasActiveTimingSession(store);
+
+  if (prepare) {
+    store.nextHeat = rows;
+    store.nextHeatSettings = settings ? { ...settings } : null;
+  } else {
+    if (store.currentHeat.length) {
+      applyAutoLevelUpgrades(store);
+      const hasResults = store.currentHeat.some((r) => (r.lap_count || 0) > 0 || r.best_lap_time);
+      if (hasResults) {
+        store.heatHistory.push({
+          heat_type: store.heatSettings.type,
+          results: JSON.parse(JSON.stringify(store.currentHeat)),
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
+    store.currentHeat = rows;
+    store.nextHeat = [];
+    store.nextHeatSettings = null;
+    if (settings) store.heatSettings = { ...store.heatSettings, ...settings };
+    store.onTrack = [];
+    store.heatRuntime.startedAt = null;
+    store.heatAutoFinishTriggered = false;
+  }
+
+  return { success: true, prepared: prepare, count: rows.length };
+}
+
 function assignDriver(store, body) {
   const {
     kart_number, driver_name, driver_level, phone, email, registered,
@@ -598,11 +751,11 @@ function assignDriver(store, body) {
 
 function clearHeat(store) {
   store.currentHeat = [];
+  store.nextHeat = [];
+  store.nextHeatSettings = null;
   store.onTrack = [];
   store.heatRuntime.startedAt = null;
   store.heatAutoFinishTriggered = false;
-  store.nextHeatPreview = null;
-  store.livePreviewUntil = 0;
 }
 
 function finishHeat(store) {
@@ -614,6 +767,7 @@ function finishHeat(store) {
       created_at: new Date().toISOString(),
     });
   }
+  store.currentHeat = [];
   store.onTrack = [];
   store.heatRuntime.startedAt = null;
 }
@@ -659,100 +813,44 @@ function enrichOnTrack(store) {
   });
 }
 
+function getEffectiveHeatType(store, mode) {
+  if (mode === 'assignments' && store.nextHeat.length && store.nextHeatSettings?.type) {
+    return store.nextHeatSettings.type;
+  }
+  return store.heatSettings?.type || 'time';
+}
+
 function getSessionState(store) {
   store.pitLines = sanitizePitLines(store.pitLines);
   scanTransponderExits(store);
   tickHeatSimulation(store);
-  clearExpiredPreview(store);
   const { autoFinishRequested, heatClock } = checkAutoFinish(store);
-  const previewActive = store.livePreviewUntil > Date.now() && store.nextHeatPreview?.length;
   return {
     heatSettings: store.heatSettings,
+    nextHeatSettings: store.nextHeatSettings,
     heatRuntime: store.heatRuntime,
     heatClock,
     heatDriverCount: getHeatDriverCount(store),
+    nextHeatDriverCount: store.nextHeat.length,
     heatKartNumbers: store.currentHeat.map((r) => Number(r.kart_number)),
+    nextHeatKartNumbers: store.nextHeat.map((r) => Number(r.kart_number)),
+    hasPreparedHeat: store.nextHeat.length > 0,
+    hasActiveTimingSession: hasActiveTimingSession(store),
     autoFinishRequested,
     onTrack: enrichOnTrack(store),
     pitLines: store.pitLines,
     pitExitPosition: store.levelSettings?.pitExitPosition || 'bottom',
-    livePreviewActive: Boolean(previewActive),
-    livePreviewUntil: store.livePreviewUntil || 0,
   };
 }
 
-function clearExpiredPreview(store) {
-  if (store.livePreviewUntil && store.livePreviewUntil <= Date.now()) {
-    store.nextHeatPreview = null;
-    store.livePreviewUntil = 0;
-  }
-}
-
-function prepareNextHeat(store, displaySec = 30) {
-  clearExpiredPreview(store);
-  if (!store.driverQueue?.length) return { success: false, error: 'no_drivers' };
-  const laneKeys = Object.keys(store.pitLines).filter((id) => store.pitLines[id].active);
-  if (!laneKeys.length) return { success: false, error: 'no_lanes' };
-
-  const workingLines = JSON.parse(JSON.stringify(store.pitLines));
-  const isEndurance = store.heatSettings?.type === 'endurance';
-  const teams = isEndurance ? groupQueueByTeam(store.driverQueue) : null;
-  const assignCount = isEndurance ? teams.length : store.driverQueue.length;
-  const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount);
-  if (!complete) return { success: false, error: 'not_enough_karts' };
-
-  const assignments = isEndurance
-    ? teams.map((team, i) => ({
-      kart: kartSlots[i].kart,
-      teamName: team.teamName,
-      teamDrivers: team.drivers.map((d) => d.name),
-      driver: team.drivers[0],
-    }))
-    : kartSlots.map((slot, i) => ({
-      kart: slot.kart,
-      teamName: null,
-      teamDrivers: null,
-      driver: store.driverQueue[i],
-    }));
-
-  store.nextHeatPreview = assignments.map((assign, i) => {
-    const driverLabel = isEndurance
-      ? assign.teamDrivers.join(' · ')
-      : assign.driver.name;
-    return {
-      position: i + 1,
-      kart_number: assign.kart,
-      driver_name: driverLabel,
-      team_name: assign.teamName,
-      team_drivers: assign.teamDrivers,
-      status: 'preview',
-    };
-  });
-  store.livePreviewUntil = Date.now() + Math.max(5, displaySec) * 1000;
-  return { success: true, preview: store.nextHeatPreview, displaySec };
-}
-
 function getLivePayload(store, mode) {
-  clearExpiredPreview(store);
-  const previewActive = store.livePreviewUntil > Date.now() && store.nextHeatPreview?.length;
-  if (previewActive) {
-    return {
-      rows: store.nextHeatPreview,
-      heatType: store.heatSettings?.type || 'time',
-      heatClock: getHeatClock(store),
-      timingColumns: store.heatSettings?.timingColumns || null,
-      livePreviewActive: true,
-      effectiveMode: 'assignments',
-    };
-  }
   const rows = mode === 'assignments' ? getAssignments(store) : getTimingData(store);
   return {
     rows,
-    heatType: store.heatSettings?.type || 'time',
+    heatType: getEffectiveHeatType(store, mode),
     heatClock: getHeatClock(store),
     timingColumns: store.heatSettings?.timingColumns || null,
-    livePreviewActive: false,
-    effectiveMode: mode,
+    hasPreparedHeat: store.nextHeat.length > 0,
   };
 }
 
@@ -777,11 +875,12 @@ module.exports = {
   processTransponderLap,
   scanTransponderExits,
   assignDriver,
+  assignHeatBatch,
   clearHeat,
   finishHeat,
   exportData,
   updateDriverLevel,
   lapToSeconds,
-  prepareNextHeat,
+  hasActiveTimingSession,
   getSessionFastestLapSec,
 };
