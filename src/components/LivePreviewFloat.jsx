@@ -35,7 +35,7 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
     return { rows: Array.isArray(rows) ? rows : [], heatType, timingColumns };
   }, [trackId, mode, trackSlug, heatType]);
 
-  const { rows, timingColumns } = useLiveTimingSocket({
+  const { rows, timingColumns, livePreviewActive, effectiveMode } = useLiveTimingSocket({
     trackSlug,
     trackId,
     mode,
@@ -44,17 +44,18 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
   });
 
   const cols = normalizeTimingColumns(timingColumns);
+  const displayMode = livePreviewActive ? (effectiveMode || 'assignments') : mode;
 
   const flashingKeys = useRowFlash(
     rows,
-    (row) => `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
-    mode === 'timing'
+    (row) => `${displayMode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
+    displayMode === 'timing'
       ? ['last_lap_time', 'best_lap_time', 'lap_count', 'kart_number']
       : ['kart_number', 'driver_name'],
   );
 
   const flash = (row, i) => {
-    const key = `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`;
+    const key = `${displayMode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`;
     return flashingKeys.has(key) ? 'live-row-flash' : '';
   };
 
@@ -76,13 +77,13 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
         <button type="button" className="live-preview-close" onClick={onClose} onPointerDown={(e) => e.stopPropagation()}>×</button>
       </div>
       <div className="live-preview-body">
-        <div key={mode} className="live-content-panel">
+        <div key={displayMode} className="live-content-panel">
           {rows.length === 0 ? (
             <p className="live-preview-empty">{t('live_waiting')}</p>
           ) : (
             <LiveTimingTable
               t={t}
-              mode={mode}
+              mode={displayMode}
               rows={rows}
               timingColumns={cols}
               heatType={heatType}

@@ -283,10 +283,12 @@ const AdminPanel = () => {
     const kart = allKarts[num];
     if (!kart) return;
     const nextActive = !kart.active;
-    if (!nextActive && kart.lane != null && linesData[kart.lane]) {
+    const laneKey = kart.lane != null ? String(kart.lane) : null;
+    const lane = laneKey ? linesData[laneKey] : null;
+    if (!nextActive && lane && lane.active) {
       const updatedLines = {
         ...linesData,
-        [kart.lane]: { ...linesData[kart.lane], karts: linesData[kart.lane].karts.filter((x) => Number(x) !== Number(num)) },
+        [laneKey]: { ...lane, karts: lane.karts.filter((x) => Number(x) !== Number(num)) },
       };
       setLinesData(updatedLines);
       syncPitsWithServer(updatedLines);
@@ -326,24 +328,28 @@ const AdminPanel = () => {
     const key = String(num);
     const kart = allKarts[key] || allKarts[num];
     let updatedLines = { ...linesData };
+    const laneKey = laneNum != null ? String(laneNum) : null;
 
     if (fromLaneId != null && fromLaneIndex >= 0) {
-      updatedLines = removeKartFromLaneAt(updatedLines, fromLaneId, fromLaneIndex, num);
-    } else if (kart?.lane != null && updatedLines[kart.lane]) {
-      updatedLines = removeKartFromLaneAt(updatedLines, kart.lane, -1, num);
+      updatedLines = removeKartFromLaneAt(updatedLines, String(fromLaneId), fromLaneIndex, num);
+    } else if (kart?.lane != null && updatedLines[String(kart.lane)]) {
+      updatedLines = removeKartFromLaneAt(updatedLines, String(kart.lane), -1, num);
     }
 
-    if (laneNum != null && updatedLines[laneNum]) {
+    if (laneKey && updatedLines[laneKey]) {
+      const targetLane = updatedLines[laneKey];
+      if (kart && !kart.active && targetLane.active) return;
+
       const n = Number(num);
       const onTrackNow = onTrack.some((ot) => Number(ot.kart_number) === n);
-      const alreadyInLane = updatedLines[laneNum].karts.some((k) => Number(k) === n);
+      const alreadyInLane = targetLane.karts.some((k) => Number(k) === n);
       const inOtherLane = Object.entries(updatedLines).some(([id, lane]) => (
-        id !== String(laneNum) && (lane.karts || []).some((k) => Number(k) === n)
+        id !== laneKey && (lane.karts || []).some((k) => Number(k) === n)
       ));
       if (!onTrackNow && !alreadyInLane && !inOtherLane) {
-        updatedLines[laneNum] = {
-          ...updatedLines[laneNum],
-          karts: [...updatedLines[laneNum].karts, n],
+        updatedLines[laneKey] = {
+          ...targetLane,
+          karts: [...targetLane.karts, n],
         };
       }
     }
@@ -353,7 +359,18 @@ const AdminPanel = () => {
     setAllKarts((prev) => {
       const existing = prev[key] || prev[num];
       const base = existing || { number: num, active: true, lane: null, onTrack: false };
-      return { ...prev, [key]: { ...base, number: num, lane: laneNum, onTrack: false } };
+      const nextLane = laneKey ? Number(laneKey) : null;
+      const inDisabledLane = laneKey && !updatedLines[laneKey]?.active;
+      return {
+        ...prev,
+        [key]: {
+          ...base,
+          number: num,
+          lane: nextLane,
+          onTrack: false,
+          active: inDisabledLane ? false : base.active,
+        },
+      };
     });
     setLinesData(updatedLines);
     syncPitsWithServer(updatedLines);
@@ -662,6 +679,26 @@ const AdminPanel = () => {
     setDriverQueue([]);
     setLinesData(workingLines);
     syncPitsWithServer(workingLines);
+  };
+
+  const prepareNextHeatPreview = async () => {
+    if (driverQueue.length === 0) { alert(t('admin_alert_no_drivers')); return; }
+    try {
+      const res = await apiFetch('/api/admin/prepare-next-heat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displaySec: 30 }),
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) {
+        if (data.error === 'not_enough_karts') alert(t('admin_alert_not_enough_karts'));
+        else alert(t('admin_alert_server_error'));
+        return;
+      }
+      alert(t('admin_alert_prepare_done'));
+    } catch {
+      alert(t('admin_alert_server_error'));
+    }
   };
 
   const handleSetupComplete = ({ kartNumbers, hasPassword: pwSet }) => {
@@ -988,6 +1025,7 @@ const AdminPanel = () => {
                 </li>
               ))}
             </ul>
+            <button type="button" className="btn-prepare-next" onClick={prepareNextHeatPreview}>{t('admin_btn_prepare_next')}</button>
             <button type="button" className="btn-execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
           </div>
         </section>

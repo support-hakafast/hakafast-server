@@ -6,9 +6,9 @@ import {
   lapToSeconds,
 } from '../utils/liveTimingColumns.js';
 
-function isPersonalBestLap(row) {
-  if (!row?.last_lap_time || !row?.best_lap_time) return false;
-  return row.last_lap_time === row.best_lap_time || row.is_personal_best;
+function isSessionFastestLap(row) {
+  if (!row?.last_lap_time) return false;
+  return Boolean(row.is_session_fastest);
 }
 
 function formatTeamDrivers(row) {
@@ -28,10 +28,7 @@ export default function LiveTimingTable({
   tableClassName = 'live-timing-table',
 }) {
   const isEndurance = heatType === 'endurance';
-  const leaderBestSec = useMemo(() => {
-    if (mode !== 'timing' || !rows.length || isEndurance) return Infinity;
-    return lapToSeconds(rows[0]?.best_lap_time);
-  }, [mode, rows, isEndurance]);
+  const leader = useMemo(() => (mode === 'timing' && rows.length ? rows[0] : null), [mode, rows]);
 
   if (mode === 'assignments') {
     return (
@@ -71,7 +68,7 @@ export default function LiveTimingTable({
           <th>{t('kart')}</th>
           <th>{isEndurance ? t('team_drivers') : t('driver')}</th>
           {isEndurance && <th>{t('laps')}</th>}
-          {!isEndurance && <th className="live-col-highlight">{t('best_lap')}</th>}
+          <th className="live-col-highlight">{t('best_lap')}</th>
           <th className="live-col-highlight">{t('last_lap')}</th>
           {optionalCols.map((col) => (
             <th key={col.id}>{t(col.labelKey)}</th>
@@ -81,7 +78,7 @@ export default function LiveTimingTable({
       <tbody>
         {rows.map((row, index) => {
           const isLeader = index === 0;
-          const pbLap = isPersonalBestLap(row);
+          const sessionFastestLap = isSessionFastestLap(row);
           return (
             <tr key={`timing-${row.kart_number}-${index}`} className={rowFlashClass(row, index)}>
               <td className="live-pos">{index + 1}</td>
@@ -92,12 +89,10 @@ export default function LiveTimingTable({
                 {isEndurance ? formatTeamDrivers(row) : (row.driver_name || t('anonymous'))}
               </td>
               {isEndurance && <td className="live-lap-count">{row.lap_count ?? row.total_laps ?? 0}</td>}
-              {!isEndurance && (
-                <td className="live-col-highlight">
-                  {formatLapCell(row.best_lap_time)}
-                </td>
-              )}
-              <td className={`live-col-highlight live-last-lap${pbLap ? ' live-last-pb' : ''}`}>
+              <td className="live-col-highlight">
+                {formatLapCell(row.best_lap_time)}
+              </td>
+              <td className={`live-col-highlight live-last-lap${sessionFastestLap ? ' live-last-pb' : ''}`}>
                 {formatLapCell(row.last_lap_time)}
               </td>
               {optionalCols.map((col) => {
@@ -116,7 +111,7 @@ export default function LiveTimingTable({
                 if (col.id === 'gap') {
                   return (
                     <td key={col.id}>
-                      {gapToLeader(row, leaderBestSec, lapToSeconds)}
+                      {gapToLeader(row, leader, heatType, lapToSeconds)}
                     </td>
                   );
                 }

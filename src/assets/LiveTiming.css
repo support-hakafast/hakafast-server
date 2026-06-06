@@ -264,3 +264,77 @@
   border-radius: 6px;
   padding: 3px 6px;
 }
+
+.live-preview-badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  margin-inline-end: 0.35rem;
+  background: #6b21a8;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  animation: livePreviewPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePreviewPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@media (max-width: 768px) {
+  .live-timing-header {
+    padding: 0.75rem 0.85rem;
+    gap: 0.5rem;
+  }
+
+  .live-timing-header h1 {
+    font-size: 1.1rem;
+    width: 100%;
+  }
+
+  .live-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .live-mode-tabs button {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.78rem;
+    min-height: 2.25rem;
+  }
+
+  .live-timing-table-wrap {
+    padding: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .live-timing-table {
+    font-size: 0.8rem;
+    min-width: 520px;
+  }
+
+  .live-timing-table th,
+  .live-timing-table td {
+    padding: 0.5rem 0.35rem;
+  }
+
+  .live-session-badge,
+  .live-demo-badge,
+  .live-ws-badge,
+  .live-preview-badge {
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .live-timing-table {
+    font-size: 0.72rem;
+    min-width: 460px;
+  }
+
+  .live-header-logo.hf-logo-img {
+    height: 32px;
+  }
+}

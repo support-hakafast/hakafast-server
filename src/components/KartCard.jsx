@@ -31,9 +31,9 @@ export default function KartCard({
   return (
     <div
       className={`kart-shape kart-variant-${variant}${inactive ? ' is-disabled' : ''}${transponderActive ? ' transponder-active' : ''}`}
-      draggable={draggable && kart.active}
+      draggable={draggable}
       onDragStart={(e) => {
-        if (!kart.active) { e.preventDefault(); return; }
+        if (!draggable) { e.preventDefault(); return; }
         if (laneId != null && laneIndex >= 0) {
           e.dataTransfer.setData('text', JSON.stringify({ num, laneId, laneIndex }));
         } else {

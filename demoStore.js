@@ -54,6 +54,8 @@ function createStore(trackSlug = 'kart-demo') {
     drivers: [],
     heatHistory: [],
     clientSnapshot: null,
+    nextHeatPreview: null,
+    livePreviewUntil: 0,
   };
 }
 
@@ -157,6 +159,8 @@ function getAvgLapSec(store) {
   return store.heatRuntime?.avgLapSec || DEFAULT_AVG_LAP_SEC;
 }
 
+const LEVEL_RANK = { Amateur: 0, Master: 1, Pro: 2 };
+
 function levelFromBestLap(store, bestLap, fallback = 'Amateur') {
   const bestSec = lapToSeconds(bestLap);
   if (bestSec === Infinity) return fallback;
@@ -167,13 +171,74 @@ function levelFromBestLap(store, bestLap, fallback = 'Amateur') {
   return 'Amateur';
 }
 
+function maxDriverLevel(saved, computed) {
+  const savedRank = LEVEL_RANK[saved] ?? 0;
+  const computedRank = LEVEL_RANK[computed] ?? 0;
+  return savedRank >= computedRank ? saved : computed;
+}
+
 function resolveDriverLevel(store, row) {
-  if (row.best_lap_time) {
-    const fallback = row.registered ? (row.driver_level || 'Amateur') : 'Amateur';
-    return levelFromBestLap(store, row.best_lap_time, fallback);
+  const computed = row.best_lap_time
+    ? levelFromBestLap(store, row.best_lap_time, 'Amateur')
+    : 'Amateur';
+  if (row.registered && row.driver_level) {
+    return maxDriverLevel(row.driver_level, computed);
   }
+  if (row.best_lap_time) return computed;
   if (row.registered && row.driver_level) return row.driver_level;
   return 'Amateur';
+}
+
+function getSessionFastestLapSec(store) {
+  let best = Infinity;
+  store.currentHeat.forEach((row) => {
+    if ((row.lap_count || 0) < 2) return;
+    const sec = lapToSeconds(row.best_lap_time);
+    if (sec < best) best = sec;
+  });
+  return best;
+}
+
+function groupQueueByTeam(queue) {
+  const teams = [];
+  const map = new Map();
+  (queue || []).forEach((d) => {
+    const key = (d.team || '').trim() || d.name;
+    if (!map.has(key)) {
+      const entry = { teamName: key, drivers: [] };
+      map.set(key, entry);
+      teams.push(entry);
+    }
+    map.get(key).drivers.push(d);
+  });
+  return teams;
+}
+
+function pickKartsForAssignment(workingLines, laneKeys, driverCount) {
+  const used = new Set();
+  const assigned = [];
+  let laneCursor = 0;
+  const maxDepth = Math.max(0, ...laneKeys.map((k) => workingLines[k]?.karts?.length || 0));
+
+  for (let i = 0; i < driverCount; i += 1) {
+    let found = null;
+    for (let depth = 0; depth < maxDepth && !found; depth += 1) {
+      for (let offset = 0; offset < laneKeys.length; offset += 1) {
+        const key = laneKeys[(laneCursor + offset) % laneKeys.length];
+        const kart = workingLines[key]?.karts?.[depth];
+        const kartNum = Number(kart);
+        if (kart != null && !Number.isNaN(kartNum) && !used.has(kartNum)) {
+          found = { kart: kartNum, lane: key, depth };
+          laneCursor = (laneCursor + offset + 1) % laneKeys.length;
+          break;
+        }
+      }
+    }
+    if (!found) return { assigned, complete: false };
+    used.add(found.kart);
+    assigned.push({ ...found, driverIndex: i });
+  }
+  return { assigned, complete: true };
 }
 
 function simulatedBestSec(avgLap, kartNumber) {
@@ -194,15 +259,17 @@ function recordLapCrossing(store, ot, row, lapSec) {
 
   row.lap_count = (row.lap_count || 0) + 1;
   row.last_lap_time = formatLap(lapSec);
-  row.is_personal_best = false;
+  if (!Array.isArray(row.lap_times)) row.lap_times = [];
+  row.lap_times.push(formatLap(lapSec));
 
-  const currentBest = lapToSeconds(row.best_lap_time);
-  if (currentBest === Infinity || lapSec < currentBest) {
-    if (currentBest !== Infinity) row.second_best_lap_time = row.best_lap_time;
-    row.best_lap_time = formatLap(lapSec);
-    row.is_personal_best = true;
-  } else if (!row.second_best_lap_time || lapSec < lapToSeconds(row.second_best_lap_time)) {
-    row.second_best_lap_time = formatLap(lapSec);
+  if (row.lap_count > 1) {
+    const currentBest = lapToSeconds(row.best_lap_time);
+    if (currentBest === Infinity || lapSec < currentBest) {
+      if (currentBest !== Infinity) row.second_best_lap_time = row.best_lap_time;
+      row.best_lap_time = formatLap(lapSec);
+    } else if (!row.second_best_lap_time || lapSec < lapToSeconds(row.second_best_lap_time)) {
+      row.second_best_lap_time = formatLap(lapSec);
+    }
   }
 
   const elapsedSec = (now - ot.launchedAt) / 1000;
@@ -321,7 +388,7 @@ function processTransponderLap(store, transponderId, lapTimeSec = null) {
     kart_number: kartNumber,
     lap_count: row.lap_count,
     last_lap_time: row.last_lap_time,
-    is_personal_best: row.is_personal_best,
+    is_session_fastest: lapToSeconds(row.last_lap_time) === getSessionFastestLapSec(store),
   };
 }
 
@@ -463,6 +530,7 @@ function getTimingSortFn(store) {
 function getTimingData(store) {
   tickHeatSimulation(store);
   const order = getTimingSortFn(store);
+  const sessionFastestSec = getSessionFastestLapSec(store);
   return store.currentHeat
     .filter((r) => store.onTrack.some((k) => Number(k.kart_number) === Number(r.kart_number)))
     .slice()
@@ -470,12 +538,17 @@ function getTimingData(store) {
     .map((r) => {
       const ot = store.onTrack.find((k) => Number(k.kart_number) === Number(r.kart_number));
       const enriched = withResolvedLevel(store, r);
+      const lastSec = lapToSeconds(r.last_lap_time);
+      const isSessionFastest = sessionFastestSec !== Infinity
+        && (r.lap_count || 0) >= 2
+        && lastSec === sessionFastestSec;
       return {
         ...enriched,
         team_name: r.team_name || null,
         team_drivers: r.team_drivers || null,
         track_position: ot?.trackPosition ?? 0,
-        is_personal_best: Boolean(r.is_personal_best && r.last_lap_time && r.best_lap_time === r.last_lap_time),
+        is_session_fastest: isSessionFastest,
+        lap_times: r.lap_times || [],
       };
     })
     .slice(0, 30);
@@ -511,7 +584,7 @@ function assignDriver(store, body) {
     last_lap_time: null,
     best_lap_time: null,
     lap_count: 0,
-    is_personal_best: false,
+    lap_times: [],
   });
   if (isRegistered && (phone || email)) {
     store.drivers.push({
@@ -528,6 +601,8 @@ function clearHeat(store) {
   store.onTrack = [];
   store.heatRuntime.startedAt = null;
   store.heatAutoFinishTriggered = false;
+  store.nextHeatPreview = null;
+  store.livePreviewUntil = 0;
 }
 
 function finishHeat(store) {
@@ -588,7 +663,9 @@ function getSessionState(store) {
   store.pitLines = sanitizePitLines(store.pitLines);
   scanTransponderExits(store);
   tickHeatSimulation(store);
+  clearExpiredPreview(store);
   const { autoFinishRequested, heatClock } = checkAutoFinish(store);
+  const previewActive = store.livePreviewUntil > Date.now() && store.nextHeatPreview?.length;
   return {
     heatSettings: store.heatSettings,
     heatRuntime: store.heatRuntime,
@@ -599,16 +676,83 @@ function getSessionState(store) {
     onTrack: enrichOnTrack(store),
     pitLines: store.pitLines,
     pitExitPosition: store.levelSettings?.pitExitPosition || 'bottom',
+    livePreviewActive: Boolean(previewActive),
+    livePreviewUntil: store.livePreviewUntil || 0,
   };
 }
 
+function clearExpiredPreview(store) {
+  if (store.livePreviewUntil && store.livePreviewUntil <= Date.now()) {
+    store.nextHeatPreview = null;
+    store.livePreviewUntil = 0;
+  }
+}
+
+function prepareNextHeat(store, displaySec = 30) {
+  clearExpiredPreview(store);
+  if (!store.driverQueue?.length) return { success: false, error: 'no_drivers' };
+  const laneKeys = Object.keys(store.pitLines).filter((id) => store.pitLines[id].active);
+  if (!laneKeys.length) return { success: false, error: 'no_lanes' };
+
+  const workingLines = JSON.parse(JSON.stringify(store.pitLines));
+  const isEndurance = store.heatSettings?.type === 'endurance';
+  const teams = isEndurance ? groupQueueByTeam(store.driverQueue) : null;
+  const assignCount = isEndurance ? teams.length : store.driverQueue.length;
+  const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount);
+  if (!complete) return { success: false, error: 'not_enough_karts' };
+
+  const assignments = isEndurance
+    ? teams.map((team, i) => ({
+      kart: kartSlots[i].kart,
+      teamName: team.teamName,
+      teamDrivers: team.drivers.map((d) => d.name),
+      driver: team.drivers[0],
+    }))
+    : kartSlots.map((slot, i) => ({
+      kart: slot.kart,
+      teamName: null,
+      teamDrivers: null,
+      driver: store.driverQueue[i],
+    }));
+
+  store.nextHeatPreview = assignments.map((assign, i) => {
+    const driverLabel = isEndurance
+      ? assign.teamDrivers.join(' · ')
+      : assign.driver.name;
+    return {
+      position: i + 1,
+      kart_number: assign.kart,
+      driver_name: driverLabel,
+      team_name: assign.teamName,
+      team_drivers: assign.teamDrivers,
+      status: 'preview',
+    };
+  });
+  store.livePreviewUntil = Date.now() + Math.max(5, displaySec) * 1000;
+  return { success: true, preview: store.nextHeatPreview, displaySec };
+}
+
 function getLivePayload(store, mode) {
+  clearExpiredPreview(store);
+  const previewActive = store.livePreviewUntil > Date.now() && store.nextHeatPreview?.length;
+  if (previewActive) {
+    return {
+      rows: store.nextHeatPreview,
+      heatType: store.heatSettings?.type || 'time',
+      heatClock: getHeatClock(store),
+      timingColumns: store.heatSettings?.timingColumns || null,
+      livePreviewActive: true,
+      effectiveMode: 'assignments',
+    };
+  }
   const rows = mode === 'assignments' ? getAssignments(store) : getTimingData(store);
   return {
     rows,
     heatType: store.heatSettings?.type || 'time',
     heatClock: getHeatClock(store),
     timingColumns: store.heatSettings?.timingColumns || null,
+    livePreviewActive: false,
+    effectiveMode: mode,
   };
 }
 
@@ -638,4 +782,6 @@ module.exports = {
   exportData,
   updateDriverLevel,
   lapToSeconds,
+  prepareNextHeat,
+  getSessionFastestLapSec,
 };

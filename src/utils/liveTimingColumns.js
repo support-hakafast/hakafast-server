@@ -27,13 +27,39 @@ export function formatLapCell(value) {
   return value || '--.---';
 }
 
-export function gapToLeader(row, leaderBestSec, lapToSeconds) {
-  if (!row?.best_lap_time || leaderBestSec === Infinity) return '--.---';
-  const sec = lapToSeconds(row.best_lap_time);
-  if (sec === Infinity) return '--.---';
-  const gap = sec - leaderBestSec;
-  if (gap <= 0) return '—';
-  return `+${gap.toFixed(3)}`;
+export function gapToLeader(row, leader, heatType, lapToSeconds) {
+  if (!row || !leader) return '--.---';
+
+  if (heatType === 'time') {
+    const leaderBest = lapToSeconds(leader.best_lap_time);
+    const rowBest = lapToSeconds(row.best_lap_time);
+    if (leaderBest === Infinity || rowBest === Infinity) return '--.---';
+    const gap = rowBest - leaderBest;
+    if (gap <= 0) return '—';
+    return `+${gap.toFixed(3)}`;
+  }
+
+  const leaderLaps = leader.lap_count || 0;
+  const rowLaps = row.lap_count || 0;
+  const lapDiff = leaderLaps - rowLaps;
+  if (lapDiff > 0) return `+${lapDiff}`;
+
+  if (lapDiff === 0) {
+    const leaderBest = lapToSeconds(leader.best_lap_time);
+    const rowBest = lapToSeconds(row.best_lap_time);
+    if (leaderBest !== Infinity && rowBest !== Infinity) {
+      const gap = rowBest - leaderBest;
+      if (gap <= 0) return '—';
+      return `+${gap.toFixed(3)}`;
+    }
+    const trackGap = (leader.track_position || 0) - (row.track_position || 0);
+    if (trackGap > 0.001) {
+      const estSec = trackGap * 45;
+      return `+${estSec.toFixed(3)}`;
+    }
+  }
+
+  return '—';
 }
 
 export function lapToSeconds(lap) {

@@ -718,13 +718,22 @@ html:has(.admin-no-scroll) body {
 
 .btn-full { width: 100%; margin-top: 4px; }
 
-.btn-execute {
+.btn-prepare-next {
   margin-top: 10px;
+  width: 100%;
+  background: #6b21a8;
+  font-size: 0.95em;
+  padding: 10px;
+}
+
+.btn-execute {
+  margin-top: 8px;
   width: 100%;
   background: var(--purple);
   font-size: 1.05em;
   padding: 12px;
 }
+
 
 .kart-pool {
   display: grid;
@@ -884,6 +893,13 @@ html:has(.admin-no-scroll) body {
 
 .lane.disabled-lane {
   opacity: 0.6;
+  border-color: #94a3b8;
+}
+
+.lane.disabled-lane.drag-over {
+  border-color: var(--turquoise);
+  opacity: 1;
+  background: #e6fffa;
 }
 
 .lane-header-input {
@@ -1200,6 +1216,25 @@ html:has(.admin-no-scroll) body {
   margin-bottom: 8px;
 }
 
+@media (max-width: 1400px) {
+  html:has(.admin-no-scroll),
+  html:has(.admin-no-scroll) body {
+    overflow: auto;
+    height: auto;
+  }
+
+  .admin-dashboard.admin-no-scroll {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .admin-workspace {
+    overflow-y: auto;
+    min-height: 0;
+  }
+}
+
 @media (max-width: 1200px) {
   .admin-workspace {
     grid-template-columns: 1fr 1fr;
@@ -1211,6 +1246,7 @@ html:has(.admin-no-scroll) body {
     grid-column: 1 / -1;
     flex-direction: row;
     flex-wrap: wrap;
+    overflow-y: visible;
   }
 
   .admin-sidebar .btn-preview,

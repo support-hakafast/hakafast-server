@@ -512,8 +512,8 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
 
   if (demo) {
-    if (mode === 'assignments') return res.json(demoStore.getAssignments(demo));
-    return res.json(demoStore.getTimingData(demo));
+    const payload = demoStore.getLivePayload(demo, mode);
+    return res.json(payload.rows);
   }
 
   if (mode === 'assignments') {
@@ -553,6 +553,15 @@ app.get('/live-timing-data/:track_id', async (req, res) => {
   } catch (err) {
     res.status(500).json([]);
   }
+});
+
+app.post('/api/admin/prepare-next-heat', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const displaySec = Number(req.body?.displaySec) || 30;
+  const result = demoStore.prepareNextHeat(demo, displaySec);
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
 });
 
 app.post('/api/admin/clear-heat', async (req, res) => {
