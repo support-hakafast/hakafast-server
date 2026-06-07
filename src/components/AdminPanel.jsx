@@ -779,13 +779,6 @@ const AdminPanel = () => {
     }
   };
 
-  const takeKartFromLaneEnd = (laneId) => {
-    const lane = linesData[laneId];
-    if (!lane?.karts || lane.karts.length <= 1) return;
-    const num = lane.karts[lane.karts.length - 1];
-    dropKart(num, null);
-  };
-
   const renderExitZone = (laneId, exitKart) => (
     <div className="lane-exit-zone lane-transponder-zone">
       <div className="transponder-beacon-row">
@@ -809,31 +802,10 @@ const AdminPanel = () => {
     </div>
   );
 
-  const renderQueueDrop = (laneId, waitingKarts) => (
-    <div
-      className="lane-queue-drop"
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => handleDropToLane(e, laneId)}
-    >
-      {waitingKarts.length > 0 && (
-        <button
-          type="button"
-          className="btn-lane-take-end"
-          onClick={() => takeKartFromLaneEnd(laneId)}
-          aria-label={t('admin_lane_take_end')}
-          title={t('admin_lane_take_end')}
-        >
-          ×
-        </button>
-      )}
-    </div>
-  );
-
   const renderWaitingZone = (laneId, waitingKarts, exitAtBottom) => {
     const displayKarts = exitAtBottom ? [...waitingKarts].reverse() : waitingKarts;
     return (
       <div className="lane-waiting-zone">
-        {exitAtBottom && renderQueueDrop(laneId, waitingKarts)}
         {displayKarts.map((num, idx) => {
           const laneIndex = exitAtBottom ? waitingKarts.length - idx : idx + 1;
           const kart = allKarts[num] || allKarts[String(num)];
@@ -850,7 +822,6 @@ const AdminPanel = () => {
             />
           );
         })}
-        {!exitAtBottom && renderQueueDrop(laneId, waitingKarts)}
       </div>
     );
   };

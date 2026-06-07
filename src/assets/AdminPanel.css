@@ -955,43 +955,6 @@ html:has(.admin-no-scroll) body {
   margin-bottom: 8px;
 }
 
-.lane-queue-end {
-  margin-top: auto;
-  padding: 8px 6px;
-  border: 2px dashed #94a3b8;
-  border-radius: 8px;
-  background: #f8fafc;
-  text-align: center;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #64748b;
-}
-
-.lane-queue-end:hover,
-.lane.drag-over .lane-queue-end {
-  border-color: var(--turquoise);
-  background: #e6fffa;
-}
-
-.btn-lane-take-end {
-  display: block;
-  width: 100%;
-  margin-top: 6px;
-  padding: 4px 6px;
-  font-size: 0.65rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  color: #475569;
-}
-
-.btn-lane-take-end:hover {
-  background: #fff5f5;
-  border-color: #fc8181;
-  color: #c53030;
-}
-
 .on-track-laps {
   font-size: 0.68rem;
   color: #94a3b8;
