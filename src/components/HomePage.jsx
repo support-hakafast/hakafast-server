@@ -6,25 +6,7 @@ import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
 
 const SUPPORT_EMAIL = 'support.hakafast@gmail.com';
-const CONTACT_TIMEOUT_MS = 10000;
-
-function buildMailtoFallback(trackName, contactDetails, message) {
-  const subject = encodeURIComponent(`HAKAFAST — ${trackName}`);
-  const body = encodeURIComponent(
-    `Track / Company: ${trackName}\nContact: ${contactDetails}\n\nMessage:\n${message}`,
-  );
-  return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
-}
-
-function openMailtoFallback(trackName, contactDetails, message) {
-  const url = buildMailtoFallback(trackName, contactDetails, message);
-  const link = document.createElement('a');
-  link.href = url;
-  link.rel = 'noopener';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}
+const CONTACT_TIMEOUT_MS = 12000;
 
 const HomePage = () => {
   const { t } = useLanguage();
@@ -34,10 +16,12 @@ const HomePage = () => {
     e.preventDefault();
     const form = e.currentTarget;
     const trackName = form.trackName.value.trim();
-    const contactDetails = form.contactDetails.value.trim();
+    const contactName = form.contactName.value.trim();
+    const email = form.email.value.trim();
+    const phone = form.phone.value.trim();
     const message = form.message.value.trim();
 
-    if (!trackName || !contactDetails || !message) return;
+    if (!trackName || !contactName || !email || !message) return;
 
     setContactStatus('sending');
     const controller = new AbortController();
@@ -47,7 +31,7 @@ const HomePage = () => {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackName, contactDetails, message }),
+        body: JSON.stringify({ trackName, contactName, email, phone, message }),
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -65,17 +49,15 @@ const HomePage = () => {
         return;
       }
 
-      if (data.error === 'email_not_configured' || data.error === 'send_failed' || !res.ok) {
-        openMailtoFallback(trackName, contactDetails, message);
-        setContactStatus('mailto');
+      if (data.error === 'invalid_email') {
+        setContactStatus('invalid_email');
         return;
       }
 
       setContactStatus('error');
     } catch {
       clearTimeout(timeoutId);
-      openMailtoFallback(trackName, contactDetails, message);
-      setContactStatus('mailto');
+      setContactStatus('error');
     }
   };
 
@@ -174,8 +156,14 @@ const HomePage = () => {
           <label htmlFor="track-name">{t('form_track')}</label>
           <input id="track-name" name="trackName" type="text" required autoComplete="organization" />
 
-          <label htmlFor="contact-details">{t('form_contact')}</label>
-          <input id="contact-details" name="contactDetails" type="text" required autoComplete="name" />
+          <label htmlFor="contact-name">{t('form_name')}</label>
+          <input id="contact-name" name="contactName" type="text" required autoComplete="name" />
+
+          <label htmlFor="contact-email">{t('form_email')}</label>
+          <input id="contact-email" name="email" type="email" required autoComplete="email" />
+
+          <label htmlFor="contact-phone">{t('form_phone')}</label>
+          <input id="contact-phone" name="phone" type="tel" autoComplete="tel" />
 
           <label htmlFor="message">{t('form_message')}</label>
           <textarea id="message" name="message" rows={4} required />
@@ -189,14 +177,14 @@ const HomePage = () => {
               {t('form_success')}
             </p>
           )}
+          {contactStatus === 'invalid_email' && (
+            <p className="home-form-status home-form-status-error" role="alert">
+              {t('form_invalid_email')}
+            </p>
+          )}
           {contactStatus === 'error' && (
             <p className="home-form-status home-form-status-error" role="alert">
               {t('form_error')}
-            </p>
-          )}
-          {contactStatus === 'mailto' && (
-            <p className="home-form-status home-form-status-info" role="status">
-              {t('form_mailto_fallback')}
             </p>
           )}
         </form>

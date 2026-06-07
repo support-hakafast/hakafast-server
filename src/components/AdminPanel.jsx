@@ -544,8 +544,22 @@ const AdminPanel = () => {
         return;
       }
       const baseName = buildExportFilename(finishHeatType, finishStartedAt, 'csv').replace('.csv', '');
-      if (doCsv) downloadCsv(rows, `${baseName}.csv`);
-      if (doPdf) printPdf(rows, `${baseName} — ${t('admin_export_title')}`);
+      const exportLabels = {
+        pos: t('pos'),
+        kart: t('kart'),
+        driver: t('driver'),
+        level: t('live_col_level'),
+        last: t('last_lap'),
+        best: t('best_lap'),
+        laps: t('laps'),
+        allLaps: t('admin_export_all_laps'),
+      };
+      const exportRows = rows.map((r) => ({
+        ...r,
+        driver_level: r.driver_level ? t(`level_${String(r.driver_level).toLowerCase()}`) : '',
+      }));
+      if (doCsv) downloadCsv(exportRows, `${baseName}.csv`, exportLabels);
+      if (doPdf) printPdf(exportRows, `${baseName} — ${t('admin_export_title')}`, exportLabels);
       if (!isAuto) alert(t('admin_finish_done'));
       else alert(t('admin_finish_auto_done'));
       setHeatDriverCount(0);

@@ -55,6 +55,69 @@ function extractReplyEmail(text) {
   return match ? match[0] : null;
 }
 
+function isValidEmail(email) {
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+async function sendViaWeb3Forms(payload) {
+  const accessKey = process.env.WEB3FORMS_ACCESS_KEY;
+  if (!accessKey) return { ok: false, error: 'not_configured' };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        access_key: accessKey,
+        subject: `HAKAFAST — ${payload.trackName}`,
+        from_name: payload.contactName,
+        email: payload.email,
+        track: payload.trackName,
+        phone: payload.phone || '',
+        message: payload.message,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const data = await res.json();
+    return { ok: res.ok && data.success, error: data.message };
+  } catch (err) {
+    clearTimeout(timer);
+    return { ok: false, error: err.message };
+  }
+}
+
+async function sendViaFormSubmit(payload) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(HF_CONTACT_EMAIL)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        _subject: `HAKAFAST — ${payload.trackName}`,
+        _template: 'table',
+        _captcha: 'false',
+        _replyto: payload.email,
+        track: payload.trackName,
+        name: payload.contactName,
+        email: payload.email,
+        phone: payload.phone || '—',
+        message: payload.message,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const data = await res.json();
+    return { ok: res.ok && Boolean(data.success), error: data.message };
+  } catch (err) {
+    clearTimeout(timer);
+    return { ok: false, error: err.message };
+  }
+}
+
 const app = express();
 const port = process.env.PORT || 5000;
 const distPath = path.join(__dirname, 'dist');
@@ -218,46 +281,59 @@ app.post('/api/contact', async (req, res) => {
   }
 
   const trackName = String(req.body?.trackName || '').trim().slice(0, 200);
-  const contactDetails = String(req.body?.contactDetails || '').trim().slice(0, 300);
+  const contactName = String(req.body?.contactName || req.body?.contactDetails || '').trim().slice(0, 120);
+  const email = String(req.body?.email || '').trim().slice(0, 120);
+  const phone = String(req.body?.phone || '').trim().slice(0, 40);
   const message = String(req.body?.message || '').trim().slice(0, 4000);
 
-  if (!trackName || !contactDetails || !message) {
+  if (!trackName || !contactName || !email || !message) {
     return res.status(400).json({ success: false, error: 'missing_fields' });
   }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ success: false, error: 'invalid_email' });
+  }
+
+  const payload = { trackName, contactName, email, phone, message };
 
   const transporter = createMailTransporter();
-  if (!transporter) {
-    return res.status(503).json({ success: false, error: 'email_not_configured' });
+  if (transporter) {
+    const mailText = [
+      `Track / Company: ${trackName}`,
+      `Name: ${contactName}`,
+      `Email: ${email}`,
+      `Phone: ${phone || '—'}`,
+      '',
+      'Message:',
+      message,
+      '',
+      `— Sent via HAKAFAST contact form (${new Date().toISOString()})`,
+    ].join('\n');
+    try {
+      const sendPromise = transporter.sendMail({
+        from: `"HAKAFAST" <${process.env.SMTP_USER}>`,
+        to: HF_CONTACT_EMAIL,
+        replyTo: email,
+        subject: `HAKAFAST — ${trackName}`,
+        text: mailText,
+      });
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('send_timeout')), 12000);
+      });
+      await Promise.race([sendPromise, timeoutPromise]);
+      return res.json({ success: true, channel: 'smtp' });
+    } catch (err) {
+      console.error('Contact SMTP failed:', err.message);
+    }
   }
 
-  const replyTo = extractReplyEmail(contactDetails);
-  const mailText = [
-    `Track / Company: ${trackName}`,
-    `Contact: ${contactDetails}`,
-    '',
-    'Message:',
-    message,
-    '',
-    `— Sent via HAKAFAST contact form (${new Date().toISOString()})`,
-  ].join('\n');
+  const web3 = await sendViaWeb3Forms(payload);
+  if (web3.ok) return res.json({ success: true, channel: 'web3forms' });
 
-  try {
-    const sendPromise = transporter.sendMail({
-      from: `"HAKAFAST" <${process.env.SMTP_USER}>`,
-      to: HF_CONTACT_EMAIL,
-      replyTo: replyTo || undefined,
-      subject: `HAKAFAST — ${trackName}`,
-      text: mailText,
-    });
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('send_timeout')), 12000);
-    });
-    await Promise.race([sendPromise, timeoutPromise]);
-    return res.json({ success: true });
-  } catch (err) {
-    console.error('Contact email failed:', err.message);
-    return res.status(500).json({ success: false, error: 'send_failed' });
-  }
+  const formSubmit = await sendViaFormSubmit(payload);
+  if (formSubmit.ok) return res.json({ success: true, channel: 'formsubmit' });
+
+  console.error('Contact relay failed:', web3.error, formSubmit.error);
+  return res.status(500).json({ success: false, error: 'send_failed' });
 });
 app.get('/api/admin/pits', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);

@@ -158,8 +158,17 @@ export function isBulkDriverInput(input) {
   return input.trim().includes(',');
 }
 
-export function downloadCsv(rows, filename = 'Results.csv') {
-  let csv = '\uFEFFPos,Kart,Driver,Level,Last,Best,Laps\n';
+export function downloadCsv(rows, filename = 'Results.csv', labels = {}) {
+  const {
+    pos = 'Pos',
+    kart = 'Kart',
+    driver = 'Driver',
+    level = 'Level',
+    last = 'Last',
+    best = 'Best',
+    laps = 'Laps',
+  } = labels;
+  let csv = `\uFEFF${pos},${kart},${driver},${level},${last},${best},${laps}\n`;
   rows.forEach((r, i) => {
     csv += `${i + 1},${r.kart_number},"${r.driver_name}",${r.driver_level || ''},${r.last_lap_time || ''},${r.best_lap_time || ''},${r.lap_count || 0}\n`;
   });
@@ -172,7 +181,17 @@ export function downloadCsv(rows, filename = 'Results.csv') {
   URL.revokeObjectURL(url);
 }
 
-export function printPdf(rows, title = 'HAKAFAST Results') {
+export function printPdf(rows, title = 'HAKAFAST Results', labels = {}) {
+  const {
+    pos = '#',
+    kart = 'Kart',
+    driver = 'Driver',
+    level = 'Level',
+    last = 'Last',
+    best = 'Best',
+    laps = 'Laps',
+    allLaps = 'All laps',
+  } = labels;
   const win = window.open('', '_blank');
   if (!win) return;
   const hasLapHistory = rows.some((r) => Array.isArray(r.lap_times) && r.lap_times.length > 0);
@@ -187,14 +206,14 @@ export function printPdf(rows, title = 'HAKAFAST Results') {
       <td>${r.lap_count || 0}</td>
       ${hasLapHistory ? `<td style="text-align:start;font-size:0.85em">${(r.lap_times || []).join(' · ') || '—'}</td>` : ''}
     </tr>`).join('');
-  const lapHistoryHeader = hasLapHistory ? '<th>All laps</th>' : '';
+  const lapHistoryHeader = hasLapHistory ? `<th>${allLaps}</th>` : '';
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
     <style>body{font-family:system-ui,sans-serif;padding:24px;color:#000080}
     h1{margin:0 0 16px}table{width:100%;border-collapse:collapse}
     th,td{border:1px solid #cbd5e0;padding:8px;text-align:center}
     th{background:#000080;color:#fff}</style></head><body>
     <h1>${title}</h1>
-    <table><thead><tr><th>#</th><th>Kart</th><th>Driver</th><th>Level</th><th>Last</th><th>Best</th><th>Laps</th>${lapHistoryHeader}</tr></thead>
+    <table><thead><tr><th>${pos}</th><th>${kart}</th><th>${driver}</th><th>${level}</th><th>${last}</th><th>${best}</th><th>${laps}</th>${lapHistoryHeader}</tr></thead>
     <tbody>${rowsHtml}</tbody></table></body></html>`);
   win.document.close();
   win.focus();

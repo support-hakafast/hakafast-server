@@ -57,7 +57,7 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
           type="text"
           value={karts}
           onChange={(e) => setKarts(e.target.value)}
-          placeholder="1-10, 16-19"
+          placeholder={t('admin_kart_input_placeholder')}
         />
 
         <div className="security-toggle-row">
