@@ -7,6 +7,7 @@ import { useLiveTimingSocket } from '../hooks/useLiveTimingSocket.js';
 import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useDraggableResizable } from '../hooks/useDraggableResizable.js';
 import LiveTimingTable from './LiveTimingTable.jsx';
+import LiveAssignmentsBoard from './LiveAssignmentsBoard.jsx';
 import { normalizeTimingColumns } from '../utils/liveTimingColumns.js';
 
 export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-demo' }) {
@@ -80,15 +81,25 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
           {rows.length === 0 ? (
             <p className="live-preview-empty">{t('live_waiting')}</p>
           ) : (
-            <LiveTimingTable
-              t={t}
-              mode={mode}
-              rows={rows}
-              timingColumns={cols}
-              heatType={heatType}
-              rowFlashClass={flash}
-              tableClassName="live-preview-table"
-            />
+            mode === 'assignments' ? (
+              <LiveAssignmentsBoard
+                t={t}
+                rows={rows}
+                heatType={heatType}
+                rowFlashClass={flash}
+                isNextHeat={rows.some((r) => r.status === 'prepared')}
+              />
+            ) : (
+              <LiveTimingTable
+                t={t}
+                mode="timing"
+                rows={rows}
+                timingColumns={cols}
+                heatType={heatType}
+                rowFlashClass={flash}
+                tableClassName="live-preview-table"
+              />
+            )
           )}
         </div>
         <p className="live-preview-heat">

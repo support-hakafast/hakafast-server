@@ -59,18 +59,254 @@
 }
 
 .live-content-panel {
-  animation: livePanelIn 0.28s ease;
+  animation: livePanelIn 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.live-transition-to-assignments {
+  animation: liveSlideToAssignments 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.live-transition-to-timing {
+  animation: liveSlideToTiming 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes livePanelIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes liveSlideToAssignments {
+  from {
+    opacity: 0;
+    transform: translateX(28px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes liveSlideToTiming {
+  from {
+    opacity: 0;
+    transform: translateX(-28px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* —— Assignments board —— */
+.live-assignments {
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.live-assignments-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1.25rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, rgba(64, 224, 208, 0.18), rgba(0, 0, 128, 0.08));
+  border: 1px solid rgba(64, 224, 208, 0.35);
+}
+
+.theme-dark .live-assignments-banner {
+  background: linear-gradient(135deg, rgba(64, 224, 208, 0.12), rgba(107, 33, 168, 0.2));
+  border-color: rgba(64, 224, 208, 0.25);
+}
+
+.live-assignments-next .live-assignments-banner {
+  background: linear-gradient(135deg, rgba(107, 33, 168, 0.15), rgba(64, 224, 208, 0.12));
+  border-color: rgba(107, 33, 168, 0.35);
+}
+
+.theme-dark .live-assignments-next .live-assignments-banner {
+  background: linear-gradient(135deg, rgba(107, 33, 168, 0.28), rgba(64, 224, 208, 0.1));
+}
+
+.live-assignments-banner-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.live-assignments-banner strong {
+  display: block;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.live-assignments-banner p {
+  margin: 0.2rem 0 0;
+  font-size: 0.92rem;
+  color: var(--live-muted);
+  font-weight: 600;
+}
+
+.live-assignments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 0.85rem;
+}
+
+.live-assign-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 0.35rem 1rem;
+  align-items: center;
+  padding: 1rem 1.1rem 1rem 1rem;
+  border-radius: 0.9rem;
+  background: var(--live-surface);
+  border: 2px solid var(--live-border);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.theme-dark .live-assign-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.live-assign-card:hover {
+  border-color: var(--hf-turquoise);
+  transform: translateY(-2px);
+}
+
+.live-assign-card.is-waiting {
+  opacity: 0.75;
+  border-style: dashed;
+}
+
+.live-assign-card.is-on-track-wait {
+  border-color: rgba(180, 83, 9, 0.45);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08), transparent);
+}
+
+.theme-dark .live-assign-card.is-on-track-wait {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), transparent);
+}
+
+.live-assign-status-track {
+  color: #b45309;
+  font-weight: 800;
+}
+
+.theme-dark .live-assign-status-track {
+  color: #fbbf24;
+}
+
+.live-assign-card.live-row-flash {
+  animation: liveAssignFlash 0.7s ease;
+}
+
+@keyframes liveAssignFlash {
+  0% {
+    border-color: var(--hf-turquoise);
+    box-shadow: 0 0 0 3px rgba(64, 224, 208, 0.35);
+  }
+  100% {
+    border-color: var(--live-border);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  }
+}
+
+.live-assign-order {
+  position: absolute;
+  top: 0.5rem;
+  inset-inline-start: 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--live-muted);
+  opacity: 0.85;
+}
+
+.live-assign-kart {
+  grid-row: 1 / span 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.5rem;
+}
+
+.live-assign-kart-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.75rem;
+  min-height: 3.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(145deg, var(--hf-navy, #000080), #1e3a8a);
+  color: #fff;
+  font-size: clamp(1.75rem, 5vw, 2.35rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 128, 0.25);
+}
+
+.theme-dark .live-assign-kart-num {
+  background: linear-gradient(145deg, #1e3a8a, var(--hf-turquoise, #40e0d0));
+  color: var(--hf-navy, #000080);
+}
+
+.live-assign-kart-pending {
+  font-size: 2rem;
+  font-weight: 300;
+  color: var(--live-muted);
+}
+
+.live-assign-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding-top: 0.5rem;
+}
+
+.live-assign-name {
+  font-size: clamp(1.15rem, 3.2vw, 1.65rem);
+  font-weight: 800;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.live-assign-team {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--hf-purple, #6b21a8);
+}
+
+.theme-dark .live-assign-team {
+  color: #d8b4fe;
+}
+
+.live-assign-status {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--live-muted);
+}
+
+.live-assignments-next .live-assign-card {
+  border-color: rgba(107, 33, 168, 0.35);
+}
+
+.live-assignments-next .live-assign-kart-num {
+  background: linear-gradient(145deg, #6b21a8, #9333ea);
+  color: #fff;
 }
 
 .live-timing-table-wrap {
@@ -81,7 +317,7 @@
 .live-timing-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+  font-size: clamp(1.05rem, 2.8vw, 1.5rem);
   background: var(--live-surface);
   border-radius: 0.75rem;
   overflow: hidden;
@@ -122,9 +358,39 @@
 }
 
 .live-timing-table td {
-  padding: 0.65rem 0.5rem;
+  padding: 0.75rem 0.55rem;
   text-align: center;
   border-bottom: 1px solid var(--live-border);
+}
+
+.live-driver-name {
+  text-align: start !important;
+  font-size: clamp(1.25rem, 3.6vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.live-kart-num {
+  font-size: clamp(1.1rem, 3vw, 1.55rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-leader-row .live-pos {
+  color: #b45309;
+}
+
+.theme-dark .live-leader-row .live-pos {
+  color: #fbbf24;
+}
+
+.live-leader-row .live-driver-name {
+  color: #0f766e;
+}
+
+.theme-dark .live-leader-row .live-driver-name {
+  color: #5eead4;
 }
 
 .live-timing-table tbody tr:nth-child(odd) {
@@ -213,21 +479,29 @@
   gap: 0.35rem;
 }
 
+.live-mode-tabs {
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
 .live-mode-tabs button {
   border: none;
-  background: var(--live-tab-bg);
+  background: transparent;
   color: var(--live-tab-text);
-  padding: 0.45rem 0.75rem;
+  padding: 0.5rem 0.9rem;
   border-radius: 8px;
-  font-weight: 700;
-  font-size: 0.85rem;
+  font-weight: 800;
+  font-size: 0.88rem;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.25s, color 0.25s, transform 0.2s, box-shadow 0.25s;
 }
 
 .live-mode-tabs button.active {
   background: var(--hf-turquoise, #40e0d0);
   color: var(--hf-navy, #000080);
+  box-shadow: 0 2px 10px rgba(64, 224, 208, 0.35);
+  transform: translateY(-1px);
 }
 
 .live-theme-toggle {
@@ -283,6 +557,130 @@
   50% { opacity: 0.7; }
 }
 
+.live-heat-number-badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  margin-inline-end: 0.35rem;
+  background: #1e3a5f;
+  color: #e0f2fe;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}
+
+.live-timing-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.live-lap-stats {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  position: sticky;
+  top: 0.5rem;
+}
+
+.theme-light .live-lap-stats {
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(100, 116, 139, 0.25);
+}
+
+.live-lap-stats-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.live-lap-stats-head h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.live-stats-period-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.live-stats-period-tabs button {
+  flex: 1;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: inherit;
+  border-radius: 8px;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.live-stats-period-tabs button.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.live-stats-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.live-stats-list li {
+  display: grid;
+  grid-template-columns: 1.4rem 4.5rem 1fr;
+  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.live-stats-pos {
+  font-weight: 800;
+  opacity: 0.75;
+}
+
+.live-stats-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.theme-light .live-stats-time {
+  color: #0369a1;
+}
+
+.live-stats-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+.live-in-pits-row {
+  opacity: 0.72;
+}
+
+.live-in-pits-row .live-kart-num::after {
+  content: ' P';
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
+.live-penalty-cell {
+  color: #f87171;
+  font-weight: 700;
+}
+
 @media (max-width: 768px) {
   .live-timing-header {
     padding: 0.75rem 0.85rem;
@@ -305,14 +703,27 @@
     min-height: 2.25rem;
   }
 
+  .live-timing-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .live-lap-stats {
+    position: static;
+    order: -1;
+  }
+
   .live-timing-table-wrap {
     padding: 0.5rem;
     -webkit-overflow-scrolling: touch;
   }
 
   .live-timing-table {
-    font-size: 0.8rem;
+    font-size: 0.95rem;
     min-width: 520px;
+  }
+
+  .live-driver-name {
+    font-size: clamp(1.05rem, 4.2vw, 1.35rem);
   }
 
   .live-timing-table th,
@@ -330,8 +741,12 @@
 
 @media (max-width: 480px) {
   .live-timing-table {
-    font-size: 0.72rem;
+    font-size: 0.88rem;
     min-width: 460px;
+  }
+
+  .live-driver-name {
+    font-size: 1rem;
   }
 
   .live-header-logo.hf-logo-img {

@@ -72,6 +72,38 @@
   animation: previewPanelIn 0.25s ease;
 }
 
+.live-preview-body .live-assignments {
+  padding: 0.35rem 0.15rem;
+}
+
+.live-preview-body .live-assignments-grid {
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.live-preview-body .live-assign-card {
+  padding: 0.65rem 0.75rem;
+}
+
+.live-preview-body .live-assign-kart-num {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  font-size: 1.5rem;
+}
+
+.live-preview-body .live-assign-name {
+  font-size: 1rem;
+}
+
+.live-preview-body .live-assignments-banner {
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.65rem;
+}
+
+.live-preview-body .live-assignments-banner p {
+  font-size: 0.72rem;
+}
+
 @keyframes previewPanelIn {
   from {
     opacity: 0;
@@ -86,7 +118,17 @@
 .live-preview-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
+}
+
+.live-preview-table .live-driver-name {
+  text-align: start !important;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.live-preview-table .live-kart-num {
+  font-weight: 800;
 }
 
 .live-preview-table th,

@@ -3,7 +3,19 @@ export const DEFAULT_TIMING_COLUMNS = {
   second_best: false,
   avg_lap: false,
   level: false,
-  gap: false,
+  gap: true,
+  pit_visits: false,
+  pit_time: false,
+  penalty: false,
+  stint: false,
+};
+
+export const ENDURANCE_DEFAULT_COLUMNS = {
+  ...DEFAULT_TIMING_COLUMNS,
+  pit_visits: true,
+  pit_time: true,
+  penalty: true,
+  stint: true,
 };
 
 export const OPTIONAL_TIMING_COLUMNS = [
@@ -12,6 +24,10 @@ export const OPTIONAL_TIMING_COLUMNS = [
   { id: 'avg_lap', labelKey: 'live_col_avg_lap' },
   { id: 'level', labelKey: 'live_col_level' },
   { id: 'gap', labelKey: 'live_col_gap' },
+  { id: 'pit_visits', labelKey: 'live_col_pit_visits' },
+  { id: 'pit_time', labelKey: 'live_col_pit_time' },
+  { id: 'penalty', labelKey: 'live_col_penalty' },
+  { id: 'stint', labelKey: 'live_col_stint' },
 ];
 
 export function normalizeTimingColumns(raw) {
@@ -45,6 +61,9 @@ export function gapToLeader(row, leader, heatType, lapToSeconds) {
   if (lapDiff > 0) return `+${lapDiff}`;
 
   if (lapDiff === 0) {
+    const leaderPen = leader.unserved_penalty_sec || 0;
+    const rowPen = row.unserved_penalty_sec || 0;
+    if (rowPen > leaderPen) return `+${rowPen - leaderPen}s`;
     const leaderBest = lapToSeconds(leader.best_lap_time);
     const rowBest = lapToSeconds(row.best_lap_time);
     if (leaderBest !== Infinity && rowBest !== Infinity) {

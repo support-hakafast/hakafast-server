@@ -50,10 +50,12 @@ export function reconcileKartsFromLines(allKarts, linesData, onTrackNums = []) {
   return next;
 }
 
-export function formatHeatClock(clock, notStartedLabel) {
-  if (!clock?.running) return notStartedLabel;
-  const m = Math.floor(clock.remainingSec / 60);
-  const s = clock.remainingSec % 60;
+export function formatHeatClock(clock, notStartedLabel, expiredLabel = '00:00') {
+  if (!clock?.startedAt) return notStartedLabel;
+  const remaining = clock.remainingSec ?? 0;
+  if (clock.expired || remaining <= 0) return expiredLabel;
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
@@ -109,7 +111,11 @@ export function groupQueueByTeam(queue) {
   return teams;
 }
 
-export function pickKartsForAssignment(workingLines, laneKeys, driverCount) {
+export function pickKartsForAssignment(workingLines, laneKeys, driverCount, options = {}) {
+  const onTrackKarts = (options.onTrackKarts || [])
+    .map((k) => Number(k))
+    .filter((n) => !Number.isNaN(n) && n > 0);
+
   const used = new Set();
   const assigned = [];
   let laneCursor = 0;
@@ -117,18 +123,27 @@ export function pickKartsForAssignment(workingLines, laneKeys, driverCount) {
 
   for (let i = 0; i < driverCount; i += 1) {
     let found = null;
+
     for (let depth = 0; depth < maxDepth && !found; depth += 1) {
       for (let offset = 0; offset < laneKeys.length; offset += 1) {
         const key = laneKeys[(laneCursor + offset) % laneKeys.length];
         const kart = workingLines[key]?.karts?.[depth];
         const kartNum = Number(kart);
         if (kart != null && !Number.isNaN(kartNum) && !used.has(kartNum)) {
-          found = { kart: kartNum, lane: key, depth };
+          found = { kart: kartNum, lane: key, depth, source: 'pit' };
           laneCursor = (laneCursor + offset + 1) % laneKeys.length;
           break;
         }
       }
     }
+
+    if (!found) {
+      const trackKart = onTrackKarts.find((n) => !used.has(n));
+      if (trackKart != null) {
+        found = { kart: trackKart, lane: null, depth: -1, source: 'on_track' };
+      }
+    }
+
     if (!found) return { assigned, complete: false };
     used.add(found.kart);
     assigned.push({ ...found, driverIndex: i });

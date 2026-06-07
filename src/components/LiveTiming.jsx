@@ -1,10 +1,12 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import '../assets/LiveTiming.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
 import LiveTimingTable from './LiveTimingTable.jsx';
+import LiveAssignmentsBoard from './LiveAssignmentsBoard.jsx';
+import LiveLapStats from './LiveLapStats.jsx';
 import { apiFetch } from '../utils/apiClient.js';
 import {
   usesIsolatedWorkspace,
@@ -22,7 +24,19 @@ const LiveTiming = () => {
   const { track } = useParams();
   const { t } = useLanguage();
   const [mode, setMode] = useState('timing');
+  const prevModeRef = useRef('timing');
   const { theme, isDark, toggle } = useLiveTheme();
+
+  const switchMode = (next) => {
+    prevModeRef.current = mode;
+    setMode(next);
+  };
+
+  const transitionClass = mode === 'assignments' && prevModeRef.current === 'timing'
+    ? 'live-transition-to-assignments'
+    : mode === 'timing' && prevModeRef.current === 'assignments'
+      ? 'live-transition-to-timing'
+      : '';
 
   const trackSlug = track || 'default';
   const trackId = resolveTrackId(track);
@@ -46,16 +60,22 @@ const LiveTiming = () => {
       heat = s?.type || 'time';
       timingColumns = normalizeTimingColumns(s?.timingColumns);
     }
+    let heatNumber = null;
+    let topLaps = null;
     const session = await apiFetch('/api/admin/session-state', {}, isolated ? trackSlug : null);
     if (session.ok) {
       const s = await session.json();
       hasPreparedHeat = Boolean(s.hasPreparedHeat);
+      heatNumber = s.heatNumber ?? null;
+      topLaps = s.topLaps ?? null;
     }
     return {
       rows: Array.isArray(rows) ? rows : [],
       heatType: heat,
       timingColumns,
       hasPreparedHeat,
+      heatNumber,
+      topLaps,
     };
   }, [trackId, mode, trackSlug, isolated]);
 
@@ -64,6 +84,8 @@ const LiveTiming = () => {
     heatType,
     timingColumns,
     hasPreparedHeat,
+    heatNumber,
+    topLaps,
   } = useLiveTimingSocket({
     trackSlug: isolated ? trackSlug : (track || 'default'),
     trackId,
@@ -79,7 +101,7 @@ const LiveTiming = () => {
     rowsData,
     (row) => `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
     mode === 'timing'
-      ? ['last_lap_time', 'lap_count']
+      ? ['last_lap_time', 'best_lap_time', 'lap_count']
       : ['kart_number', 'driver_name', 'lap_count'],
   );
 
@@ -98,16 +120,19 @@ const LiveTiming = () => {
             <span className="live-demo-badge">{t('demo_workspace_badge', { id: getWorkspaceLabel(trackSlug) })}</span>
           )}
           <span className="live-ws-badge">{t('live_ws_realtime')}</span>
+          {heatNumber ? (
+            <span className="live-heat-number-badge">{t('live_heat_number', { n: heatNumber })}</span>
+          ) : null}
           {hasPreparedHeat && mode === 'assignments' && (
             <span className="live-preview-badge">{t('live_next_heat_ready')}</span>
           )}
         </div>
         <div className="live-header-actions">
           <div className="live-mode-tabs">
-            <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => setMode('assignments')}>
+            <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => switchMode('assignments')}>
               {t('live_mode_assignments')}
             </button>
-            <button type="button" className={mode === 'timing' ? 'active' : ''} onClick={() => setMode('timing')}>
+            <button type="button" className={mode === 'timing' ? 'active' : ''} onClick={() => switchMode('timing')}>
               {t('live_mode_timing')}
             </button>
           </div>
@@ -122,15 +147,33 @@ const LiveTiming = () => {
       {rowsData.length === 0 ? (
         <p className="live-empty">{t('live_waiting')}</p>
       ) : (
-        <div key={mode} className="live-content-panel live-timing-table-wrap">
-          <LiveTimingTable
-            t={t}
-            mode={mode}
-            rows={rowsData}
-            timingColumns={cols}
-            heatType={heatType}
-            rowFlashClass={rowFlashClass}
-          />
+        <div
+          key={mode}
+          className={`live-content-panel live-view-${mode} ${transitionClass}`.trim()}
+        >
+          {mode === 'assignments' ? (
+            <LiveAssignmentsBoard
+              t={t}
+              rows={rowsData}
+              heatType={heatType}
+              rowFlashClass={rowFlashClass}
+              isNextHeat={hasPreparedHeat}
+            />
+          ) : (
+            <div className="live-timing-layout">
+              <div className="live-timing-table-wrap">
+                <LiveTimingTable
+                  t={t}
+                  mode="timing"
+                  rows={rowsData}
+                  timingColumns={cols}
+                  heatType={heatType}
+                  rowFlashClass={rowFlashClass}
+                />
+              </div>
+              <LiveLapStats t={t} topLaps={topLaps} heatNumber={heatNumber} />
+            </div>
+          )}
         </div>
       )}
     </div>

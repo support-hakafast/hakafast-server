@@ -102,6 +102,8 @@ function createLiveBroadcast(httpServer, deps) {
       heatClock: payload.heatClock || null,
       timingColumns: payload.timingColumns || null,
       hasPreparedHeat: Boolean(payload.hasPreparedHeat),
+      heatNumber: payload.heatNumber || null,
+      topLaps: payload.topLaps || null,
       ts: Date.now(),
     }));
   }

@@ -11,6 +11,11 @@ function isSessionFastestLap(row) {
   return Boolean(row.is_session_fastest);
 }
 
+function hasLeaderTiming(row, heatType) {
+  if (heatType === 'time') return Boolean(row.best_lap_time);
+  return (row.lap_count || 0) > 0;
+}
+
 function formatTeamDrivers(row) {
   if (Array.isArray(row.team_drivers) && row.team_drivers.length) {
     return row.team_drivers.join(' · ');
@@ -30,33 +35,6 @@ export default function LiveTimingTable({
   const isEndurance = heatType === 'endurance';
   const leader = useMemo(() => (mode === 'timing' && rows.length ? rows[0] : null), [mode, rows]);
 
-  if (mode === 'assignments') {
-    return (
-      <table className={tableClassName}>
-        <thead>
-          <tr>
-            <th>#</th>
-            {isEndurance && <th>{t('team')}</th>}
-            <th>{t('kart')}</th>
-            <th>{isEndurance ? t('team_drivers') : t('driver')}</th>
-            {isEndurance && <th>{t('laps')}</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={`assign-${row.position ?? index}-${row.kart_number || row.driver_name}`} className={rowFlashClass(row, index)}>
-              <td className="live-pos">{row.position ?? index + 1}</td>
-              {isEndurance && <td className="live-team-name">{row.team_name || '—'}</td>}
-              <td>{row.kart_number ?? '—'}</td>
-              <td style={{ textAlign: 'start' }}>{isEndurance ? formatTeamDrivers(row) : row.driver_name}</td>
-              {isEndurance && <td>{row.lap_count ?? 0}</td>}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  }
-
   const optionalCols = OPTIONAL_TIMING_COLUMNS.filter((col) => timingColumns?.[col.id]);
 
   return (
@@ -73,20 +51,24 @@ export default function LiveTimingTable({
           {optionalCols.map((col) => (
             <th key={col.id}>{t(col.labelKey)}</th>
           ))}
+          {isEndurance && timingColumns?.stint && <th>{t('live_col_stint_driver')}</th>}
         </tr>
       </thead>
       <tbody>
         {rows.map((row, index) => {
-          const isLeader = index === 0;
+          const isLeader = index === 0 && hasLeaderTiming(row, heatType);
           const sessionFastestLap = isSessionFastestLap(row);
+          const driverLabel = isEndurance ? formatTeamDrivers(row) : (row.driver_name || t('anonymous'));
           return (
-            <tr key={`timing-${row.kart_number}-${index}`} className={rowFlashClass(row, index)}>
+            <tr
+              key={`timing-${row.kart_number}-${index}`}
+              className={`${rowFlashClass(row, index)}${isLeader ? ' live-leader-row' : ''}${row.in_pits ? ' live-in-pits-row' : ''}`}
+            >
               <td className="live-pos">{index + 1}</td>
               {isEndurance && <td className="live-team-name">{row.team_name || '—'}</td>}
-              <td>{row.kart_number}</td>
-              <td style={{ textAlign: 'start' }}>
-                {isLeader && '👑 '}
-                {isEndurance ? formatTeamDrivers(row) : (row.driver_name || t('anonymous'))}
+              <td className="live-kart-num">{row.kart_number}</td>
+              <td className="live-driver-name">
+                {driverLabel}
               </td>
               {isEndurance && <td className="live-lap-count">{row.lap_count ?? row.total_laps ?? 0}</td>}
               <td className="live-col-highlight">
@@ -115,8 +97,38 @@ export default function LiveTimingTable({
                     </td>
                   );
                 }
+                if (col.id === 'pit_visits') {
+                  return <td key={col.id}>{row.pit_visits ?? 0}</td>;
+                }
+                if (col.id === 'pit_time') {
+                  return (
+                    <td key={col.id}>
+                      {row.in_pits
+                        ? (row.pit_duration_display || '0:00')
+                        : (row.total_pit_time_display || '0:00')}
+                    </td>
+                  );
+                }
+                if (col.id === 'penalty') {
+                  return <td key={col.id} className="live-penalty-cell">{row.penalty_display || '—'}</td>;
+                }
+                if (col.id === 'stint') {
+                  const stint = row.current_stint;
+                  if (!stint) return <td key={col.id}>—</td>;
+                  return (
+                    <td key={col.id}>
+                      {stint.duration_display || '0:00'}
+                      {stint.lap_count > 0 ? ` · ${stint.lap_count}${t('laps_short')}` : ''}
+                    </td>
+                  );
+                }
                 return <td key={col.id}>—</td>;
               })}
+              {isEndurance && timingColumns?.stint && (
+                <td className="live-stint-driver">
+                  {row.in_pits ? t('live_in_pits') : (row.current_stint?.driver_name || row.active_driver || '—')}
+                </td>
+              )}
             </tr>
           );
         })}

@@ -8,7 +8,9 @@
     "preview": "vite preview",
     "server": "node server.js",
     "prestart": "npm run build",
-    "start": "node server.js"
+    "start": "node server.js",
+    "verify:timing": "node scripts/verify-timing.js",
+    "verify:amb": "node scripts/verify-amb-p3.js"
   },
   "engines": {
     "node": ">=18"

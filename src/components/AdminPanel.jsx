@@ -24,7 +24,12 @@ import {
   getWaitingKartNumbers,
   sanitizePitLines,
 } from '../utils/adminHelpers.js';
-import { DEFAULT_TIMING_COLUMNS, OPTIONAL_TIMING_COLUMNS, normalizeTimingColumns } from '../utils/liveTimingColumns.js';
+import {
+  DEFAULT_TIMING_COLUMNS,
+  ENDURANCE_DEFAULT_COLUMNS,
+  OPTIONAL_TIMING_COLUMNS,
+  normalizeTimingColumns,
+} from '../utils/liveTimingColumns.js';
 import { apiFetch } from '../utils/apiClient.js';
 import {
   usesIsolatedWorkspace,
@@ -97,6 +102,11 @@ const AdminPanel = () => {
   const [heatDriverCount, setHeatDriverCount] = useState(0);
   const [autoFinishHandled, setAutoFinishHandled] = useState(false);
   const [assignedHeatKarts, setAssignedHeatKarts] = useState(new Set());
+  const [heatNumber, setHeatNumber] = useState(null);
+  const [penaltyKart, setPenaltyKart] = useState('');
+  const [penaltySec, setPenaltySec] = useState('60');
+  const [driverChangeKart, setDriverChangeKart] = useState('');
+  const [driverChangeName, setDriverChangeName] = useState('');
   const autoFinishHandledRef = useRef(false);
 
   const confirmTwice = (msg1, msg2) => window.confirm(msg1) && window.confirm(msg2);
@@ -609,6 +619,7 @@ const AdminPanel = () => {
             setLinesData(lines);
             setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (s.onTrack || []).map((k) => k.kart_number)));
           }
+          if (typeof s.heatNumber === 'number') setHeatNumber(s.heatNumber);
           if (s.autoFinishRequested && !autoFinishHandledRef.current) {
             const hs = s.heatSettings || {};
             runFinishHeat(true, s.heatClock?.startedAt, {
@@ -636,7 +647,10 @@ const AdminPanel = () => {
     const isEndurance = heatType === 'endurance';
     const teams = isEndurance ? groupQueueByTeam(driverQueue) : null;
     const assignCount = isEndurance ? teams.length : driverQueue.length;
-    const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount);
+    const sessionActive = onTrack.length > 0 || Boolean(heatClock.startedAt && !heatClock.expired);
+    const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount, {
+      onTrackKarts: sessionActive ? onTrack.map((k) => k.kart_number) : [],
+    });
     if (!complete) { alert(t('admin_alert_not_enough_karts')); return; }
 
     const assignments = isEndurance
@@ -684,7 +698,9 @@ const AdminPanel = () => {
             targetLaps: parseInt(targetLaps, 10) || 0,
             exportCsv,
             exportPdf,
-            timingColumns,
+            timingColumns: isEndurance
+              ? { ...ENDURANCE_DEFAULT_COLUMNS, ...timingColumns }
+              : timingColumns,
           },
           pitLines: workingLines,
         }),
@@ -698,6 +714,7 @@ const AdminPanel = () => {
 
       const heatKarts = new Set(assignments.map((a) => Number(a.kart)));
       setAssignedHeatKarts(heatKarts);
+      if (typeof data.heatNumber === 'number') setHeatNumber(data.heatNumber);
       if (data.prepared) {
         setHeatDriverCount(heatDriverCount);
         alert(t('admin_alert_assign_prepared'));
@@ -842,6 +859,39 @@ const AdminPanel = () => {
     const k = allKarts[num];
     return k && k.lane == null && !k.onTrack;
   });
+  const addEndurancePenalty = async () => {
+    const kart = parseInt(penaltyKart, 10);
+    const seconds = parseInt(penaltySec, 10);
+    if (!kart || !seconds) return;
+    try {
+      const res = await apiFetch('/api/admin/endurance/penalty', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kart_number: kart, seconds }),
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) alert(t('admin_alert_server_error'));
+    } catch {
+      alert(t('admin_alert_server_error'));
+    }
+  };
+
+  const changeEnduranceDriver = async () => {
+    const kart = parseInt(driverChangeKart, 10);
+    if (!kart || !driverChangeName.trim()) return;
+    try {
+      const res = await apiFetch('/api/admin/endurance/driver-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kart_number: kart, driver_name: driverChangeName.trim() }),
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) alert(t('admin_endurance_driver_error'));
+    } catch {
+      alert(t('admin_alert_server_error'));
+    }
+  };
+
   const isolated = usesIsolatedWorkspace(trackSlug);
 
   return (
@@ -1048,9 +1098,12 @@ const AdminPanel = () => {
 
           <div className="heat-clock-bar">
             <span className="field-label">{t('admin_heat_timer')}</span>
-            <span className={`heat-clock-value${heatClock.running ? ' is-running' : ''}`}>
+            <span className={`heat-clock-value${heatClock.startedAt && !heatClock.expired ? ' is-running' : ''}`}>
               {formatHeatClock(heatClock, t('admin_heat_not_started'))}
             </span>
+            {heatNumber ? (
+              <span className="admin-heat-number">{t('live_heat_number', { n: heatNumber })}</span>
+            ) : null}
           </div>
 
           <div className="heat-type-bar">
@@ -1094,6 +1147,48 @@ const AdminPanel = () => {
               <input type="number" value={targetLaps} onChange={(e) => setTargetLaps(e.target.value)} placeholder={t('admin_laps_placeholder')} />
             )}
           </div>
+
+          {heatType === 'endurance' && (
+            <div className="endurance-admin-panel">
+              <span className="field-label">{t('admin_endurance_tools')}</span>
+              <div className="endurance-tool-row">
+                <input
+                  type="number"
+                  value={penaltyKart}
+                  onChange={(e) => setPenaltyKart(e.target.value)}
+                  placeholder={t('kart')}
+                />
+                <input
+                  type="number"
+                  min="1"
+                  value={penaltySec}
+                  onChange={(e) => setPenaltySec(e.target.value)}
+                  placeholder={t('admin_penalty_seconds')}
+                />
+                <button type="button" className="btn-muted" onClick={addEndurancePenalty}>
+                  {t('admin_add_penalty')}
+                </button>
+              </div>
+              <div className="endurance-tool-row">
+                <input
+                  type="number"
+                  value={driverChangeKart}
+                  onChange={(e) => setDriverChangeKart(e.target.value)}
+                  placeholder={t('kart')}
+                />
+                <input
+                  type="text"
+                  value={driverChangeName}
+                  onChange={(e) => setDriverChangeName(e.target.value)}
+                  placeholder={t('admin_active_driver')}
+                />
+                <button type="button" className="btn-muted" onClick={changeEnduranceDriver}>
+                  {t('admin_driver_change')}
+                </button>
+              </div>
+              <p className="endurance-hint">{t('admin_endurance_hint')}</p>
+            </div>
+          )}
 
           <div className="timing-columns-bar">
             <span className="field-label">{t('admin_timing_columns')}</span>

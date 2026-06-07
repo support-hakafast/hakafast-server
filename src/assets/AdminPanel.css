@@ -1227,6 +1227,39 @@ html:has(.admin-no-scroll) body {
   }
 }
 
+.admin-heat-number {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #1d4ed8;
+}
+
+.endurance-admin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.endurance-tool-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.35rem;
+}
+
+.endurance-tool-row input {
+  min-width: 0;
+}
+
+.endurance-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  opacity: 0.75;
+  line-height: 1.35;
+}
+
 @media (max-width: 1200px) {
   .admin-workspace {
     grid-template-columns: 1fr 1fr;

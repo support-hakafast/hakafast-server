@@ -7,6 +7,7 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const demoStore = require('./demoStore');
 const { createLiveBroadcast } = require('./liveBroadcast');
+const { createAmbTranx160Decoder } = require('./ambTranx160');
 
 const HF_CONTACT_EMAIL = process.env.HF_CONTACT_EMAIL || 'support.hakafast@gmail.com';
 const contactRateLimit = new Map();
@@ -199,11 +200,12 @@ const trackSetups = {};
 const driverQueues = {};
 
 let liveBroadcast = null;
+let ambDecoder = null;
 
 function notifyWorkspace(req) {
   if (!liveBroadcast) return;
-  const track = req.headers['x-hf-track'];
-  const workspaceId = req.headers['x-hf-workspace'];
+  const track = req?.headers?.['x-hf-track'];
+  const workspaceId = req?.headers?.['x-hf-workspace'];
   if (track && workspaceId) liveBroadcast.broadcastWorkspace(track, workspaceId);
 }
 
@@ -414,6 +416,83 @@ app.post('/api/transponder/lap', (req, res) => {
   return res.json(result);
 });
 
+app.post('/api/decoder/passing', (req, res) => {
+  if (!ambDecoder) return res.status(503).json({ success: false, error: 'decoder_not_ready' });
+  const trackSlug = req.headers['x-hf-track'] || req.body?.trackSlug || process.env.AMB_TRACK_SLUG || 'kart-demo';
+  const workspaceId = req.headers['x-hf-workspace'] || req.body?.workspaceId || process.env.AMB_WORKSPACE_ID;
+  const result = ambDecoder.ingestJsonPassing(req.body, { trackSlug, workspaceId });
+  return res.json(result);
+});
+
+app.get('/api/decoder/status', (req, res) => {
+  if (!ambDecoder) return res.json({ enabled: false });
+  return res.json({ enabled: true, ...ambDecoder.getStatus() });
+});
+
+app.post('/api/decoder/transponder-map', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const map = req.body?.map;
+  if (!map || typeof map !== 'object') {
+    return res.status(400).json({ success: false, error: 'invalid_map' });
+  }
+  const normalized = {};
+  Object.entries(map).forEach(([tid, kart]) => {
+    normalized[String(tid)] = Number(kart);
+  });
+  const teamMode = Boolean(req.body?.teamMode);
+  if (teamMode) {
+    demo.teamTransponderMap = { ...(demo.teamTransponderMap || {}), ...normalized };
+  } else {
+    demo.transponderMap = { ...(demo.transponderMap || {}), ...normalized };
+    if (ambDecoder) ambDecoder.setTransponderMap(demo, normalized);
+  }
+  return res.json({
+    success: true,
+    transponderMap: demo.transponderMap,
+    teamTransponderMap: demo.teamTransponderMap,
+  });
+});
+
+app.get('/api/stats/top-laps', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const period = ['day', 'week', 'month'].includes(req.query.period) ? req.query.period : 'day';
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+  return res.json({
+    success: true,
+    period,
+    laps: demoStore.getTopLaps(demo, period, limit),
+    heatNumber: demoStore.getCurrentHeatNumber(demo),
+  });
+});
+
+app.post('/api/admin/endurance/penalty', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { kart_number: kartNumber, seconds, reason } = req.body;
+  const result = demoStore.addPenalty(demo, kartNumber, { seconds, reason });
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
+});
+
+app.post('/api/admin/endurance/driver-change', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { kart_number: kartNumber, driver_name: driverName } = req.body;
+  const result = demoStore.setActiveDriver(demo, kartNumber, driverName);
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
+});
+
+app.post('/api/admin/endurance/team-transponder', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { transponder_id: transponderId, kart_number: kartNumber } = req.body;
+  const result = demoStore.registerTeamTransponder(demo, transponderId, kartNumber);
+  return res.json(result);
+});
+
 app.get('/api/kiosk/health', (req, res) => {
   res.json({
     ok: true,
@@ -429,6 +508,10 @@ app.get('/api/kiosk/capabilities', (req, res) => {
     transponder: {
       pit_exit: 'POST /api/transponder/pit-exit',
       lap: 'POST /api/transponder/lap',
+      amb_passing: 'POST /api/decoder/passing',
+      amb_status: 'GET /api/decoder/status',
+      amb_map: 'POST /api/decoder/transponder-map',
+      protocol: 'MYLAPS P3 (TranX 160 / TranX3)',
       headers: ['x-hf-track', 'x-hf-workspace'],
     },
     admin: {
@@ -439,7 +522,11 @@ app.get('/api/kiosk/capabilities', (req, res) => {
     deployment: {
       on_premise: true,
       embedded_browser: 'MSI / Electron / WebView2',
-      env: ['PORT', 'HF_KIOSK_MODE', 'HF_TRACK_SLUG', 'HF_WORKSPACE_ID'],
+      env: [
+        'PORT', 'HF_KIOSK_MODE', 'HF_TRACK_SLUG', 'HF_WORKSPACE_ID',
+        'AMB_DECODER_HOST', 'AMB_DECODER_PORT', 'AMB_DECODER_SERIAL',
+        'AMB_TRACK_SLUG', 'AMB_WORKSPACE_ID', 'AMB_TRANSPONDER_MAP',
+      ],
     },
   });
 });
@@ -454,6 +541,7 @@ app.post('/api/admin/kart-return', (req, res) => {
     ...result,
     pitLines: demo.pitLines,
     onTrack: demo.onTrack,
+    heatClock: demoStore.getHeatClock(demo),
   });
 });
 
@@ -598,9 +686,9 @@ app.post('/api/admin/login/:trackName', (req, res) => {
 app.post('/api/admin/finish-heat', async (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
-    demoStore.finishHeat(demo);
+    demoStore.finishHeat(demo, { keepOnTrack: demo.onTrack.length > 0 });
     notifyWorkspace(req);
-    return res.json({ success: true });
+    return res.json({ success: true, draining: demo.heatFrozen });
   }
   try {
     await applyAutoLevelUpgrades(1);
@@ -824,6 +912,14 @@ liveBroadcast = createLiveBroadcast(httpServer, {
   getGlobalHeatSettings: () => heatSettings,
   driverQueues,
 });
+
+ambDecoder = createAmbTranx160Decoder({
+  demoStore,
+  notifyWorkspace,
+  getDefaultTrack: () => process.env.HF_TRACK_SLUG || 'kart-demo',
+  getDefaultWorkspace: () => process.env.HF_WORKSPACE_ID || process.env.AMB_WORKSPACE_ID || null,
+});
+ambDecoder.start().catch((err) => console.error('[AMB TranX160] start failed:', err.message));
 
 httpServer.listen(port, () => {
   console.log(`HAKAFAST active on port ${port}${hasBuild ? '' : ' (no frontend build — run npm run build)'}`);
