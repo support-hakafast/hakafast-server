@@ -6,8 +6,13 @@ const session = require('express-session');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const demoStore = require('./demoStore');
+const installConfig = require('./installConfig');
+const fileExport = require('./fileExport');
+const rentixWebhook = require('./rentixWebhook');
 const { createLiveBroadcast } = require('./liveBroadcast');
 const { createAmbTranx160Decoder } = require('./ambTranx160');
+
+installConfig.ensureDataDirs();
 
 const HF_CONTACT_EMAIL = process.env.HF_CONTACT_EMAIL || 'support.hakafast@gmail.com';
 const contactRateLimit = new Map();
@@ -202,11 +207,26 @@ const driverQueues = {};
 let liveBroadcast = null;
 let ambDecoder = null;
 
+function resolveBroadcastTarget(req) {
+  const install = installConfig.loadInstallConfig();
+  if (installConfig.isLocalInstall() && install?.workspaceId) {
+    return {
+      track: req?.headers?.['x-hf-track'] || install.trackSlug || process.env.HF_TRACK_SLUG || 'kart-demo',
+      workspaceId: install.workspaceId,
+    };
+  }
+  return {
+    track: req?.headers?.['x-hf-track'],
+    workspaceId: req?.headers?.['x-hf-workspace'],
+  };
+}
+
 function notifyWorkspace(req) {
   if (!liveBroadcast) return;
-  const track = req?.headers?.['x-hf-track'];
-  const workspaceId = req?.headers?.['x-hf-workspace'];
+  const { track, workspaceId } = resolveBroadcastTarget(req);
   if (track && workspaceId) liveBroadcast.broadcastWorkspace(track, workspaceId);
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) demoStore.persistStore(demo);
 }
 
 function isStrongPassword(password) {
@@ -391,6 +411,22 @@ app.post('/api/admin/kart-launch', (req, res) => {
   });
 });
 
+app.post('/api/admin/kart-grid-deploy', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { kart_number: kartNumber, all: deployAll } = req.body || {};
+  const result = deployAll
+    ? demoStore.deployAllGridKarts(demo)
+    : demoStore.deployGridKart(demo, kartNumber);
+  if (result.success) notifyWorkspace(req);
+  return res.json({
+    ...result,
+    pitLines: demo.pitLines,
+    onTrack: demo.onTrack,
+    heatClock: demoStore.getHeatClock(demo),
+  });
+});
+
 app.post('/api/transponder/pit-exit', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });
@@ -403,6 +439,22 @@ app.post('/api/transponder/pit-exit', (req, res) => {
     pitLines: demo.pitLines,
     onTrack: demo.onTrack,
     heatClock: demoStore.getHeatClock(demo),
+  });
+});
+
+app.post('/api/transponder/pit-entry', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { transponder_id: transponderId } = req.body;
+  if (!transponderId) return res.json({ success: false, error: 'missing_transponder' });
+  const result = demoStore.processTransponderPitEntry(demo, transponderId);
+  if (result.success) notifyWorkspace(req);
+  return res.json({
+    ...result,
+    pitLines: demo.pitLines,
+    onTrack: demo.onTrack,
+    heatClock: demoStore.getHeatClock(demo),
+    nextHeatReadiness: demo.nextHeat.length ? demoStore.getNextHeatReadiness(demo) : null,
   });
 });
 
@@ -494,19 +546,170 @@ app.post('/api/admin/endurance/team-transponder', (req, res) => {
 });
 
 app.get('/api/kiosk/health', (req, res) => {
+  const install = installConfig.loadInstallConfig();
   res.json({
     ok: true,
     service: 'hakafast',
     version: '1.0.0',
-    mode: process.env.HF_KIOSK_MODE === '1' ? 'kiosk' : 'server',
+    mode: installConfig.isLocalInstall() ? 'local' : (process.env.HF_KIOSK_MODE === '1' ? 'kiosk' : 'server'),
+    setupComplete: installConfig.isSetupComplete(),
+    localInstall: installConfig.isLocalInstall(),
+    dataDir: installConfig.isLocalInstall() ? installConfig.getDataDir() : undefined,
+    exportsDir: installConfig.isLocalInstall() ? installConfig.getExportsDir() : undefined,
+    trackSlug: install?.trackSlug || null,
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get('/api/install/config', (req, res) => {
+  const cfg = installConfig.loadInstallConfig();
+  const port = Number(process.env.PORT) || 5000;
+  const trackSlug = cfg?.trackSlug || process.env.HF_TRACK_SLUG || 'kart-demo';
+  res.json({
+    localInstall: installConfig.isLocalInstall(),
+    setupComplete: installConfig.isSetupComplete(),
+    config: cfg,
+    dataDir: installConfig.getDataDir(),
+    exportsDir: installConfig.getExportsDir(),
+    networkUrls: installConfig.getLocalNetworkUrls(port),
+    adminUrl: `http://127.0.0.1:${port}/admin/${trackSlug}`,
+    liveTimingUrl: `http://127.0.0.1:${port}/live-timing/${trackSlug}`,
+    receptionUrl: `http://127.0.0.1:${port}/reception/${trackSlug}`,
+    port,
+  });
+});
+
+app.post('/api/install/setup', (req, res) => {
+  const { trackSlug, trackName, kartNumbers, adminPassword } = req.body || {};
+  if (!trackSlug || !kartNumbers) {
+    return res.json({ success: false, error: 'missing_fields' });
+  }
+  if (!demoStore.validateTrackSlug(trackSlug)) {
+    return res.json({ success: false, error: 'invalid_track' });
+  }
+  if (adminPassword && !isStrongPassword(adminPassword)) {
+    return res.json({ success: false, error: 'weak_password' });
+  }
+  const workspaceId = installConfig.createWorkspaceId();
+  const config = installConfig.saveInstallConfig({
+    localInstall: true,
+    setupComplete: true,
+    trackSlug,
+    trackName: trackName || trackSlug,
+    workspaceId,
+    installedAt: new Date().toISOString(),
+  });
+  const store = demoStore.resolveFromParts(trackSlug, workspaceId);
+  if (store) {
+    store.trackSetup = { onboarded: true, kartNumbers: String(kartNumbers).trim() };
+    if (adminPassword) store.levelSettings.editPassword = adminPassword;
+    demoStore.persistStore(store);
+  }
+  const port = Number(process.env.PORT) || 5000;
+  return res.json({
+    success: true,
+    config,
+    networkUrls: installConfig.getLocalNetworkUrls(port),
+    adminUrl: `http://127.0.0.1:${port}/admin/${trackSlug}`,
+    liveTimingUrl: `http://127.0.0.1:${port}/live-timing/${trackSlug}`,
+  });
+});
+
+app.get('/api/reception/state', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  return res.json({ success: true, ...demoStore.getReceptionState(demo) });
+});
+
+app.post('/api/reception/drivers', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.addReceptionDriver(demo, req.body || {});
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
+});
+
+app.delete('/api/reception/drivers/:index', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.removeReceptionDriver(demo, req.params.index);
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
+});
+
+app.get('/api/results/list', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+  return res.json({ success: true, heats: demoStore.listHeatResults(demo, limit) });
+});
+
+app.get('/api/results/:heatNumber', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const heat = demoStore.getResultsForHeatNumber(demo, req.params.heatNumber);
+  if (!heat) return res.status(404).json({ success: false, error: 'not_found' });
+  return res.json({ success: true, heat });
+});
+
+app.get('/api/webhooks/rentix/status', (req, res) => {
+  const settings = rentixWebhook.getRentixSettings();
+  return res.json({
+    ok: true,
+    configured: Boolean(settings.publicKey && settings.secretKey),
+    webhookSecretSet: Boolean(settings.webhookSecret),
+    resultsWebhookSet: Boolean(settings.resultsWebhookUrl),
+    inbound: 'POST /api/webhooks/rentix',
+    sync: 'POST /api/webhooks/rentix/sync',
+  });
+});
+
+app.post('/api/webhooks/rentix', (req, res) => {
+  if (!rentixWebhook.verifyWebhook(req)) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const drivers = rentixWebhook.parseDriverPayload(req.body);
+  if (!drivers.length) return res.json({ success: false, error: 'no_drivers' });
+  const result = rentixWebhook.ingestDriversToStore(demo, demoStore, drivers);
+  notifyWorkspace(req);
+  return res.json({ success: true, ...result });
+});
+
+app.post('/api/webhooks/rentix/sync', async (req, res) => {
+  if (!rentixWebhook.verifyWebhook(req)) {
+    return res.status(401).json({ success: false, error: 'unauthorized' });
+  }
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const fetched = await rentixWebhook.fetchRentixOrders(req.body || {});
+  if (!fetched.success) return res.json(fetched);
+  const result = rentixWebhook.ingestDriversToStore(demo, demoStore, fetched.drivers);
+  notifyWorkspace(req);
+  return res.json({ success: true, orders: fetched.orders, ...result });
+});
+
+app.post('/api/install/rentix', (req, res) => {
+  const {
+    webhookSecret, publicKey, secretKey, resultsWebhookUrl, rentId, apiUrl,
+  } = req.body || {};
+  const config = rentixWebhook.saveRentixConfig({
+    ...(webhookSecret !== undefined && { webhookSecret }),
+    ...(publicKey !== undefined && { publicKey }),
+    ...(secretKey !== undefined && { secretKey }),
+    ...(resultsWebhookUrl !== undefined && { resultsWebhookUrl }),
+    ...(rentId !== undefined && { rentId }),
+    ...(apiUrl !== undefined && { apiUrl }),
+  });
+  return res.json({ success: true, rentix: config.rentix || {} });
 });
 
 app.get('/api/kiosk/capabilities', (req, res) => {
   res.json({
     transponder: {
       pit_exit: 'POST /api/transponder/pit-exit',
+      pit_entry: 'POST /api/transponder/pit-entry',
       lap: 'POST /api/transponder/lap',
       amb_passing: 'POST /api/decoder/passing',
       amb_status: 'GET /api/decoder/status',
@@ -548,11 +751,11 @@ app.post('/api/admin/kart-return', (req, res) => {
 app.post('/api/admin/heat-settings', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
-    demo.heatSettings = req.body;
+    demo.heatSettings = { ...demo.heatSettings, ...req.body };
     notifyWorkspace(req);
     return res.json({ success: true });
   }
-  heatSettings = req.body;
+  heatSettings = { ...heatSettings, ...req.body };
   return res.json({ success: true });
 });
 
@@ -702,12 +905,33 @@ app.post('/api/admin/finish-heat', async (req, res) => {
   }
 });
 
-app.post('/api/admin/auto-export-ack', (req, res) => {
+app.post('/api/admin/auto-export-ack', async (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
+    let fileExportResult = null;
+    let rentixPush = null;
+    if (installConfig.isLocalInstall() && demo.autoFinishHeatNumber) {
+      const heat = demoStore.getResultsForHeatNumber(demo, demo.autoFinishHeatNumber);
+      if (heat?.results?.length) {
+        fileExportResult = fileExport.exportHeatResultsToFolder(demo, {
+          heatNumber: demo.autoFinishHeatNumber,
+          results: heat.results,
+          heatType: heat.heat_type,
+        });
+        rentixPush = await rentixWebhook.pushHeatResults(
+          rentixWebhook.buildHeatResultsPayload(
+            demo,
+            demoStore,
+            demo.autoFinishHeatNumber,
+            heat.results,
+            heat.heat_type,
+          ),
+        );
+      }
+    }
     demoStore.acknowledgeAutoExport(demo);
     notifyWorkspace(req);
-    return res.json({ success: true });
+    return res.json({ success: true, fileExport: fileExportResult, rentix: rentixPush });
   }
   res.json({ success: true });
 });

@@ -9,7 +9,7 @@ import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useDraggableResizable } from '../hooks/useDraggableResizable.js';
 import LiveTimingTable from './LiveTimingTable.jsx';
 import LiveAssignmentsBoard from './LiveAssignmentsBoard.jsx';
-import { normalizeTimingColumns } from '../utils/liveTimingColumns.js';
+import { normalizeTimingColumns, normalizeTimingColumnOrder } from '../utils/liveTimingColumns.js';
 
 export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-demo' }) {
   const { t } = useLanguage();
@@ -30,14 +30,21 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
     const rows = await res.json();
     const hs = await apiFetch('/api/heat-settings', {}, trackSlug);
     let timingColumns = null;
+    let timingColumnOrder = null;
     if (hs.ok) {
       const s = await hs.json();
       timingColumns = normalizeTimingColumns(s?.timingColumns);
+      timingColumnOrder = normalizeTimingColumnOrder(s?.timingColumnOrder);
     }
-    return { rows: Array.isArray(rows) ? rows : [], heatType, timingColumns };
+    return {
+      rows: Array.isArray(rows) ? rows : [],
+      heatType,
+      timingColumns,
+      timingColumnOrder,
+    };
   }, [trackId, mode, trackSlug, heatType]);
 
-  const { rows, timingColumns } = useLiveTimingSocket({
+  const { rows, timingColumns, timingColumnOrder } = useLiveTimingSocket({
     trackSlug,
     trackId,
     mode,
@@ -46,6 +53,7 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
   });
 
   const cols = normalizeTimingColumns(timingColumns);
+  const columnOrder = normalizeTimingColumnOrder(timingColumnOrder);
 
   const flashingKeys = useRowFlash(
     rows,
@@ -96,6 +104,7 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
                 mode="timing"
                 rows={rows}
                 timingColumns={cols}
+                timingColumnOrder={columnOrder}
                 heatType={heatType}
                 rowFlashClass={flash}
                 tableClassName="live-timing-table live-timing-dense"

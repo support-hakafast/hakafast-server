@@ -50,13 +50,45 @@ export function reconcileKartsFromLines(allKarts, linesData, onTrackNums = []) {
   return next;
 }
 
-export function formatHeatClock(clock, notStartedLabel, expiredLabel = '00:00') {
+export function formatHeatClock(clock, notStartedLabel, expiredLabel = '00:00', phaseLabels = {}) {
+  if (clock?.racePhase === 'checkered') {
+    return phaseLabels.checkered || '🏁';
+  }
+  if (clock?.racePhase === 'formation') {
+    const required = clock.formationLapsRequired || 1;
+    const done = clock.formationLapsProgress || 0;
+    if (phaseLabels.formation) {
+      return phaseLabels.formation.replace('{{done}}', String(done)).replace('{{required}}', String(required));
+    }
+    return `F ${done}/${required}`;
+  }
+  if (clock?.racePhase === 'last_lap') {
+    return phaseLabels.lastLap || 'LAST LAP';
+  }
   if (!clock?.startedAt) return notStartedLabel;
+
+  if (clock.clockMode === 'up') {
+    const elapsed = clock.elapsedSec ?? 0;
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  if (clock.expired) return expiredLabel;
+
   const remaining = clock.remainingSec ?? 0;
-  if (clock.expired || remaining <= 0) return expiredLabel;
+  if (remaining <= 0) return expiredLabel;
   const m = Math.floor(remaining / 60);
   const s = remaining % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+export function getHeatClockClassName(clock) {
+  if (clock?.racePhase === 'checkered') return ' is-checkered';
+  if (clock?.racePhase === 'formation') return ' is-formation';
+  if (clock?.racePhase === 'last_lap') return ' is-last-lap';
+  if (clock?.startedAt && (clock.running || clock.cooldownPhase)) return ' is-running';
+  return '';
 }
 
 export function parseKartNumbers(input) {

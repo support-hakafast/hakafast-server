@@ -18,6 +18,7 @@ import {
   printPdf,
   reconcileKartsFromLines,
   formatHeatClock,
+  getHeatClockClassName,
   buildExportFilename,
   pickKartsForAssignment,
   groupQueueByTeam,
@@ -30,7 +31,11 @@ import {
   ENDURANCE_DEFAULT_COLUMNS,
   OPTIONAL_TIMING_COLUMNS,
   TIMING_COLUMN_GROUPS,
+  DEFAULT_TIMING_COLUMN_ORDER,
   normalizeTimingColumns,
+  normalizeTimingColumnOrder,
+  getOrderedOptionalColumns,
+  moveColumnOrder,
 } from '../utils/liveTimingColumns.js';
 import { apiFetch } from '../utils/apiClient.js';
 import {
@@ -81,9 +86,13 @@ const AdminPanel = () => {
   const [enduranceHours, setEnduranceHours] = useState(1);
   const [enduranceMinutes, setEnduranceMinutes] = useState(0);
   const [targetLaps, setTargetLaps] = useState('');
+  const [formationLaps, setFormationLaps] = useState(0);
+  const [startMode, setStartMode] = useState('grid');
   const [exportCsv, setExportCsv] = useState(true);
   const [exportPdf, setExportPdf] = useState(false);
   const [timingColumns, setTimingColumns] = useState({ ...DEFAULT_TIMING_COLUMNS });
+  const [timingColumnOrder, setTimingColumnOrder] = useState([...DEFAULT_TIMING_COLUMN_ORDER]);
+  const [enduranceTeams, setEnduranceTeams] = useState([]);
 
   const [drName, setDrName] = useState('');
   const [drTeam, setDrTeam] = useState('');
@@ -111,6 +120,7 @@ const AdminPanel = () => {
   const [penaltySec, setPenaltySec] = useState('60');
   const [driverChangeKart, setDriverChangeKart] = useState('');
   const [driverChangeName, setDriverChangeName] = useState('');
+  const [nextHeatReadiness, setNextHeatReadiness] = useState(null);
   const autoFinishHandledRef = useRef(false);
   const pitsLocalEditUntilRef = useRef(0);
 
@@ -163,9 +173,12 @@ const AdminPanel = () => {
       if (s?.type) setHeatType(s.type);
       if (s?.duration) setHeatDuration(s.duration);
       if (s?.targetLaps) setTargetLaps(String(s.targetLaps));
+      if (s?.formationLaps != null) setFormationLaps(Number(s.formationLaps) || 0);
+      if (s?.startMode) setStartMode(s.startMode);
       if (typeof s?.exportCsv === 'boolean') setExportCsv(s.exportCsv);
       if (typeof s?.exportPdf === 'boolean') setExportPdf(s.exportPdf);
       if (s?.timingColumns) setTimingColumns(normalizeTimingColumns(s.timingColumns));
+      if (s?.timingColumnOrder) setTimingColumnOrder(normalizeTimingColumnOrder(s.timingColumnOrder));
       if (s?.heatClock) setHeatClock(s.heatClock);
       if (s?.onTrack) {
         setOnTrack(s.onTrack);
@@ -210,14 +223,17 @@ const AdminPanel = () => {
           type: heatType,
           duration,
           targetLaps: parseInt(targetLaps, 10) || 0,
+          formationLaps: parseInt(formationLaps, 10) || 0,
+          startMode: heatType === 'endurance' ? startMode : 'grid',
           exportCsv,
           exportPdf,
           timingColumns,
+          timingColumnOrder,
         }),
       }, trackSlug).catch(() => {});
     }, 600);
     return () => clearTimeout(timer);
-  }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, exportCsv, exportPdf, timingColumns, trackSlug]);
+  }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, formationLaps, startMode, exportCsv, exportPdf, timingColumns, timingColumnOrder, trackSlug]);
 
   useEffect(() => {
     if (!usesIsolatedWorkspace(trackSlug)) return undefined;
@@ -233,6 +249,19 @@ const AdminPanel = () => {
     return () => clearTimeout(timer);
   }, [allKarts, trackSlug]);
 
+  const orderedActiveColumns = useMemo(
+    () => getOrderedOptionalColumns(timingColumns, timingColumnOrder),
+    [timingColumns, timingColumnOrder],
+  );
+
+  const selectedEnduranceTeam = useMemo(
+    () => enduranceTeams.find((team) => String(team.kart_number) === String(driverChangeKart)),
+    [enduranceTeams, driverChangeKart],
+  );
+
+  const moveTimingColumn = (columnId, direction) => {
+    setTimingColumnOrder((prev) => moveColumnOrder(prev, columnId, direction));
+  };
   const levelLabel = (level) => t(`level_${(level || 'Amateur').toLowerCase()}`);
   const driverNames = useMemo(() => parseDriverNames(drName), [drName]);
   const isBulkDrivers = isBulkDriverInput(drName);
@@ -651,6 +680,8 @@ const AdminPanel = () => {
             setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (s.onTrack || []).map((k) => k.kart_number)));
           }
           if (typeof s.heatNumber === 'number') setHeatNumber(s.heatNumber);
+          if (Array.isArray(s.enduranceTeams)) setEnduranceTeams(s.enduranceTeams);
+          setNextHeatReadiness(s.nextHeatReadiness || null);
           if (!s.autoFinishRequested) {
             autoFinishHandledRef.current = false;
             setAutoFinishHandled(false);
@@ -681,7 +712,9 @@ const AdminPanel = () => {
     const isEndurance = heatType === 'endurance';
     const teams = isEndurance ? groupQueueByTeam(driverQueue) : null;
     const assignCount = isEndurance ? teams.length : driverQueue.length;
-    const sessionActive = onTrack.length > 0 || Boolean(heatClock.startedAt && !heatClock.expired);
+    const sessionActive = onTrack.length > 0
+      ? !heatClock.cooldownPhase && !heatClock.draining
+      : Boolean(heatClock.startedAt && heatClock.running && !heatClock.cooldownPhase);
     const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount, {
       onTrackKarts: sessionActive ? onTrack.map((k) => k.kart_number) : [],
     });
@@ -730,6 +763,8 @@ const AdminPanel = () => {
             type: heatType,
             duration,
             targetLaps: parseInt(targetLaps, 10) || 0,
+            formationLaps: parseInt(formationLaps, 10) || 0,
+            startMode: isEndurance ? startMode : 'grid',
             exportCsv,
             exportPdf,
             timingColumns: isEndurance
@@ -780,6 +815,25 @@ const AdminPanel = () => {
     if (data.heatClock) setHeatClock(data.heatClock);
   };
 
+  const deployAllGridKarts = async () => {
+    try {
+      const res = await apiFetch('/api/admin/kart-grid-deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) {
+        if (data.error === 'not_le_mans_start') showAlert(t('admin_le_mans_mode_required'));
+        else showAlert(t('admin_alert_server_error'));
+        return;
+      }
+      applySessionPayload(data);
+    } catch {
+      showAlert(t('admin_alert_server_error'));
+    }
+  };
+
   const returnKartFromTrack = async (kartNum, laneId) => {
     try {
       const res = await apiFetch('/api/admin/kart-return', {
@@ -822,7 +876,10 @@ const AdminPanel = () => {
         body: JSON.stringify({ transponder_id: String(kartNum) }),
       }, trackSlug);
       const data = await res.json();
-      if (!data.success) return;
+      if (!data.success) {
+        if (data.error === 'use_grid_deploy') showAlert(t('admin_le_mans_use_grid'));
+        return;
+      }
       setTransponderFlashLane(laneId);
       window.setTimeout(() => setTransponderFlashLane((prev) => (prev === laneId ? null : prev)), 700);
       applySessionPayload(data);
@@ -947,7 +1004,13 @@ const AdminPanel = () => {
         body: JSON.stringify({ kart_number: kart, driver_name: driverChangeName.trim() }),
       }, trackSlug);
       const data = await res.json();
-      if (!data.success) showAlert(t('admin_endurance_driver_error'));
+      if (data.success) {
+        showAlert(t('admin_driver_change_done'), { variant: 'success' });
+      } else if (data.error === 'driver_change_in_pits_only') {
+        showAlert(t('admin_driver_change_pits_only'));
+      } else {
+        showAlert(t('admin_endurance_driver_error'));
+      }
     } catch {
       showAlert(t('admin_alert_server_error'));
     }
@@ -992,6 +1055,16 @@ const AdminPanel = () => {
         )}
         <LanguageSwitcher />
       </header>
+
+      {nextHeatReadiness?.total > 0 && (
+        <p className="admin-next-heat-banner" role="status">
+          {t('admin_next_heat_ready', {
+            ready: nextHeatReadiness.readyToLaunch,
+            waiting: nextHeatReadiness.waitingOnTrack,
+            queue: nextHeatReadiness.inPitsQueue,
+          })}
+        </p>
+      )}
 
       <div className="admin-workspace">
         <section className="admin-pits-column">
@@ -1160,8 +1233,12 @@ const AdminPanel = () => {
 
           <div className="heat-clock-bar">
             <span className="field-label">{t('admin_heat_timer')}</span>
-            <span className={`heat-clock-value${heatClock.startedAt && !heatClock.expired ? ' is-running' : ''}`}>
-              {formatHeatClock(heatClock, t('admin_heat_not_started'))}
+            <span className={`heat-clock-value${getHeatClockClassName(heatClock)}`}>
+              {formatHeatClock(heatClock, t('admin_heat_not_started'), '00:00', {
+                lastLap: t('live_race_last_lap'),
+                checkered: '🏁',
+                formation: t('live_race_formation'),
+              })}
             </span>
             {heatNumber ? (
               <span className="admin-heat-number">{t('live_heat_number', { n: heatNumber })}</span>
@@ -1208,7 +1285,39 @@ const AdminPanel = () => {
             {heatType === 'sprint' && (
               <input type="number" value={targetLaps} onChange={(e) => setTargetLaps(e.target.value)} placeholder={t('admin_laps_placeholder')} />
             )}
+            {(heatType === 'sprint' || heatType === 'endurance') && (
+              <label className="formation-laps-field">
+                <span className="field-label">{t('admin_formation_laps')}</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="5"
+                  value={formationLaps}
+                  onChange={(e) => setFormationLaps(e.target.value)}
+                  placeholder="0"
+                />
+              </label>
+            )}
+            {heatType === 'endurance' && (
+              <label className="start-mode-field">
+                <span className="field-label">{t('admin_start_mode')}</span>
+                <select value={startMode} onChange={(e) => setStartMode(e.target.value)}>
+                  <option value="grid">{t('admin_start_grid')}</option>
+                  <option value="le_mans">{t('admin_start_le_mans')}</option>
+                </select>
+              </label>
+            )}
           </div>
+
+          {heatType === 'endurance' && startMode === 'le_mans' && (
+            <div className="le-mans-panel">
+              <span className="field-label">{t('admin_le_mans_deploy')}</span>
+              <button type="button" className="btn-muted" onClick={deployAllGridKarts}>
+                {t('admin_le_mans_deploy_all')}
+              </button>
+              <p className="endurance-hint">{t('admin_le_mans_hint')}</p>
+            </div>
+          )}
 
           {heatType === 'endurance' && (
             <div className="endurance-admin-panel">
@@ -1232,18 +1341,32 @@ const AdminPanel = () => {
                 </button>
               </div>
               <div className="endurance-tool-row">
-                <input
-                  type="number"
+                <select
                   value={driverChangeKart}
-                  onChange={(e) => setDriverChangeKart(e.target.value)}
-                  placeholder={t('kart')}
-                />
-                <input
-                  type="text"
+                  onChange={(e) => {
+                    setDriverChangeKart(e.target.value);
+                    const team = enduranceTeams.find((item) => String(item.kart_number) === e.target.value);
+                    if (team?.active_driver) setDriverChangeName(team.active_driver);
+                    else if (team?.team_drivers?.[0]) setDriverChangeName(team.team_drivers[0]);
+                  }}
+                >
+                  <option value="">{t('admin_driver_change_pick_kart')}</option>
+                  {enduranceTeams.map((team) => (
+                    <option key={team.kart_number} value={team.kart_number}>
+                      #{team.kart_number} {team.team_name}
+                    </option>
+                  ))}
+                </select>
+                <select
                   value={driverChangeName}
                   onChange={(e) => setDriverChangeName(e.target.value)}
-                  placeholder={t('admin_active_driver')}
-                />
+                  disabled={!selectedEnduranceTeam}
+                >
+                  <option value="">{t('admin_driver_change_pick_driver')}</option>
+                  {(selectedEnduranceTeam?.team_drivers || []).map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
                 <button type="button" className="btn-muted" onClick={changeEnduranceDriver}>
                   {t('admin_driver_change')}
                 </button>
@@ -1279,6 +1402,38 @@ const AdminPanel = () => {
                 </div>
               </div>
             ))}
+            {orderedActiveColumns.length > 0 && (
+              <div className="timing-column-order">
+                <span className="field-label">{t('admin_timing_column_order')}</span>
+                <ul className="timing-order-list">
+                  {orderedActiveColumns.map((col, idx) => (
+                    <li key={col.id} className="timing-order-row">
+                      <span>{t(col.labelKey)}</span>
+                      <span className="timing-order-actions">
+                        <button
+                          type="button"
+                          className="timing-order-btn"
+                          disabled={idx === 0}
+                          onClick={() => moveTimingColumn(col.id, -1)}
+                          aria-label={t('admin_move_column_up')}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="timing-order-btn"
+                          disabled={idx === orderedActiveColumns.length - 1}
+                          onClick={() => moveTimingColumn(col.id, 1)}
+                          aria-label={t('admin_move_column_down')}
+                        >
+                          ↓
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <button type="button" className="btn-advanced-link" onClick={() => setShowAdvanced(true)}>{t('admin_advanced_settings')}</button>

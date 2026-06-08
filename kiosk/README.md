@@ -33,7 +33,8 @@ See [`manifest.json`](./manifest.json) for full endpoint list.
 
 | Event | Endpoint | When |
 |-------|----------|------|
-| Pit exit | `POST /api/transponder/pit-exit` | Kart passes pit transponder — launches kart, starts heat clock on first exit |
+| Pit exit | `POST /api/transponder/pit-exit` | Kart passes pit-out loop — launches kart |
+| Pit entry | `POST /api/transponder/pit-entry` or TranX pit-in loop | Kart returns to pit queue |
 | Lap | `POST /api/transponder/lap` | Kart crosses finish magnetic loop — sets `last_lap_time`, increments laps |
 
 Both require headers:

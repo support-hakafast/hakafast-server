@@ -32,6 +32,12 @@ function storageKey(trackSlug) {
 export function getWorkspaceId(trackSlug) {
   if (!trackSlug) return null;
   try {
+    const installId = localStorage.getItem('hf_install_workspace');
+    if (installId) return installId;
+  } catch {
+    /* ignore */
+  }
+  try {
     let id = localStorage.getItem(storageKey(trackSlug));
     if (!id) {
       id = crypto.randomUUID();
@@ -40,6 +46,14 @@ export function getWorkspaceId(trackSlug) {
     return id;
   } catch {
     return `local-${trackSlug}-${Date.now()}`;
+  }
+}
+
+export function setInstallWorkspaceId(id) {
+  try {
+    if (id) localStorage.setItem('hf_install_workspace', id);
+  } catch {
+    /* ignore */
   }
 }
 

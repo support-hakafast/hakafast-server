@@ -17,9 +17,11 @@ export function useLiveTimingSocket({
   const [rows, setRows] = useState([]);
   const [heatType, setHeatType] = useState('time');
   const [timingColumns, setTimingColumns] = useState(null);
+  const [timingColumnOrder, setTimingColumnOrder] = useState(null);
   const [hasPreparedHeat, setHasPreparedHeat] = useState(false);
   const [heatNumber, setHeatNumber] = useState(null);
   const [topLaps, setTopLaps] = useState(null);
+  const [heatClock, setHeatClock] = useState(null);
   const [connected, setConnected] = useState(false);
   const wsRef = useRef(null);
   const pollRef = useRef(null);
@@ -57,9 +59,11 @@ export function useLiveTimingSocket({
             setRows(data.rows || []);
             if (data.heatType) setHeatType(data.heatType);
             if (data.timingColumns) setTimingColumns(data.timingColumns);
+            if (data.timingColumnOrder) setTimingColumnOrder(data.timingColumnOrder);
             setHasPreparedHeat(Boolean(data.hasPreparedHeat));
             if (data.heatNumber != null) setHeatNumber(data.heatNumber);
             if (data.topLaps) setTopLaps(data.topLaps);
+            if (data.heatClock) setHeatClock(data.heatClock);
           }
         } catch {
           /* ignore */
@@ -96,9 +100,11 @@ export function useLiveTimingSocket({
             setRows(Array.isArray(msg.rows) ? msg.rows : []);
             if (msg.heatType) setHeatType(msg.heatType);
             if (msg.timingColumns) setTimingColumns(msg.timingColumns);
+            if (msg.timingColumnOrder) setTimingColumnOrder(msg.timingColumnOrder);
             setHasPreparedHeat(Boolean(msg.hasPreparedHeat));
             if (msg.heatNumber != null) setHeatNumber(msg.heatNumber);
             if (msg.topLaps) setTopLaps(msg.topLaps);
+            if (msg.heatClock) setHeatClock(msg.heatClock);
           }
         } catch {
           /* ignore */
@@ -143,6 +149,6 @@ export function useLiveTimingSocket({
   }, [mode, trackSlug, trackId]);
 
   return {
-    rows, heatType, timingColumns, connected, hasPreparedHeat, heatNumber, topLaps,
+    rows, heatType, timingColumns, timingColumnOrder, connected, hasPreparedHeat, heatNumber, topLaps, heatClock,
   };
 }

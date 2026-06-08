@@ -16,7 +16,8 @@ import {
 import { useLiveTimingSocket } from '../hooks/useLiveTimingSocket.js';
 import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useLiveTheme } from '../hooks/useLiveTheme.js';
-import { normalizeTimingColumns } from '../utils/liveTimingColumns.js';
+import { normalizeTimingColumns, normalizeTimingColumnOrder } from '../utils/liveTimingColumns.js';
+import { formatHeatClock, getHeatClockClassName } from '../utils/adminHelpers.js';
 
 const HEAT_LABEL_KEYS = { time: 'heat_time', endurance: 'heat_endurance', sprint: 'heat_sprint' };
 
@@ -53,29 +54,35 @@ const LiveTiming = () => {
     const rows = await res.json();
     let heat = 'time';
     let timingColumns = null;
+    let timingColumnOrder = null;
     let hasPreparedHeat = false;
     const hs = await apiFetch('/api/heat-settings', {}, isolated ? trackSlug : null);
     if (hs.ok) {
       const s = await hs.json();
       heat = s?.type || 'time';
       timingColumns = normalizeTimingColumns(s?.timingColumns);
+      timingColumnOrder = normalizeTimingColumnOrder(s?.timingColumnOrder);
     }
     let heatNumber = null;
     let topLaps = null;
+    let heatClock = null;
     const session = await apiFetch('/api/admin/session-state', {}, isolated ? trackSlug : null);
     if (session.ok) {
       const s = await session.json();
       hasPreparedHeat = Boolean(s.hasPreparedHeat);
       heatNumber = s.heatNumber ?? null;
       topLaps = s.topLaps ?? null;
+      heatClock = s.heatClock ?? null;
     }
     return {
       rows: Array.isArray(rows) ? rows : [],
       heatType: heat,
       timingColumns,
+      timingColumnOrder,
       hasPreparedHeat,
       heatNumber,
       topLaps,
+      heatClock,
     };
   }, [trackId, mode, trackSlug, isolated]);
 
@@ -83,9 +90,11 @@ const LiveTiming = () => {
     rows: rowsData,
     heatType,
     timingColumns,
+    timingColumnOrder,
     hasPreparedHeat,
     heatNumber,
     topLaps,
+    heatClock,
   } = useLiveTimingSocket({
     trackSlug: isolated ? trackSlug : (track || 'default'),
     trackId,
@@ -95,7 +104,13 @@ const LiveTiming = () => {
   });
 
   const sessionLabel = t(HEAT_LABEL_KEYS[heatType] || 'session_practice');
+  const clockPhaseLabels = {
+    lastLap: t('live_race_last_lap'),
+    checkered: '🏁',
+    formation: t('live_race_formation'),
+  };
   const cols = normalizeTimingColumns(timingColumns);
+  const columnOrder = normalizeTimingColumnOrder(timingColumnOrder);
 
   const flashingKeys = useRowFlash(
     rowsData,
@@ -128,6 +143,11 @@ const LiveTiming = () => {
           )}
         </div>
         <div className="live-header-actions">
+          {heatClock ? (
+            <div className={`live-race-clock${getHeatClockClassName(heatClock)}`} aria-live="polite">
+              {formatHeatClock(heatClock, t('admin_heat_not_started'), '00:00', clockPhaseLabels)}
+            </div>
+          ) : null}
           <div className="live-mode-tabs">
             <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => switchMode('assignments')}>
               {t('live_mode_assignments')}
@@ -168,6 +188,7 @@ const LiveTiming = () => {
                   mode="timing"
                   rows={rowsData}
                   timingColumns={cols}
+                  timingColumnOrder={columnOrder}
                   heatType={heatType}
                   rowFlashClass={rowFlashClass}
                   tableClassName="live-timing-table live-timing-dense"

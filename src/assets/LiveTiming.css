@@ -87,7 +87,7 @@
 
 .live-timing.theme-dark .live-display .live-leader-row .live-timing-driver-name,
 .live-preview-float .live-display .live-leader-row .live-timing-driver-name {
-  color: #5eead4;
+  color: #f8fafc;
 }
 
 .live-timing.theme-dark .live-display .live-leader-row .live-pos,
@@ -145,7 +145,7 @@
 .live-timing.theme-dark .live-display .live-timing-table td.live-col-highlight,
 .live-preview-float .live-display .live-timing-table th.live-col-highlight,
 .live-preview-float .live-display .live-timing-table td.live-col-highlight {
-  background: rgba(64, 224, 208, 0.18);
+  background: transparent;
   color: #f8fafc;
 }
 
@@ -176,7 +176,7 @@
 
 .live-timing.theme-light .live-display .live-timing-table th.live-col-highlight,
 .live-timing.theme-light .live-display .live-timing-table td.live-col-highlight {
-  background: rgba(15, 118, 110, 0.1);
+  background: transparent;
   color: #0f172a;
 }
 
@@ -197,7 +197,7 @@
 }
 
 .live-timing.theme-light .live-display .live-leader-row .live-timing-driver-name {
-  color: #0f766e;
+  color: var(--hf-navy, #000080);
 }
 
 .live-timing.theme-light .live-display .live-last-pb {
@@ -385,6 +385,73 @@
   gap: 0.85rem;
 }
 
+.live-assignments-grid-2col {
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.55rem;
+}
+
+.live-assignments-banner-compact {
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.live-assignments-banner-compact p {
+  display: none;
+}
+
+.live-assign-card-compact {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 0.15rem 0.45rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.45rem;
+  border-width: 1px;
+  align-items: center;
+}
+
+.live-assign-card-compact .live-assign-kart-num {
+  grid-row: 1 / span 2;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-assign-card-compact .live-assign-name {
+  font-size: clamp(0.72rem, 1.6vw, 0.88rem);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-assign-card-compact .live-assign-status {
+  grid-column: 2;
+  font-size: 0.65rem;
+  line-height: 1.1;
+}
+
+.live-assign-card.is-ready-launch {
+  border-color: rgba(34, 197, 94, 0.55);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), transparent);
+}
+
+.live-assign-status-ready {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.theme-dark .live-assign-status-ready {
+  color: #4ade80;
+}
+
+.live-assign-card.is-pits-queue {
+  opacity: 0.9;
+}
+
 .live-assign-card {
   position: relative;
   display: grid;
@@ -568,13 +635,14 @@
 
 .live-timing-table th.live-col-highlight,
 .live-timing-table td.live-col-highlight {
-  background: rgba(64, 224, 208, 0.12);
+  background: transparent;
   font-weight: 800;
 }
 
-.theme-dark .live-timing-table th.live-col-highlight,
-.theme-dark .live-timing-table td.live-col-highlight {
-  background: rgba(64, 224, 208, 0.18);
+.live-timing-table th.live-col-lap,
+.live-timing-table td.live-col-lap,
+.live-timing-table td.live-last-lap-cell {
+  background: transparent;
 }
 
 .live-timing-table th.live-col-optional,
@@ -606,13 +674,40 @@
   color: var(--hf-navy, #000080);
 }
 
-.theme-dark .live-timing-driver-name {
-  color: #f8fafc;
+.live-kart-cell {
+  padding: 0.35rem 0.2rem;
+  vertical-align: middle;
+  width: 3.1rem;
+  max-width: 3.1rem;
 }
 
-.live-kart-cell {
-  padding: 0.5rem 0.55rem;
-  vertical-align: middle;
+.live-col-kart {
+  width: 3.1rem;
+  max-width: 3.1rem;
+}
+
+.live-col-pos {
+  width: 2.2rem;
+  max-width: 2.2rem;
+}
+
+.live-col-driver {
+  min-width: 6.5rem;
+  text-align: start !important;
+}
+
+.live-team-cell {
+  min-width: 7rem;
+  text-align: start !important;
+}
+
+.live-team-times {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: clamp(0.58rem, 1.2vh, 0.72rem);
+  font-weight: 700;
+  color: var(--live-muted);
+  line-height: 1.2;
 }
 
 .live-timing-table .live-assign-kart-num {
@@ -628,11 +723,11 @@
 }
 
 .live-leader-row .live-timing-driver-name {
-  color: #0f766e;
+  color: var(--hf-navy, #000080);
 }
 
 .theme-dark .live-leader-row .live-timing-driver-name {
-  color: #5eead4;
+  color: #f8fafc;
 }
 
 .live-timing-table tbody tr:nth-child(odd) {
@@ -811,6 +906,57 @@
   border-radius: 999px;
 }
 
+.live-race-clock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+.live-race-clock.is-running {
+  border-color: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.35);
+}
+
+.live-race-clock.is-last-lap {
+  background: #b45309;
+  border-color: #fbbf24;
+  color: #fff7ed;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: liveLastLapPulse 1.2s ease-in-out infinite;
+}
+
+.live-race-clock.is-formation {
+  background: #334155;
+  border-color: #94a3b8;
+  color: #f8fafc;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+}
+
+.live-race-clock.is-checkered {
+  background: #111827;
+  border-color: #fff;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+@keyframes liveLastLapPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.88; transform: scale(1.03); }
+}
+
 .live-timing-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 220px);
@@ -844,17 +990,17 @@
 }
 
 .live-timing-dense .live-assign-kart-num {
-  min-width: clamp(1.65rem, 4vw, 2.1rem);
-  min-height: clamp(1.35rem, 2.8vh, 1.65rem);
-  font-size: clamp(0.75rem, 1.8vh, 1rem);
+  min-width: 1.55rem;
+  min-height: 1.35rem;
+  font-size: clamp(0.72rem, 1.65vh, 0.92rem);
   border-radius: 0.35rem;
-  padding: 0.1rem 0.2rem;
+  padding: 0.08rem 0.15rem;
 }
 
 .live-timing-dense .live-timing-driver-name {
-  font-size: clamp(0.72rem, 1.85vh, 1rem);
-  font-weight: 800;
-  line-height: 1.1;
+  font-size: clamp(0.88rem, 2.1vh, 1.15rem);
+  font-weight: 900;
+  line-height: 1.12;
 }
 
 .live-timing-dense .live-pos {

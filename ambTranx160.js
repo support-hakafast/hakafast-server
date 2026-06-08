@@ -11,7 +11,8 @@
  *   AMB_DECODER_BAUD     — default 9600
  *   AMB_TRACK_SLUG       — workspace track slug (default kart-demo)
  *   AMB_WORKSPACE_ID     — workspace id (8+ chars)
- *   AMB_PIT_LOOP_ID      — optional loop id for pit exit passings
+ *   AMB_PIT_LOOP_ID      — optional loop id for pit exit passings (launch)
+ *   AMB_PIT_IN_LOOP_ID   — optional loop id for pit entry passings (return to queue)
  *   AMB_TRANSPONDER_MAP  — JSON map { "transponderId": kartNumber }
  */
 
@@ -53,6 +54,7 @@ function createAmbTranx160Decoder(deps) {
     trackSlug: process.env.AMB_TRACK_SLUG || getDefaultTrack(),
     workspaceId: process.env.AMB_WORKSPACE_ID || getDefaultWorkspace(),
     pitLoopId: process.env.AMB_PIT_LOOP_ID ? String(process.env.AMB_PIT_LOOP_ID) : null,
+    pitInLoopId: process.env.AMB_PIT_IN_LOOP_ID ? String(process.env.AMB_PIT_IN_LOOP_ID) : null,
     globalTransponderMap: parseTransponderMap(process.env.AMB_TRANSPONDER_MAP),
   };
 
@@ -137,8 +139,11 @@ function createAmbTranx160Decoder(deps) {
     if (rtcSec != null) lastRtcMap.set(transponderId, rtcSec);
 
     let result;
-    const isPitLoop = config.pitLoopId && loopId === config.pitLoopId;
-    if (isPitLoop) {
+    const isPitInLoop = config.pitInLoopId && loopId === config.pitInLoopId;
+    const isPitOutLoop = config.pitLoopId && loopId === config.pitLoopId;
+    if (isPitInLoop) {
+      result = demoStore.processTransponderPitEntry(store, String(transponderId));
+    } else if (isPitOutLoop) {
       result = demoStore.processTransponderPitExit(store, String(transponderId));
     } else if (lapTimeSec != null) {
       result = demoStore.processTransponderLap(store, String(transponderId), lapTimeSec);
@@ -298,6 +303,7 @@ function createAmbTranx160Decoder(deps) {
         trackSlug: config.trackSlug,
         workspaceId: config.workspaceId,
         pitLoopId: config.pitLoopId,
+        pitInLoopId: config.pitInLoopId,
         mapSize: Object.keys(config.globalTransponderMap).length,
       },
     };

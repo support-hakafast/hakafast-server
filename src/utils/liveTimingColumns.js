@@ -43,6 +43,8 @@ export const OPTIONAL_TIMING_COLUMNS = [
   { id: 'stint', labelKey: 'live_col_stint', group: 'race' },
 ];
 
+export const DEFAULT_TIMING_COLUMN_ORDER = OPTIONAL_TIMING_COLUMNS.map((col) => col.id);
+
 export function normalizeTimingColumns(raw) {
   const base = { ...DEFAULT_TIMING_COLUMNS };
   if (!raw || typeof raw !== 'object') return base;
@@ -52,8 +54,54 @@ export function normalizeTimingColumns(raw) {
   return base;
 }
 
+export function normalizeTimingColumnOrder(raw) {
+  const known = new Set(DEFAULT_TIMING_COLUMN_ORDER);
+  const order = Array.isArray(raw) ? raw.filter((id) => known.has(id)) : [];
+  DEFAULT_TIMING_COLUMN_ORDER.forEach((id) => {
+    if (!order.includes(id)) order.push(id);
+  });
+  return order;
+}
+
+export function getOrderedOptionalColumns(timingColumns, columnOrder) {
+  const order = normalizeTimingColumnOrder(columnOrder);
+  return order
+    .filter((id) => timingColumns?.[id])
+    .map((id) => OPTIONAL_TIMING_COLUMNS.find((col) => col.id === id))
+    .filter(Boolean);
+}
+
+export function moveColumnOrder(order, columnId, direction) {
+  const next = [...normalizeTimingColumnOrder(order)];
+  const idx = next.indexOf(columnId);
+  if (idx < 0) return next;
+  const target = idx + direction;
+  if (target < 0 || target >= next.length) return next;
+  [next[idx], next[target]] = [next[target], next[idx]];
+  return next;
+}
+
 export function formatLapCell(value) {
   return value || '--.---';
+}
+
+function formatLapGap(count) {
+  if (count === 1) return '+1 Lap';
+  return `+${count} Laps`;
+}
+
+function trackGapSeconds(row, leader, lapToSec) {
+  const leaderPos = leader.track_position ?? 0;
+  const rowPos = row.track_position ?? 0;
+  const trackGap = leaderPos - rowPos;
+  if (trackGap <= 0.001) return null;
+
+  const refLap = lapToSec(leader.last_lap_time);
+  const rowLap = lapToSec(row.last_lap_time);
+  const lapSec = refLap !== Infinity ? refLap : (rowLap !== Infinity ? rowLap : 45);
+  const estSec = trackGap * lapSec;
+  if (estSec < 0.05) return null;
+  return estSec;
 }
 
 export function gapToLeader(row, leader, heatType, lapToSeconds) {
@@ -71,25 +119,21 @@ export function gapToLeader(row, leader, heatType, lapToSeconds) {
   const leaderLaps = leader.lap_count || 0;
   const rowLaps = row.lap_count || 0;
   const lapDiff = leaderLaps - rowLaps;
-  if (lapDiff > 0) return `+${lapDiff}`;
 
-  if (lapDiff === 0) {
+  if (lapDiff >= 1) {
+    return formatLapGap(lapDiff);
+  }
+
+  if (lapDiff < 0) return '—';
+
+  if (heatType === 'endurance') {
     const leaderPen = leader.unserved_penalty_sec || 0;
     const rowPen = row.unserved_penalty_sec || 0;
     if (rowPen > leaderPen) return `+${rowPen - leaderPen}s`;
-    const leaderBest = lapToSeconds(leader.best_lap_time);
-    const rowBest = lapToSeconds(row.best_lap_time);
-    if (leaderBest !== Infinity && rowBest !== Infinity) {
-      const gap = rowBest - leaderBest;
-      if (gap <= 0) return '—';
-      return `+${gap.toFixed(3)}`;
-    }
-    const trackGap = (leader.track_position || 0) - (row.track_position || 0);
-    if (trackGap > 0.001) {
-      const estSec = trackGap * 45;
-      return `+${estSec.toFixed(3)}`;
-    }
   }
+
+  const estSec = trackGapSeconds(row, leader, lapToSeconds);
+  if (estSec != null) return `+${estSec.toFixed(3)}`;
 
   return '—';
 }
