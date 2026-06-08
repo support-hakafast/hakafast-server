@@ -31,6 +31,11 @@ export const TIMING_COLUMN_GROUPS = [
   },
 ];
 
+export const LAP_TIMING_COLUMNS = [
+  { id: 'best_lap', labelKey: 'best_lap', group: 'session' },
+  { id: 'last_lap', labelKey: 'last_lap', group: 'session' },
+];
+
 export const OPTIONAL_TIMING_COLUMNS = [
   { id: 'laps', labelKey: 'laps', group: 'session' },
   { id: 'second_best', labelKey: 'live_col_second_best', group: 'session' },
@@ -43,7 +48,12 @@ export const OPTIONAL_TIMING_COLUMNS = [
   { id: 'stint', labelKey: 'live_col_stint', group: 'race' },
 ];
 
-export const DEFAULT_TIMING_COLUMN_ORDER = OPTIONAL_TIMING_COLUMNS.map((col) => col.id);
+export const ALL_TIMING_COLUMNS = [...LAP_TIMING_COLUMNS, ...OPTIONAL_TIMING_COLUMNS];
+
+export const DEFAULT_TIMING_COLUMN_ORDER = ALL_TIMING_COLUMNS.map((col) => col.id);
+
+const LAP_COLUMN_IDS = new Set(LAP_TIMING_COLUMNS.map((col) => col.id));
+const ALL_COLUMN_IDS = new Set(ALL_TIMING_COLUMNS.map((col) => col.id));
 
 export function normalizeTimingColumns(raw) {
   const base = { ...DEFAULT_TIMING_COLUMNS };
@@ -55,20 +65,25 @@ export function normalizeTimingColumns(raw) {
 }
 
 export function normalizeTimingColumnOrder(raw) {
-  const known = new Set(DEFAULT_TIMING_COLUMN_ORDER);
-  const order = Array.isArray(raw) ? raw.filter((id) => known.has(id)) : [];
+  const order = Array.isArray(raw) ? raw.filter((id) => ALL_COLUMN_IDS.has(id)) : [];
   DEFAULT_TIMING_COLUMN_ORDER.forEach((id) => {
     if (!order.includes(id)) order.push(id);
   });
   return order;
 }
 
-export function getOrderedOptionalColumns(timingColumns, columnOrder) {
+export function getOrderedTimingColumns(timingColumns, columnOrder) {
   const order = normalizeTimingColumnOrder(columnOrder);
   return order
-    .filter((id) => timingColumns?.[id])
-    .map((id) => OPTIONAL_TIMING_COLUMNS.find((col) => col.id === id))
+    .filter((id) => LAP_COLUMN_IDS.has(id) || timingColumns?.[id])
+    .map((id) => ALL_TIMING_COLUMNS.find((col) => col.id === id))
     .filter(Boolean);
+}
+
+/** @deprecated use getOrderedTimingColumns */
+export function getOrderedOptionalColumns(timingColumns, columnOrder) {
+  return getOrderedTimingColumns(timingColumns, columnOrder)
+    .filter((col) => !LAP_COLUMN_IDS.has(col.id));
 }
 
 export function moveColumnOrder(order, columnId, direction) {
@@ -96,10 +111,10 @@ function trackGapSeconds(row, leader, lapToSec) {
   const trackGap = leaderPos - rowPos;
   if (trackGap <= 0.001) return null;
 
-  const refLap = lapToSec(leader.last_lap_time);
+  const leaderLap = lapToSec(leader.last_lap_time);
   const rowLap = lapToSec(row.last_lap_time);
-  const lapSec = refLap !== Infinity ? refLap : (rowLap !== Infinity ? rowLap : 45);
-  const estSec = trackGap * lapSec;
+  const paceSec = leaderLap !== Infinity ? leaderLap : (rowLap !== Infinity ? rowLap : 45);
+  const estSec = trackGap * paceSec;
   if (estSec < 0.05) return null;
   return estSec;
 }

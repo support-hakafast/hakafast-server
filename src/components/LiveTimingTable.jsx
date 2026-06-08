@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import {
-  getOrderedOptionalColumns,
+  getOrderedTimingColumns,
   formatLapCell,
   gapToLeader,
   lapToSeconds,
@@ -11,9 +11,20 @@ function isSessionFastestLap(row) {
   return Boolean(row.is_session_fastest);
 }
 
-function hasLeaderTiming(row, heatType) {
-  if (heatType === 'time') return Boolean(row.best_lap_time);
-  return (row.lap_count || 0) > 0;
+function renderLapCell(col, row) {
+  if (col.id === 'best_lap') {
+    return (
+      <td key={col.id} className="live-col-lap">
+        {formatLapCell(row.best_lap_time)}
+      </td>
+    );
+  }
+  const sessionFastestLap = isSessionFastestLap(row);
+  return (
+    <td key={col.id} className={`live-col-lap${sessionFastestLap ? ' live-last-pb' : ''}`}>
+      {formatLapCell(row.last_lap_time)}
+    </td>
+  );
 }
 
 function renderOptionalCell(col, row, leader, heatType, t) {
@@ -69,6 +80,13 @@ function renderOptionalCell(col, row, leader, heatType, t) {
   return <td key={col.id} className={cellClass}>—</td>;
 }
 
+function renderColumnCell(col, row, leader, heatType, t) {
+  if (col.id === 'best_lap' || col.id === 'last_lap') {
+    return renderLapCell(col, row);
+  }
+  return renderOptionalCell(col, row, leader, heatType, t);
+}
+
 export default function LiveTimingTable({
   t,
   mode,
@@ -81,8 +99,8 @@ export default function LiveTimingTable({
 }) {
   const isEndurance = heatType === 'endurance';
   const leader = useMemo(() => (mode === 'timing' && rows.length ? rows[0] : null), [mode, rows]);
-  const optionalCols = useMemo(
-    () => getOrderedOptionalColumns(timingColumns, timingColumnOrder),
+  const displayCols = useMemo(
+    () => getOrderedTimingColumns(timingColumns, timingColumnOrder),
     [timingColumns, timingColumnOrder],
   );
 
@@ -95,24 +113,22 @@ export default function LiveTimingTable({
           <th className="live-col-kart">{t('kart')}</th>
           <th className="live-col-driver">{isEndurance ? t('live_col_stint_driver') : t('driver')}</th>
           {isEndurance && <th className="live-col-laps-fixed">{t('laps')}</th>}
-          <th className="live-col-lap">{t('best_lap')}</th>
-          <th className="live-col-lap">{t('last_lap')}</th>
-          {optionalCols.map((col) => (
-            <th key={col.id} className={`live-col-optional live-col-${col.group}`}>{t(col.labelKey)}</th>
+          {displayCols.map((col) => (
+            col.id === 'best_lap' || col.id === 'last_lap'
+              ? <th key={col.id} className="live-col-lap">{t(col.labelKey)}</th>
+              : <th key={col.id} className={`live-col-optional live-col-${col.group}`}>{t(col.labelKey)}</th>
           ))}
         </tr>
       </thead>
       <tbody>
         {rows.map((row, index) => {
-          const isLeader = index === 0 && hasLeaderTiming(row, heatType);
-          const sessionFastestLap = isSessionFastestLap(row);
           const driverLabel = isEndurance
             ? (row.active_driver || row.current_stint?.driver_name || row.driver_name || t('anonymous'))
             : (row.driver_name || t('anonymous'));
           return (
             <tr
               key={`timing-${row.kart_number}-${index}`}
-              className={`${rowFlashClass(row, index)}${isLeader ? ' live-leader-row' : ''}${row.in_pits ? ' live-in-pits-row' : ''}`}
+              className={`${rowFlashClass(row, index)}${row.in_pits ? ' live-in-pits-row' : ''}`}
             >
               <td className="live-pos live-col-pos">{index + 1}</td>
               {isEndurance && (
@@ -138,13 +154,7 @@ export default function LiveTimingTable({
               {isEndurance && (
                 <td className="live-lap-count live-col-laps-fixed">{row.lap_count ?? row.total_laps ?? 0}</td>
               )}
-              <td className="live-col-lap live-last-lap-cell">
-                {formatLapCell(row.best_lap_time)}
-              </td>
-              <td className={`live-col-lap live-last-lap-cell${sessionFastestLap ? ' live-last-pb' : ''}`}>
-                {formatLapCell(row.last_lap_time)}
-              </td>
-              {optionalCols.map((col) => renderOptionalCell(col, row, leader, heatType, t))}
+              {displayCols.map((col) => renderColumnCell(col, row, leader, heatType, t))}
             </tr>
           );
         })}

@@ -63,6 +63,8 @@
 .live-timing.theme-dark .live-display .live-timing-table th,
 .live-preview-float .live-display .live-timing-table th {
   color: var(--hf-turquoise, #40e0d0);
+  font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
 .live-timing.theme-dark .live-display .live-timing-table td,
@@ -83,16 +85,6 @@
 .live-timing.theme-dark .live-display .live-assign-name,
 .live-preview-float .live-display .live-assign-name {
   color: #f8fafc;
-}
-
-.live-timing.theme-dark .live-display .live-leader-row .live-timing-driver-name,
-.live-preview-float .live-display .live-leader-row .live-timing-driver-name {
-  color: #f8fafc;
-}
-
-.live-timing.theme-dark .live-display .live-leader-row .live-pos,
-.live-preview-float .live-display .live-leader-row .live-pos {
-  color: #fbbf24;
 }
 
 .live-timing.theme-dark .live-display .live-assign-card,
@@ -168,6 +160,8 @@
 .live-timing.theme-light .live-display .live-timing-table th {
   color: #0f766e;
   background: var(--live-th-bg);
+  font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
 .live-timing.theme-light .live-display .live-timing-table td {
@@ -184,19 +178,11 @@
   color: #0f766e;
 }
 
-.live-timing.theme-light .live-display .live-leader-row .live-pos {
-  color: #b45309;
-}
-
 .live-timing.theme-light .live-display .live-timing-driver-name {
   color: var(--hf-navy, #000080);
 }
 
 .live-timing.theme-light .live-display .live-assign-name {
-  color: var(--hf-navy, #000080);
-}
-
-.live-timing.theme-light .live-display .live-leader-row .live-timing-driver-name {
   color: var(--hf-navy, #000080);
 }
 
@@ -624,30 +610,23 @@
   color: var(--hf-turquoise);
   padding: 0.75rem 0.5rem;
   text-align: center;
-  font-weight: 800;
+  font-weight: 900;
+  font-size: clamp(0.95rem, 2.4vw, 1.2rem);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
   border-bottom: 2px solid var(--hf-turquoise);
 }
 
 .theme-light .live-timing-table th,
 .live-timing:not(.theme-dark) .live-timing-table th {
   color: #0f766e;
+  font-weight: 900;
 }
 
 .live-timing-table th.live-col-highlight,
 .live-timing-table td.live-col-highlight {
   background: transparent;
   font-weight: 800;
-}
-
-.live-timing-table th.live-col-lap,
-.live-timing-table td.live-col-lap,
-.live-timing-table td.live-last-lap-cell {
-  background: transparent;
-}
-
-.live-timing-table th.live-col-optional,
-.live-timing-table td.live-col-optional {
-  background: transparent;
 }
 
 .live-last-lap {
@@ -667,7 +646,7 @@
 .live-timing-driver-name {
   display: block;
   font-size: clamp(1.45rem, 4.5vw, 2.15rem);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.015em;
   word-break: break-word;
@@ -712,22 +691,6 @@
 
 .live-timing-table .live-assign-kart-num {
   margin: 0 auto;
-}
-
-.live-leader-row .live-pos {
-  color: #b45309;
-}
-
-.theme-dark .live-leader-row .live-pos {
-  color: #fbbf24;
-}
-
-.live-leader-row .live-timing-driver-name {
-  color: var(--hf-navy, #000080);
-}
-
-.theme-dark .live-leader-row .live-timing-driver-name {
-  color: #f8fafc;
 }
 
 .live-timing-table tbody tr:nth-child(odd) {

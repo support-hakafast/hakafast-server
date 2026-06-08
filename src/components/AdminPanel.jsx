@@ -34,7 +34,7 @@ import {
   DEFAULT_TIMING_COLUMN_ORDER,
   normalizeTimingColumns,
   normalizeTimingColumnOrder,
-  getOrderedOptionalColumns,
+  getOrderedTimingColumns,
   moveColumnOrder,
 } from '../utils/liveTimingColumns.js';
 import { apiFetch } from '../utils/apiClient.js';
@@ -250,7 +250,7 @@ const AdminPanel = () => {
   }, [allKarts, trackSlug]);
 
   const orderedActiveColumns = useMemo(
-    () => getOrderedOptionalColumns(timingColumns, timingColumnOrder),
+    () => getOrderedTimingColumns(timingColumns, timingColumnOrder),
     [timingColumns, timingColumnOrder],
   );
 
@@ -1378,10 +1378,6 @@ const AdminPanel = () => {
           <div className="timing-columns-bar">
             <span className="field-label">{t('admin_timing_columns')}</span>
             <p className="timing-columns-intro">{t('admin_timing_columns_hint')}</p>
-            <div className="timing-columns-fixed">
-              <span className="timing-chip timing-chip-fixed">{t('best_lap')}</span>
-              <span className="timing-chip timing-chip-fixed">{t('last_lap')}</span>
-            </div>
             {TIMING_COLUMN_GROUPS.map((group) => (
               <div key={group.id} className={`timing-column-group timing-column-group-${group.id}`}>
                 <div className="timing-group-head">
