@@ -5,9 +5,11 @@ const STORAGE_KEY = 'hf_live_theme';
 export function useLiveTheme() {
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === 'light') return 'light';
+      return 'dark';
     } catch {
-      return 'light';
+      return 'dark';
     }
   });
 

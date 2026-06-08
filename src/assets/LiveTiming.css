@@ -30,6 +30,75 @@
   --live-tab-text: #fff;
 }
 
+/* Shared content surface — public live timing + admin float preview */
+.live-display {
+  background: #0a0a12;
+  color: #fff;
+  --live-surface: transparent;
+  --live-border: rgba(255, 255, 255, 0.08);
+  --live-muted: rgba(255, 255, 255, 0.6);
+  --live-row-alt: rgba(255, 255, 255, 0.03);
+  --live-row-hover: rgba(64, 224, 208, 0.08);
+  --live-th-bg: rgba(64, 224, 208, 0.15);
+}
+
+.live-display .live-timing-table {
+  box-shadow: none;
+}
+
+.live-display .live-timing-table th {
+  color: var(--hf-turquoise, #40e0d0);
+}
+
+.live-display .live-pos {
+  color: var(--hf-turquoise, #40e0d0);
+}
+
+.live-display .live-timing-driver-name {
+  color: #f8fafc;
+}
+
+.live-display .live-leader-row .live-timing-driver-name {
+  color: #5eead4;
+}
+
+.live-display .live-assign-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.live-display .live-assignments-banner {
+  background: linear-gradient(135deg, rgba(64, 224, 208, 0.12), rgba(107, 33, 168, 0.2));
+  border-color: rgba(64, 224, 208, 0.25);
+}
+
+.live-display .live-assignments-next .live-assignments-banner {
+  background: linear-gradient(135deg, rgba(107, 33, 168, 0.28), rgba(64, 224, 208, 0.1));
+}
+
+.live-display .live-assign-card.is-on-track-wait {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), transparent);
+}
+
+.live-display .live-assign-status-track {
+  color: #fbbf24;
+}
+
+.live-display .live-row-flash td {
+  animation-name: liveRowFlashDark;
+}
+
+.live-display .live-lap-stats {
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.live-display .live-stats-time {
+  color: #38bdf8;
+}
+
 .live-timing-header {
   display: flex;
   align-items: center;
@@ -340,24 +409,9 @@
   background: rgba(64, 224, 208, 0.18);
 }
 
-.live-timing-table th.live-col-session,
-.live-timing-table td.live-col-session {
-  background: rgba(37, 99, 235, 0.06);
-}
-
-.live-timing-table th.live-col-race,
-.live-timing-table td.live-col-race {
-  background: rgba(124, 58, 237, 0.06);
-}
-
-.theme-dark .live-timing-table th.live-col-session,
-.theme-dark .live-timing-table td.live-col-session {
-  background: rgba(96, 165, 250, 0.1);
-}
-
-.theme-dark .live-timing-table th.live-col-race,
-.theme-dark .live-timing-table td.live-col-race {
-  background: rgba(167, 139, 250, 0.1);
+.live-timing-table th.live-col-optional,
+.live-timing-table td.live-col-optional {
+  background: transparent;
 }
 
 .live-last-lap {
@@ -372,6 +426,20 @@
 
 .live-driver-name {
   text-align: start !important;
+}
+
+.live-timing-driver-name {
+  display: block;
+  font-size: clamp(1.45rem, 4.5vw, 2.15rem);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: 0.015em;
+  word-break: break-word;
+  color: var(--hf-navy, #000080);
+}
+
+.theme-dark .live-timing-driver-name {
+  color: #f8fafc;
 }
 
 .live-kart-cell {
@@ -391,11 +459,11 @@
   color: #fbbf24;
 }
 
-.live-leader-row .live-driver-name .live-assign-name {
+.live-leader-row .live-timing-driver-name {
   color: #0f766e;
 }
 
-.theme-dark .live-leader-row .live-driver-name .live-assign-name {
+.theme-dark .live-leader-row .live-timing-driver-name {
   color: #5eead4;
 }
 
@@ -728,8 +796,8 @@
     min-width: 520px;
   }
 
-  .live-timing-table .live-driver-name .live-assign-name {
-    font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+  .live-timing-table .live-timing-driver-name {
+    font-size: clamp(1.2rem, 4.5vw, 1.55rem);
   }
 
   .live-timing-table th,
@@ -751,8 +819,8 @@
     min-width: 460px;
   }
 
-  .live-timing-table .live-driver-name .live-assign-name {
-    font-size: 1rem;
+  .live-timing-table .live-timing-driver-name {
+    font-size: 1.1rem;
   }
 
   .live-header-logo.hf-logo-img {

@@ -70,7 +70,7 @@ export default function LiveTimingTable({
                 <span className="live-assign-kart-num">{row.kart_number}</span>
               </td>
               <td className="live-driver-name">
-                <span className="live-assign-name">{driverLabel}</span>
+                <span className="live-timing-driver-name">{driverLabel}</span>
               </td>
               {isEndurance && <td className="live-lap-count">{row.lap_count ?? row.total_laps ?? 0}</td>}
               <td className="live-col-highlight">

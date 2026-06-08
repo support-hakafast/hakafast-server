@@ -154,6 +154,16 @@ function testSimulationCatchUp(store) {
   demoStore.getTimingData(simStore);
   const row = simStore.currentHeat[0];
   assert(row.lap_count >= 2, `simulation should catch up missed laps (got ${row.lap_count})`);
+  assert(row.lap_times.length >= 2, 'lap history should reflect catch-up');
+  const lastTwo = row.lap_times.slice(-2);
+  assert(
+    lastTwo[0] !== lastTwo[1],
+    `consecutive simulated laps must differ (got ${lastTwo.join(' vs ')})`,
+  );
+  assert(
+    row.last_lap_time === lastTwo[1],
+    'last lap should match most recent crossing',
+  );
 }
 
 function testSessionFastestFlag(store) {

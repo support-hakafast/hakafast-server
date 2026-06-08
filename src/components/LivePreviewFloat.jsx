@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import '../assets/LiveTiming.css';
 import '../assets/LivePreviewFloat.css';
 import { apiFetch } from '../utils/apiClient.js';
 import { resolveTrackId } from '../utils/workspace.js';
@@ -76,7 +77,7 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
         </div>
         <button type="button" className="live-preview-close" onClick={onClose} onPointerDown={(e) => e.stopPropagation()}>×</button>
       </div>
-      <div className="live-preview-body">
+      <div className="live-preview-body live-display theme-dark">
         <div key={mode} className="live-content-panel">
           {rows.length === 0 ? (
             <p className="live-preview-empty">{t('live_waiting')}</p>
@@ -97,7 +98,6 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
                 timingColumns={cols}
                 heatType={heatType}
                 rowFlashClass={flash}
-                tableClassName="live-preview-table"
               />
             )
           )}

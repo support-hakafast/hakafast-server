@@ -144,6 +144,7 @@ const LiveTiming = () => {
         </div>
       </header>
 
+      <div className="live-display theme-dark">
       {rowsData.length === 0 ? (
         <p className="live-empty">{t('live_waiting')}</p>
       ) : (
@@ -176,6 +177,7 @@ const LiveTiming = () => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };

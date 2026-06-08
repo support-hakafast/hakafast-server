@@ -292,6 +292,19 @@ function simulatedBestSec(avgLap, kartNumber) {
   return avgLap - spread[tier] + jitter;
 }
 
+/** Realistic per-lap variation for demo simulation (changes every crossing). */
+function simulatedLapSecForCrossing(store, ot, row, avgLap) {
+  const nextLap = (row.lap_count || 0) + 1;
+  const kart = Number(ot.kart_number);
+  const base = store.heatSettings?.type === 'endurance'
+    ? avgLap
+    : simulatedBestSec(avgLap, kart);
+  const lapWave = Math.sin(nextLap * 1.31 + kart * 0.47) * 0.72;
+  const fatigue = Math.min(0.4, Math.max(0, nextLap - 1) * 0.02);
+  const millis = ((kart * 137 + nextLap * 911) % 1000) / 1000;
+  return Math.max(1, base + lapWave + fatigue + millis);
+}
+
 function withResolvedLevel(store, row) {
   return { ...row, driver_level: resolveDriverLevel(store, row) };
 }
@@ -408,8 +421,8 @@ function enrichEnduranceTiming(store, row, ot) {
   };
 }
 
-function recordLapCrossing(store, ot, row, lapSec) {
-  const now = Date.now();
+function recordLapCrossing(store, ot, row, lapSec, options = {}) {
+  const now = options.at ?? Date.now();
   ot.lastLapAt = now;
 
   row.lap_count = (row.lap_count || 0) + 1;
@@ -462,11 +475,10 @@ function tickHeatSimulation(store) {
 
     const completedLaps = Math.floor((now - ot.launchedAt) / 1000 / avgLap);
     while ((row.lap_count || 0) < completedLaps) {
-      const jitter = ((ot.kart_number % 7) - 3) * 0.12;
-      const lapSec = store.heatSettings?.type === 'endurance'
-        ? avgLap + jitter
-        : simulatedBestSec(avgLap, ot.kart_number) + jitter * 0.5;
-      recordLapCrossing(store, ot, row, Math.max(1, lapSec));
+      const lapSec = simulatedLapSecForCrossing(store, ot, row, avgLap);
+      const prevAt = ot.lastLapAt || ot.launchedAt;
+      const lapAt = Math.min(now, prevAt + lapSec * 1000);
+      recordLapCrossing(store, ot, row, lapSec, { at: lapAt });
     }
   });
 }
