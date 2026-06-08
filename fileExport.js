@@ -10,14 +10,25 @@ function timestampSlug(date = new Date()) {
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
 }
 
+function sortResults(results, heatType = 'time') {
+  const lapToSec = (lap) => {
+    if (!lap || typeof lap !== 'string') return Infinity;
+    const v = parseFloat(lap.trim());
+    return Number.isNaN(v) ? Infinity : v;
+  };
+  return (results || []).slice().sort((a, b) => {
+    if (heatType === 'sprint' || heatType === 'endurance') {
+      const lapDiff = (b.lap_count || 0) - (a.lap_count || 0);
+      if (lapDiff !== 0) return lapDiff;
+    }
+    return lapToSec(a.best_lap_time) - lapToSec(b.best_lap_time);
+  });
+}
+
 function buildCsvRows(results, heatMeta = {}) {
   const header = 'Position,Kart,Driver,Level,Last Lap,Best Lap,Laps';
   const lines = [header];
-  const sorted = (results || []).slice().sort((a, b) => {
-    const aBest = a.best_lap_time || '99:99.999';
-    const bBest = b.best_lap_time || '99:99.999';
-    return aBest.localeCompare(bBest);
-  });
+  const sorted = sortResults(results, heatMeta.heatType);
   sorted.forEach((row, i) => {
     lines.push([
       i + 1,
@@ -38,6 +49,42 @@ function buildCsvRows(results, heatMeta = {}) {
   return lines.join('\n');
 }
 
+function buildPdfHtml(results, heatMeta = {}) {
+  const sorted = sortResults(results, heatMeta.heatType);
+  const hasLapHistory = sorted.some((r) => Array.isArray(r.lap_times) && r.lap_times.length > 0);
+  const title = heatMeta.heatNumber
+    ? `HAKAFAST — Heat #${heatMeta.heatNumber}`
+    : 'HAKAFAST Results';
+  const rowsHtml = sorted.map((r, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${r.kart_number ?? ''}</td>
+      <td>${String(r.driver_name || '').replace(/</g, '&lt;')}</td>
+      <td>${r.driver_level || ''}</td>
+      <td>${r.last_lap_time || ''}</td>
+      <td>${r.best_lap_time || ''}</td>
+      <td>${r.lap_count || 0}</td>
+      ${hasLapHistory ? `<td class="laps">${(r.lap_times || []).join(' · ') || '—'}</td>` : ''}
+    </tr>`).join('');
+  const lapHeader = hasLapHistory ? '<th>All laps</th>' : '';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+<style>
+body{font-family:system-ui,sans-serif;padding:24px;color:#000080}
+h1{margin:0 0 8px}p.meta{color:#64748b;margin:0 0 16px}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #cbd5e0;padding:8px;text-align:center}
+th{background:#000080;color:#fff}
+td.laps{text-align:start;font-size:0.85em}
+@media print{body{padding:12px}}
+</style></head><body>
+<h1>${title}</h1>
+<p class="meta">${heatMeta.heatType || 'time'} · ${heatMeta.exportedAt || new Date().toISOString()}</p>
+<table><thead><tr>
+<th>#</th><th>Kart</th><th>Driver</th><th>Level</th><th>Last</th><th>Best</th><th>Laps</th>${lapHeader}
+</tr></thead><tbody>${rowsHtml}</tbody></table>
+</body></html>`;
+}
+
 function exportHeatResultsToFolder(store, options = {}) {
   ensureDataDirs();
   const dir = options.exportDir || getExportsDir();
@@ -46,24 +93,36 @@ function exportHeatResultsToFolder(store, options = {}) {
   const heatNumber = options.heatNumber ?? null;
   const results = options.results || store.currentHeat || [];
   const heatType = options.heatType || store.heatSettings?.type || 'time';
+  const exportCsv = options.exportCsv !== false;
+  const exportPdf = Boolean(options.exportPdf);
+  const exportedAt = new Date().toISOString();
   const slug = timestampSlug(options.at ? new Date(options.at) : new Date());
   const base = heatNumber ? `heat_${heatNumber}_${slug}` : `heat_${slug}`;
-  const csvPath = path.join(dir, `${base}.csv`);
-  const csv = buildCsvRows(results, { heatNumber, heatType });
-  fs.writeFileSync(csvPath, csv, 'utf8');
+  const meta = { heatNumber, heatType, exportedAt };
+
+  const out = { exportDir: dir };
+
+  if (exportCsv) {
+    const csvPath = path.join(dir, `${base}.csv`);
+    fs.writeFileSync(csvPath, buildCsvRows(results, meta), 'utf8');
+    out.csvPath = csvPath;
+  }
 
   const metaPath = path.join(dir, `${base}.json`);
-  fs.writeFileSync(metaPath, JSON.stringify({
-    heatNumber,
-    heatType,
-    exportedAt: new Date().toISOString(),
-    results,
-  }, null, 2), 'utf8');
+  fs.writeFileSync(metaPath, JSON.stringify({ ...meta, results }, null, 2), 'utf8');
+  out.metaPath = metaPath;
 
-  return { csvPath, metaPath, exportDir: dir };
+  if (exportPdf) {
+    const pdfPath = path.join(dir, `${base}_report.html`);
+    fs.writeFileSync(pdfPath, buildPdfHtml(results, { ...meta, exportedAt }), 'utf8');
+    out.pdfPath = pdfPath;
+  }
+
+  return out;
 }
 
 module.exports = {
   exportHeatResultsToFolder,
   buildCsvRows,
+  buildPdfHtml,
 };

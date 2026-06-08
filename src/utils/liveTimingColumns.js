@@ -31,6 +31,13 @@ export const TIMING_COLUMN_GROUPS = [
   },
 ];
 
+export const LAYOUT_TIMING_COLUMNS = [
+  { id: 'pos', labelKey: 'pos', group: 'layout', alwaysOn: true },
+  { id: 'team', labelKey: 'team', group: 'layout', enduranceOnly: true },
+  { id: 'kart_driver', labelKey: 'admin_col_kart_driver', group: 'layout', alwaysOn: true },
+  { id: 'laps_fixed', labelKey: 'laps', group: 'layout', enduranceOnly: true },
+];
+
 export const LAP_TIMING_COLUMNS = [
   { id: 'best_lap', labelKey: 'best_lap', group: 'session' },
   { id: 'last_lap', labelKey: 'last_lap', group: 'session' },
@@ -48,12 +55,19 @@ export const OPTIONAL_TIMING_COLUMNS = [
   { id: 'stint', labelKey: 'live_col_stint', group: 'race' },
 ];
 
-export const ALL_TIMING_COLUMNS = [...LAP_TIMING_COLUMNS, ...OPTIONAL_TIMING_COLUMNS];
+export const ALL_TIMING_COLUMNS = [
+  ...LAYOUT_TIMING_COLUMNS,
+  ...LAP_TIMING_COLUMNS,
+  ...OPTIONAL_TIMING_COLUMNS,
+];
 
 export const DEFAULT_TIMING_COLUMN_ORDER = ALL_TIMING_COLUMNS.map((col) => col.id);
 
 const LAP_COLUMN_IDS = new Set(LAP_TIMING_COLUMNS.map((col) => col.id));
 const ALL_COLUMN_IDS = new Set(ALL_TIMING_COLUMNS.map((col) => col.id));
+const LAYOUT_ALWAYS_ON = new Set(
+  LAYOUT_TIMING_COLUMNS.filter((col) => col.alwaysOn).map((col) => col.id),
+);
 
 export function normalizeTimingColumns(raw) {
   const base = { ...DEFAULT_TIMING_COLUMNS };
@@ -66,24 +80,39 @@ export function normalizeTimingColumns(raw) {
 
 export function normalizeTimingColumnOrder(raw) {
   const order = Array.isArray(raw) ? raw.filter((id) => ALL_COLUMN_IDS.has(id)) : [];
+  if (!order.includes('pos')) order.unshift('pos');
+  if (!order.includes('kart_driver')) {
+    const posIdx = order.indexOf('pos');
+    order.splice(posIdx + 1, 0, 'kart_driver');
+  }
   DEFAULT_TIMING_COLUMN_ORDER.forEach((id) => {
     if (!order.includes(id)) order.push(id);
   });
   return order;
 }
 
-export function getOrderedTimingColumns(timingColumns, columnOrder) {
+function isColumnVisible(col, timingColumns, isEndurance) {
+  if (col.enduranceOnly && !isEndurance) return false;
+  if (col.alwaysOn || LAYOUT_ALWAYS_ON.has(col.id)) return true;
+  if (LAP_COLUMN_IDS.has(col.id)) return true;
+  return Boolean(timingColumns?.[col.id]);
+}
+
+export function getOrderedTimingColumns(timingColumns, columnOrder, isEndurance = false) {
   const order = normalizeTimingColumnOrder(columnOrder);
   return order
-    .filter((id) => LAP_COLUMN_IDS.has(id) || timingColumns?.[id])
+    .filter((id) => {
+      const col = ALL_TIMING_COLUMNS.find((c) => c.id === id);
+      return col && isColumnVisible(col, timingColumns, isEndurance);
+    })
     .map((id) => ALL_TIMING_COLUMNS.find((col) => col.id === id))
     .filter(Boolean);
 }
 
 /** @deprecated use getOrderedTimingColumns */
-export function getOrderedOptionalColumns(timingColumns, columnOrder) {
-  return getOrderedTimingColumns(timingColumns, columnOrder)
-    .filter((col) => !LAP_COLUMN_IDS.has(col.id));
+export function getOrderedOptionalColumns(timingColumns, columnOrder, isEndurance = false) {
+  return getOrderedTimingColumns(timingColumns, columnOrder, isEndurance)
+    .filter((col) => !LAYOUT_ALWAYS_ON.has(col.id) && col.id !== 'team' && col.id !== 'laps_fixed');
 }
 
 export function moveColumnOrder(order, columnId, direction) {
@@ -100,40 +129,49 @@ export function formatLapCell(value) {
   return value || '--.---';
 }
 
+export function isPersonalBestLap(row) {
+  if (!row?.last_lap_time || !row?.best_lap_time) return false;
+  const last = lapToSeconds(row.last_lap_time);
+  const best = lapToSeconds(row.best_lap_time);
+  return last !== Infinity && best !== Infinity && last === best;
+}
+
 function formatLapGap(count) {
   if (count === 1) return '+1 Lap';
   return `+${count} Laps`;
 }
 
-function trackGapSeconds(row, leader, lapToSec) {
-  const leaderPos = leader.track_position ?? 0;
+function trackGapSeconds(row, ahead, lapToSec) {
+  const aheadPos = ahead.track_position ?? 0;
   const rowPos = row.track_position ?? 0;
-  const trackGap = leaderPos - rowPos;
+  const trackGap = aheadPos - rowPos;
   if (trackGap <= 0.001) return null;
 
-  const leaderLap = lapToSec(leader.last_lap_time);
+  const aheadLap = lapToSec(ahead.last_lap_time);
   const rowLap = lapToSec(row.last_lap_time);
-  const paceSec = leaderLap !== Infinity ? leaderLap : (rowLap !== Infinity ? rowLap : 45);
+  const paceSec = aheadLap !== Infinity ? aheadLap : (rowLap !== Infinity ? rowLap : 45);
   const estSec = trackGap * paceSec;
   if (estSec < 0.05) return null;
   return estSec;
 }
 
-export function gapToLeader(row, leader, heatType, lapToSeconds) {
-  if (!row || !leader) return '--.---';
+/** Gap to the car directly ahead in classification (P1 shows —). */
+export function gapToCarAhead(row, ahead, heatType, lapToSecondsFn = lapToSeconds) {
+  if (!row) return '--.---';
+  if (!ahead) return '—';
 
   if (heatType === 'time') {
-    const leaderBest = lapToSeconds(leader.best_lap_time);
-    const rowBest = lapToSeconds(row.best_lap_time);
-    if (leaderBest === Infinity || rowBest === Infinity) return '--.---';
-    const gap = rowBest - leaderBest;
+    const aheadBest = lapToSecondsFn(ahead.best_lap_time);
+    const rowBest = lapToSecondsFn(row.best_lap_time);
+    if (aheadBest === Infinity || rowBest === Infinity) return '--.---';
+    const gap = rowBest - aheadBest;
     if (gap <= 0) return '—';
     return `+${gap.toFixed(3)}`;
   }
 
-  const leaderLaps = leader.lap_count || 0;
+  const aheadLaps = ahead.lap_count || 0;
   const rowLaps = row.lap_count || 0;
-  const lapDiff = leaderLaps - rowLaps;
+  const lapDiff = aheadLaps - rowLaps;
 
   if (lapDiff >= 1) {
     return formatLapGap(lapDiff);
@@ -142,15 +180,20 @@ export function gapToLeader(row, leader, heatType, lapToSeconds) {
   if (lapDiff < 0) return '—';
 
   if (heatType === 'endurance') {
-    const leaderPen = leader.unserved_penalty_sec || 0;
+    const aheadPen = ahead.unserved_penalty_sec || 0;
     const rowPen = row.unserved_penalty_sec || 0;
-    if (rowPen > leaderPen) return `+${rowPen - leaderPen}s`;
+    if (rowPen > aheadPen) return `+${rowPen - aheadPen}s`;
   }
 
-  const estSec = trackGapSeconds(row, leader, lapToSeconds);
+  const estSec = trackGapSeconds(row, ahead, lapToSecondsFn);
   if (estSec != null) return `+${estSec.toFixed(3)}`;
 
   return '—';
+}
+
+/** @deprecated use gapToCarAhead — kept for tests */
+export function gapToLeader(row, leader, heatType, lapToSecondsFn) {
+  return gapToCarAhead(row, leader, heatType, lapToSecondsFn);
 }
 
 export function lapToSeconds(lap) {

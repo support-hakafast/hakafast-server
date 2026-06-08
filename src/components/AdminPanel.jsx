@@ -250,8 +250,8 @@ const AdminPanel = () => {
   }, [allKarts, trackSlug]);
 
   const orderedActiveColumns = useMemo(
-    () => getOrderedTimingColumns(timingColumns, timingColumnOrder),
-    [timingColumns, timingColumnOrder],
+    () => getOrderedTimingColumns(timingColumns, timingColumnOrder, heatType === 'endurance'),
+    [timingColumns, timingColumnOrder, heatType],
   );
 
   const selectedEnduranceTeam = useMemo(

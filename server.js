@@ -913,10 +913,13 @@ app.post('/api/admin/auto-export-ack', async (req, res) => {
     if (installConfig.isLocalInstall() && demo.autoFinishHeatNumber) {
       const heat = demoStore.getResultsForHeatNumber(demo, demo.autoFinishHeatNumber);
       if (heat?.results?.length) {
+        const hs = demo.heatSettings || {};
         fileExportResult = fileExport.exportHeatResultsToFolder(demo, {
           heatNumber: demo.autoFinishHeatNumber,
           results: heat.results,
           heatType: heat.heat_type,
+          exportCsv: hs.exportCsv !== false,
+          exportPdf: Boolean(hs.exportPdf),
         });
         rentixPush = await rentixWebhook.pushHeatResults(
           rentixWebhook.buildHeatResultsPayload(

@@ -607,6 +607,7 @@ function recordLapCrossing(store, ot, row, lapSec, options = {}) {
   if (currentBest === Infinity || lapSec < currentBest) {
     if (currentBest !== Infinity) row.second_best_lap_time = row.best_lap_time;
     row.best_lap_time = formatLap(lapSec);
+    row.best_lap_lap_number = row.lap_count;
   } else if (!row.second_best_lap_time || lapSec < lapToSeconds(row.second_best_lap_time)) {
     row.second_best_lap_time = formatLap(lapSec);
   }

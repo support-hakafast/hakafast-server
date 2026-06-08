@@ -186,7 +186,8 @@
   color: var(--hf-navy, #000080);
 }
 
-.live-timing.theme-light .live-display .live-last-pb {
+.live-timing.theme-light .live-display .live-last-pb,
+.live-timing.theme-light .live-display .live-best-pb {
   color: var(--hf-purple, #6b21a8);
 }
 
@@ -244,15 +245,41 @@
 
 .live-timing-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.35rem;
   padding: 0.45rem 0.75rem;
   flex-shrink: 0;
   background: var(--live-header-bg);
   color: var(--live-header-text);
   border-bottom: 3px solid var(--hf-turquoise);
+}
+
+.live-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.live-header-row-main {
+  align-items: baseline;
+}
+
+.live-header-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.live-header-row-actions {
+  gap: 0.4rem;
+}
+
+.live-header-row-actions .live-header-actions {
+  margin-inline-start: auto;
 }
 
 .live-timing-header h1 {
@@ -264,11 +291,12 @@
 
 .live-session-badge {
   display: inline-block;
-  padding: 0.35rem 0.85rem;
+  padding: 0.28rem 0.65rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.15);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+  margin-top: 0;
 }
 
 .live-content-panel {
@@ -611,7 +639,7 @@
   padding: 0.75rem 0.5rem;
   text-align: center;
   font-weight: 900;
-  font-size: clamp(0.95rem, 2.4vw, 1.2rem);
+  font-size: clamp(1.05rem, 2.6vw, 1.35rem);
   letter-spacing: 0.04em;
   line-height: 1.2;
   border-bottom: 2px solid var(--hf-turquoise);
@@ -729,12 +757,14 @@
   color: #0f766e;
 }
 
-.live-last-pb {
+.live-last-pb,
+.live-best-pb {
   color: var(--hf-purple, #6b21a8);
   font-weight: 900;
 }
 
-.theme-dark .live-last-pb {
+.theme-dark .live-last-pb,
+.theme-dark .live-best-pb {
   color: #d8b4fe;
 }
 
@@ -817,8 +847,8 @@
 .live-demo-badge,
 .live-ws-badge {
   display: inline-block;
-  margin-top: 0.35rem;
-  margin-inline-end: 0.35rem;
+  margin-top: 0;
+  margin-inline-end: 0;
   background: var(--hf-turquoise, #40e0d0);
   color: var(--hf-navy, #000080);
   font-size: 0.75rem;
@@ -1106,9 +1136,19 @@
     vertical-align: middle;
   }
 
+  .live-header-row-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .live-header-row-actions .live-header-actions {
+    width: auto;
+    margin-inline-start: auto;
+  }
+
   .live-header-actions {
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
+    justify-content: flex-end;
   }
 
   .live-mode-tabs button {

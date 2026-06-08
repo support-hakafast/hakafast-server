@@ -14,24 +14,25 @@ function lapToSeconds(lap) {
   return Number.isNaN(value) ? Infinity : value;
 }
 
-function gapToLeader(row, leader, heatType) {
-  if (!row || !leader) return '--.---';
+function gapToLeader(row, ahead, heatType) {
+  if (!row) return '--.---';
+  if (!ahead) return '—';
   if (heatType === 'time') {
-    const leaderBest = lapToSeconds(leader.best_lap_time);
+    const aheadBest = lapToSeconds(ahead.best_lap_time);
     const rowBest = lapToSeconds(row.best_lap_time);
-    if (leaderBest === Infinity || rowBest === Infinity) return '--.---';
-    const gap = rowBest - leaderBest;
+    if (aheadBest === Infinity || rowBest === Infinity) return '--.---';
+    const gap = rowBest - aheadBest;
     if (gap <= 0) return '—';
     return `+${gap.toFixed(3)}`;
   }
-  const leaderLaps = leader.lap_count || 0;
+  const aheadLaps = ahead.lap_count || 0;
   const rowLaps = row.lap_count || 0;
-  const lapDiff = leaderLaps - rowLaps;
+  const lapDiff = aheadLaps - rowLaps;
   if (lapDiff >= 1) return lapDiff === 1 ? '+1 Lap' : `+${lapDiff} Laps`;
   if (lapDiff < 0) return '—';
-  const trackGap = (leader.track_position || 0) - (row.track_position || 0);
+  const trackGap = (ahead.track_position || 0) - (row.track_position || 0);
   if (trackGap <= 0.001) return '—';
-  const refLap = lapToSeconds(leader.last_lap_time);
+  const refLap = lapToSeconds(ahead.last_lap_time);
   const estSec = trackGap * (refLap !== Infinity ? refLap : 45);
   return `+${estSec.toFixed(3)}`;
 }
@@ -130,20 +131,31 @@ function testTimingDataSortAndFields(store) {
 }
 
 function testGapColumnTimeMode() {
-  const leader = buildRow(1, 'Leader', '41.200', '40.500');
+  const ahead = buildRow(1, 'Leader', '41.200', '40.500');
   const chaser = buildRow(2, 'Chaser', '42.800', '42.100');
-  const gap = gapToLeader(chaser, leader, 'time');
+  const gap = gapToLeader(chaser, ahead, 'time');
   assert(gap === '+1.600', `gap should be +1.600 (got ${gap})`);
-  assert(gapToLeader(leader, leader, 'time') === '—', 'leader gap should be dash');
+  assert(gapToLeader(chaser, null, 'time') === '—', 'P1 gap should be dash');
 }
 
 function testSprintGapUsesTrackPosition() {
-  const leader = { kart_number: 1, lap_count: 3, track_position: 0.8, last_lap_time: '45.000' };
+  const ahead = { kart_number: 1, lap_count: 3, track_position: 0.8, last_lap_time: '45.000' };
   const chaser = { kart_number: 2, lap_count: 3, track_position: 0.2, last_lap_time: '46.000' };
   const lapped = { kart_number: 3, lap_count: 2, track_position: 0.9, last_lap_time: '44.000' };
-  const sameLapGap = gapToLeader(chaser, leader, 'sprint');
+  const sameLapGap = gapToLeader(chaser, ahead, 'sprint');
   assert(sameLapGap.startsWith('+'), `same-lap sprint gap should be seconds (got ${sameLapGap})`);
-  assert(gapToLeader(lapped, leader, 'sprint') === '+1 Lap', 'one lap down should show +1 Lap');
+  assert(gapToLeader(lapped, ahead, 'sprint') === '+1 Lap', 'one lap down should show +1 Lap');
+  assert(gapToLeader(ahead, null, 'sprint') === '—', 'P1 should have no gap');
+}
+
+function testSprintGapToCarAheadNotLeader() {
+  const leader = { kart_number: 1, lap_count: 4, track_position: 0.9, last_lap_time: '44.000' };
+  const middle = { kart_number: 2, lap_count: 3, track_position: 0.7, last_lap_time: '45.000' };
+  const back = { kart_number: 3, lap_count: 3, track_position: 0.2, last_lap_time: '46.000' };
+  assert(gapToLeader(back, leader, 'sprint') === '+1 Lap', 'back is one lap down on leader');
+  const gapToAhead = gapToLeader(back, middle, 'sprint');
+  assert(gapToAhead.startsWith('+') && !gapToAhead.includes('Lap'), 'back should show seconds gap to car directly ahead');
+  assert(gapToAhead === '+22.500', `expected +22.500 track gap (got ${gapToAhead})`);
 }
 
 function testSimulationCatchUp(store) {
@@ -649,6 +661,7 @@ async function main() {
 
   await run('gap column (time mode)', testGapColumnTimeMode);
   await run('sprint gap uses track position', testSprintGapUsesTrackPosition);
+  await run('sprint gap to car ahead', testSprintGapToCarAheadNotLeader);
 
   const store = setupStore();
   await run('lap recording + first lap skip for best', () => testLapRecording(store));

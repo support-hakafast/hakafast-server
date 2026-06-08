@@ -2,32 +2,28 @@ import React, { useMemo } from 'react';
 import {
   getOrderedTimingColumns,
   formatLapCell,
-  gapToLeader,
+  gapToCarAhead,
+  isPersonalBestLap,
   lapToSeconds,
 } from '../utils/liveTimingColumns.js';
 
-function isSessionFastestLap(row) {
-  if (!row?.last_lap_time) return false;
-  return Boolean(row.is_session_fastest);
-}
-
 function renderLapCell(col, row) {
+  const pbCrossing = isPersonalBestLap(row);
   if (col.id === 'best_lap') {
     return (
-      <td key={col.id} className="live-col-lap">
+      <td key={col.id} className={`live-col-lap${row.best_lap_time ? ' live-best-pb' : ''}`}>
         {formatLapCell(row.best_lap_time)}
       </td>
     );
   }
-  const sessionFastestLap = isSessionFastestLap(row);
   return (
-    <td key={col.id} className={`live-col-lap${sessionFastestLap ? ' live-last-pb' : ''}`}>
+    <td key={col.id} className={`live-col-lap${pbCrossing ? ' live-last-pb' : ''}`}>
       {formatLapCell(row.last_lap_time)}
     </td>
   );
 }
 
-function renderOptionalCell(col, row, leader, heatType, t) {
+function renderOptionalCell(col, row, ahead, heatType, t) {
   const cellClass = `live-col-optional live-col-${col.group}`;
   if (col.id === 'laps') {
     return <td key={col.id} className={cellClass}>{row.lap_count ?? row.total_laps ?? 0}</td>;
@@ -48,7 +44,7 @@ function renderOptionalCell(col, row, leader, heatType, t) {
   if (col.id === 'gap') {
     return (
       <td key={col.id} className={cellClass}>
-        {gapToLeader(row, leader, heatType, lapToSeconds)}
+        {gapToCarAhead(row, ahead, heatType, lapToSeconds)}
       </td>
     );
   }
@@ -80,11 +76,86 @@ function renderOptionalCell(col, row, leader, heatType, t) {
   return <td key={col.id} className={cellClass}>—</td>;
 }
 
-function renderColumnCell(col, row, leader, heatType, t) {
+function renderLayoutHeader(col, t, isEndurance) {
+  if (col.id === 'pos') {
+    return <th key={col.id} className="live-col-pos">{t('pos')}</th>;
+  }
+  if (col.id === 'team') {
+    return <th key={col.id} className="live-col-team">{t('team')}</th>;
+  }
+  if (col.id === 'kart_driver') {
+    return (
+      <React.Fragment key={col.id}>
+        <th className="live-col-kart">{t('kart')}</th>
+        <th className="live-col-driver">{isEndurance ? t('live_col_stint_driver') : t('driver')}</th>
+      </React.Fragment>
+    );
+  }
+  if (col.id === 'laps_fixed') {
+    return <th key={col.id} className="live-col-laps-fixed">{t('laps')}</th>;
+  }
+  return null;
+}
+
+function renderLayoutCell(col, row, index, t, isEndurance) {
+  if (col.id === 'pos') {
+    return <td key={col.id} className="live-pos live-col-pos">{index + 1}</td>;
+  }
+  if (col.id === 'team') {
+    return (
+      <td key={col.id} className="live-team-cell live-col-team">
+        <span className="live-team-name">{row.team_name || '—'}</span>
+        <span className="live-team-times">
+          {row.team_session_display || '0:00'}
+          {' '}
+          {t('live_team_time_short')}
+          {' · '}
+          {row.driver_stint_display || row.current_stint?.duration_display || '0:00'}
+          {' '}
+          {t('live_driver_time_short')}
+        </span>
+      </td>
+    );
+  }
+  if (col.id === 'kart_driver') {
+    const driverLabel = isEndurance
+      ? (row.active_driver || row.current_stint?.driver_name || row.driver_name || t('anonymous'))
+      : (row.driver_name || t('anonymous'));
+    return (
+      <React.Fragment key={col.id}>
+        <td className="live-kart-cell live-col-kart">
+          <span className="live-assign-kart-num">{row.kart_number}</span>
+        </td>
+        <td className="live-driver-name live-col-driver">
+          <span className="live-timing-driver-name">{driverLabel}</span>
+        </td>
+      </React.Fragment>
+    );
+  }
+  if (col.id === 'laps_fixed') {
+    return (
+      <td key={col.id} className="live-lap-count live-col-laps-fixed">
+        {row.lap_count ?? row.total_laps ?? 0}
+      </td>
+    );
+  }
+  return null;
+}
+
+function renderColumnHeader(col, t) {
+  if (col.id === 'best_lap' || col.id === 'last_lap') {
+    return <th key={col.id} className="live-col-lap">{t(col.labelKey)}</th>;
+  }
+  return (
+    <th key={col.id} className={`live-col-optional live-col-${col.group}`}>{t(col.labelKey)}</th>
+  );
+}
+
+function renderColumnCell(col, row, ahead, heatType, t) {
   if (col.id === 'best_lap' || col.id === 'last_lap') {
     return renderLapCell(col, row);
   }
-  return renderOptionalCell(col, row, leader, heatType, t);
+  return renderOptionalCell(col, row, ahead, heatType, t);
 }
 
 export default function LiveTimingTable({
@@ -98,63 +169,35 @@ export default function LiveTimingTable({
   tableClassName = 'live-timing-table',
 }) {
   const isEndurance = heatType === 'endurance';
-  const leader = useMemo(() => (mode === 'timing' && rows.length ? rows[0] : null), [mode, rows]);
   const displayCols = useMemo(
-    () => getOrderedTimingColumns(timingColumns, timingColumnOrder),
-    [timingColumns, timingColumnOrder],
+    () => getOrderedTimingColumns(timingColumns, timingColumnOrder, isEndurance),
+    [timingColumns, timingColumnOrder, isEndurance],
   );
 
   return (
     <table className={tableClassName}>
       <thead>
         <tr>
-          <th className="live-col-pos">{t('pos')}</th>
-          {isEndurance && <th className="live-col-team">{t('team')}</th>}
-          <th className="live-col-kart">{t('kart')}</th>
-          <th className="live-col-driver">{isEndurance ? t('live_col_stint_driver') : t('driver')}</th>
-          {isEndurance && <th className="live-col-laps-fixed">{t('laps')}</th>}
-          {displayCols.map((col) => (
-            col.id === 'best_lap' || col.id === 'last_lap'
-              ? <th key={col.id} className="live-col-lap">{t(col.labelKey)}</th>
-              : <th key={col.id} className={`live-col-optional live-col-${col.group}`}>{t(col.labelKey)}</th>
-          ))}
+          {displayCols.map((col) => {
+            if (col.group === 'layout') return renderLayoutHeader(col, t, isEndurance);
+            return renderColumnHeader(col, t);
+          })}
         </tr>
       </thead>
       <tbody>
         {rows.map((row, index) => {
-          const driverLabel = isEndurance
-            ? (row.active_driver || row.current_stint?.driver_name || row.driver_name || t('anonymous'))
-            : (row.driver_name || t('anonymous'));
+          const ahead = index > 0 ? rows[index - 1] : null;
           return (
             <tr
               key={`timing-${row.kart_number}-${index}`}
               className={`${rowFlashClass(row, index)}${row.in_pits ? ' live-in-pits-row' : ''}`}
             >
-              <td className="live-pos live-col-pos">{index + 1}</td>
-              {isEndurance && (
-                <td className="live-team-cell live-col-team">
-                  <span className="live-team-name">{row.team_name || '—'}</span>
-                  <span className="live-team-times">
-                    {row.team_session_display || '0:00'}
-                    {' '}
-                    {t('live_team_time_short')}
-                    {' · '}
-                    {row.driver_stint_display || row.current_stint?.duration_display || '0:00'}
-                    {' '}
-                    {t('live_driver_time_short')}
-                  </span>
-                </td>
-              )}
-              <td className="live-kart-cell live-col-kart">
-                <span className="live-assign-kart-num">{row.kart_number}</span>
-              </td>
-              <td className="live-driver-name live-col-driver">
-                <span className="live-timing-driver-name">{driverLabel}</span>
-              </td>
-              {isEndurance && (
-                <td className="live-lap-count live-col-laps-fixed">{row.lap_count ?? row.total_laps ?? 0}</td>
-              )}
-              {displayCols.map((col) => renderColumnCell(col, row, leader, heatType, t))}
+              {displayCols.map((col) => {
+                if (col.group === 'layout') {
+                  return renderLayoutCell(col, row, index, t, isEndurance);
+                }
+                return renderColumnCell(col, row, ahead, heatType, t);
+              })}
             </tr>
           );
         })}
