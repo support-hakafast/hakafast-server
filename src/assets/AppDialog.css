@@ -1,0 +1,122 @@
+.hf-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 40, 0.55);
+  backdrop-filter: blur(4px);
+  animation: hfDialogFadeIn 0.18s ease;
+}
+
+@keyframes hfDialogFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.hf-dialog {
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.35rem 1.5rem 1.25rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 80, 0.28);
+  border: 1px solid rgba(64, 224, 208, 0.35);
+  animation: hfDialogSlideIn 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  text-align: center;
+}
+
+@keyframes hfDialogSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.hf-dialog-icon {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.hf-dialog-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--hf-navy, #000080);
+}
+
+.hf-dialog-message {
+  margin: 0 0 1.25rem;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: #334155;
+  white-space: pre-line;
+}
+
+.hf-dialog-actions {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hf-dialog-btn {
+  min-width: 6.5rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.hf-dialog-btn:active {
+  transform: scale(0.98);
+}
+
+.hf-dialog-btn-cancel {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.hf-dialog-btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+.hf-dialog-btn-confirm {
+  background: var(--hf-turquoise, #40e0d0);
+  color: var(--hf-navy, #000080);
+}
+
+.hf-dialog-btn-confirm:hover {
+  background: #34cdbe;
+}
+
+.hf-dialog-btn-confirm.is-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.hf-dialog-btn-confirm.is-danger:hover {
+  background: #b91c1c;
+}
+
+.hf-dialog-danger .hf-dialog-title {
+  color: #b91c1c;
+}
+
+.hf-dialog-success .hf-dialog-btn-confirm {
+  background: #059669;
+  color: #fff;
+}
+
+.hf-dialog-success .hf-dialog-btn-confirm:hover {
+  background: #047857;
+}

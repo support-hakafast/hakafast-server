@@ -170,6 +170,7 @@ const LiveTiming = () => {
                   timingColumns={cols}
                   heatType={heatType}
                   rowFlashClass={rowFlashClass}
+                  tableClassName="live-timing-table live-timing-dense"
                 />
               </div>
               <LiveLapStats t={t} topLaps={topLaps} heatNumber={heatNumber} />

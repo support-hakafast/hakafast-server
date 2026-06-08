@@ -702,6 +702,16 @@ app.post('/api/admin/finish-heat', async (req, res) => {
   }
 });
 
+app.post('/api/admin/auto-export-ack', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demoStore.acknowledgeAutoExport(demo);
+    notifyWorkspace(req);
+    return res.json({ success: true });
+  }
+  res.json({ success: true });
+});
+
 app.get('/api/admin/export-data', async (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) return res.json(demoStore.exportData(demo));

@@ -243,7 +243,114 @@ function testHeatDrainBlocksNextLaunch() {
   demoStore.returnKart(store, 7, 1);
   assert(store.onTrack.length === 0, 'kart should return');
   assert(!store.heatFrozen, 'heat should drain after last return');
-  assert(store.currentHeat.length === 0, 'current heat cleared after drain');
+  assert(store.currentHeat.length === 1, 'next heat should promote after drain');
+  assert(store.currentHeat[0].driver_name === 'Next Driver', 'promoted next heat drivers');
+  assert(store.nextHeat.length === 0, 'next heat queue cleared on promote');
+}
+
+function testAutoFinishExportMetadata() {
+  const wsId = 'verify008';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  const { assignHeatNumber } = require('../lapStats');
+  store.heatSettings = { type: 'time', duration: 10, exportCsv: true, exportPdf: false };
+  const startedAt = Date.now() - 700000;
+  store.heatRuntime.startedAt = startedAt;
+  store.currentHeat = [{
+    kart_number: 1,
+    driver_name: 'A',
+    driver_level: 'Amateur',
+    best_lap_time: '44.000',
+    lap_count: 1,
+    lap_times: ['44.000'],
+  }];
+  store.onTrack = [{ kart_number: 1, launchedAt: startedAt, lastLapAt: startedAt }];
+  assignHeatNumber(store);
+
+  const state = demoStore.getSessionState(store);
+  assert(store.heatFrozen, 'heat should freeze when timed limit hit');
+  assert(store.autoFinishExportPending, 'auto export should be pending');
+  assert(store.autoFinishStartedAt === startedAt, 'should preserve heat start time for export');
+  assert(store.autoFinishHeatNumber === 1, 'should preserve heat number for export');
+  assert(state.autoFinishRequested, 'session should request auto export');
+  assert(state.autoFinishStartedAt === startedAt, 'session should expose saved start time');
+
+  demoStore.acknowledgeAutoExport(store);
+  assert(!store.autoFinishExportPending, 'ack should clear pending export');
+  assert(demoStore.getSessionState(store).autoFinishRequested === false, 'session should stop requesting export');
+}
+
+function testHeatNumberIncrementsOnPromote() {
+  const wsId = 'verify009';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  const { assignHeatNumber } = require('../lapStats');
+  store.currentHeat = [{
+    kart_number: 7,
+    driver_name: 'Current',
+    driver_level: 'Amateur',
+    lap_count: 1,
+    best_lap_time: '44.000',
+    lap_times: ['44.000'],
+  }];
+  store.nextHeat = [{
+    kart_number: 7,
+    driver_name: 'Next Driver',
+    driver_level: 'Amateur',
+    lap_count: 0,
+    lap_times: [],
+  }];
+  assignHeatNumber(store);
+  assert(demoStore.getCurrentHeatNumber(store) === 1, 'current heat should be number 1');
+
+  store.onTrack = [{ kart_number: 7, launchedAt: Date.now(), lastLapAt: Date.now() }];
+  store.pitLines[1].karts = [7];
+  demoStore.finishHeat(store, { keepOnTrack: true });
+  demoStore.returnKart(store, 7, 1);
+
+  assert(demoStore.getCurrentHeatNumber(store) === 2, 'promoted next heat should increment heat number');
+  assert(store.currentHeat[0].driver_name === 'Next Driver', 'next heat drivers should be active');
+}
+
+function testTimedExpiryStopsSimulationWithNextHeat() {
+  const wsId = 'verify006';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.heatSettings = { type: 'time', duration: 10, timingColumns: { laps: true } };
+  store.currentHeat = [{
+    kart_number: 1,
+    driver_name: 'Current',
+    driver_level: 'Amateur',
+    registered: false,
+    lap_count: 2,
+    last_lap_time: '44.000',
+    best_lap_time: '43.500',
+    lap_times: ['45.000', '43.500'],
+  }];
+  store.nextHeat = [{
+    kart_number: 5,
+    driver_name: 'Waiting',
+    driver_level: 'Amateur',
+    registered: false,
+    lap_count: 0,
+    lap_times: [],
+  }];
+  store.onTrack = [{
+    kart_number: 1,
+    launchedAt: Date.now() - 700000,
+    lastLapAt: Date.now() - 45000,
+    simulatedLaps: 2,
+  }];
+  store.heatRuntime.startedAt = Date.now() - 700000;
+
+  const lapsBefore = store.currentHeat[0].lap_count;
+  demoStore.getTimingData(store);
+
+  assert(store.heatFrozen, 'heat should freeze when timed limit hit');
+  assert(store.currentHeat[0].driver_name === 'Current', 'current drivers kept until drain');
+  assert(store.nextHeat.length === 1, 'next heat still queued');
+  assert(store.currentHeat[0].lap_count === lapsBefore, 'laps must not increase after time limit');
+  assert(!demoStore.hasActiveTimingSession(store), 'session must not stay active after expiry');
 }
 
 async function testOnTrackKartPool() {
@@ -361,6 +468,9 @@ async function main() {
   await run('next-heat uses on-track karts', testOnTrackKartPool);
   await run('retire does not stop heat clock', () => testRetireDoesNotStopClock());
   await run('timed finish waits for kart return', () => testHeatDrainBlocksNextLaunch());
+  await run('timed expiry stops current heat with next waiting', () => testTimedExpiryStopsSimulationWithNextHeat());
+  await run('auto finish export metadata', () => testAutoFinishExportMetadata());
+  await run('heat number increments on promote', () => testHeatNumberIncrementsOnPromote());
   await run('avg lap from lap splits', () => testAvgLapFromLapTimes());
   await run('daily heat number', () => testDailyHeatNumber());
   await run('top lap stats', () => testTopLapStats());

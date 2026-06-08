@@ -70,6 +70,10 @@ function createStore(trackSlug = 'kart-demo') {
     transponderMap: {},
     teamTransponderMap: {},
     heatFrozen: false,
+    heatAutoFinishTriggered: false,
+    autoFinishExportPending: false,
+    autoFinishStartedAt: null,
+    autoFinishHeatNumber: null,
     dailyHeat: { date: null, counter: 0, current: null },
     lapRecords: [],
   };
@@ -462,7 +466,7 @@ function recordLapCrossing(store, ot, row, lapSec, options = {}) {
 }
 
 function tickHeatSimulation(store) {
-  if (!store.onTrack.length) return;
+  if (!store.onTrack.length || store.heatFrozen || isHeatClockExpired(store)) return;
   const now = Date.now();
   const avgLap = getAvgLapSec(store);
 
@@ -492,16 +496,37 @@ function maybeDrainFinishedHeat(store) {
     store.currentHeat = [];
     store.heatFrozen = false;
     store.heatAutoFinishTriggered = false;
+    if (store.nextHeat.length > 0) {
+      promoteNextHeat(store);
+    }
   }
 }
 
+function isTimedHeat(store) {
+  return (store.heatSettings?.type || 'time') === 'time'
+    && (store.heatSettings?.duration || 0) > 0;
+}
+
+function isHeatClockExpired(store) {
+  if (!isTimedHeat(store) || !store.heatRuntime?.startedAt) return false;
+  return getHeatClock(store).expired;
+}
+
 function hasActiveTimingSession(store) {
-  if (store.onTrack.length > 0) return true;
   if (store.heatFrozen) return false;
-  if (!store.currentHeat.length || !store.heatRuntime?.startedAt) return false;
-  const elapsedSec = Math.floor((Date.now() - store.heatRuntime.startedAt) / 1000);
-  const totalSec = (store.heatSettings?.duration || 10) * 60;
-  return elapsedSec < totalSec;
+  if (!store.currentHeat.length) return false;
+  if (isHeatClockExpired(store)) return false;
+  if (store.onTrack.length > 0) return true;
+  if (!store.heatRuntime?.startedAt) return false;
+  if (isTimedHeat(store)) {
+    return !getHeatClock(store).expired;
+  }
+  return true;
+}
+
+function shouldQueueNextHeat(store) {
+  if (store.heatFrozen && store.currentHeat.length > 0) return true;
+  return hasActiveTimingSession(store);
 }
 
 function getLaunchHeatRows(store) {
@@ -875,6 +900,7 @@ function getTimingSortFn(store) {
 }
 
 function getTimingData(store) {
+  checkAutoFinish(store);
   tickHeatSimulation(store);
   tickPenaltyService(store);
   const order = getTimingSortFn(store);
@@ -982,7 +1008,7 @@ function assignHeatBatch(store, assignmentRows, settings) {
 
   const endurance = settings?.type === 'endurance' || store.heatSettings?.type === 'endurance';
   const rows = assignmentRows.map((body, i) => buildHeatRow(body, i, endurance));
-  const prepare = hasActiveTimingSession(store);
+  const prepare = shouldQueueNextHeat(store);
 
   if (prepare) {
     store.nextHeat = rows;
@@ -1070,6 +1096,9 @@ function clearHeat(store) {
 }
 
 function finishHeat(store, options = {}) {
+  if (store.heatAutoFinishTriggered && store.heatFrozen) {
+    return { success: true, duplicate: true };
+  }
   const keepOnTrack = Boolean(options.keepOnTrack) && store.onTrack.length > 0;
   applyAutoLevelUpgrades(store);
   if (store.currentHeat.length > 0) {
@@ -1111,11 +1140,27 @@ function updateDriverLevel(store, lookup, level, password) {
 
 function checkAutoFinish(store) {
   const clock = getHeatClock(store);
-  if (!clock.expired || store.heatAutoFinishTriggered || !getHeatDriverCount(store)) {
+  if (!isTimedHeat(store) || !getHeatDriverCount(store) || !clock.expired) {
     return { autoFinishRequested: false, heatClock: clock };
   }
-  store.heatAutoFinishTriggered = true;
-  return { autoFinishRequested: true, heatClock: clock };
+  if (!store.heatAutoFinishTriggered) {
+    store.heatAutoFinishTriggered = true;
+    store.autoFinishStartedAt = store.heatRuntime.startedAt;
+    store.autoFinishHeatNumber = getCurrentHeatNumber(store);
+    store.autoFinishExportPending = true;
+    finishHeat(store, { keepOnTrack: store.onTrack.length > 0 });
+  }
+  return {
+    autoFinishRequested: Boolean(store.autoFinishExportPending),
+    heatClock: getHeatClock(store),
+  };
+}
+
+function acknowledgeAutoExport(store) {
+  store.autoFinishExportPending = false;
+  store.autoFinishStartedAt = null;
+  store.autoFinishHeatNumber = null;
+  return { success: true };
 }
 
 function enrichOnTrack(store) {
@@ -1182,9 +1227,11 @@ function registerTeamTransponder(store, transponderId, kartNumber) {
 function getSessionState(store) {
   store.pitLines = sanitizePitLines(store.pitLines);
   scanTransponderExits(store);
+  const { autoFinishRequested } = checkAutoFinish(store);
   tickHeatSimulation(store);
   tickPenaltyService(store);
-  const { autoFinishRequested, heatClock } = checkAutoFinish(store);
+  maybeDrainFinishedHeat(store);
+  const heatClock = getHeatClock(store);
   return {
     heatSettings: store.heatSettings,
     nextHeatSettings: store.nextHeatSettings,
@@ -1198,6 +1245,8 @@ function getSessionState(store) {
     hasActiveTimingSession: hasActiveTimingSession(store),
     heatFrozen: Boolean(store.heatFrozen),
     autoFinishRequested,
+    autoFinishStartedAt: store.autoFinishStartedAt ?? null,
+    autoFinishHeatNumber: store.autoFinishHeatNumber ?? null,
     onTrack: enrichOnTrack(store),
     pitLines: store.pitLines,
     pitExitPosition: store.levelSettings?.pitExitPosition || 'bottom',
@@ -1212,6 +1261,7 @@ function getSessionState(store) {
 }
 
 function getLivePayload(store, mode) {
+  maybeDrainFinishedHeat(store);
   const rows = mode === 'assignments' ? getAssignments(store) : getTimingData(store);
   return {
     rows,
@@ -1252,6 +1302,7 @@ module.exports = {
   assignHeatBatch,
   clearHeat,
   finishHeat,
+  acknowledgeAutoExport,
   exportData,
   updateDriverLevel,
   lapToSeconds,

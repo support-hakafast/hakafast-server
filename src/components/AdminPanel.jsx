@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom';
 import '../assets/AdminPanel.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { useDialog } from '../i18n/DialogContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
 import AdminSetupModal from './AdminSetupModal.jsx';
@@ -62,6 +63,7 @@ function normalizeLinesData(data) {
 const AdminPanel = () => {
   const { trackName } = useParams();
   const { t } = useLanguage();
+  const { showAlert, showConfirmTwice } = useDialog();
   const trackSlug = trackName || 'kart-demo';
 
   const [showSetup, setShowSetup] = useState(false);
@@ -112,7 +114,6 @@ const AdminPanel = () => {
   const autoFinishHandledRef = useRef(false);
   const pitsLocalEditUntilRef = useRef(0);
 
-  const confirmTwice = (msg1, msg2) => window.confirm(msg1) && window.confirm(msg2);
 
   const syncPitsWithServer = useCallback(async (lines) => {
     await apiFetch('/api/admin/update-pits', {
@@ -252,7 +253,7 @@ const AdminPanel = () => {
     if (!val) return;
     const nums = parseKartNumbers(val);
     if (!nums.length) {
-      alert(t('admin_karts_invalid_input'));
+      showAlert(t('admin_karts_invalid_input'));
       return;
     }
 
@@ -286,8 +287,8 @@ const AdminPanel = () => {
     if (inPits > 0) msgs.push(t('admin_karts_in_pits', { count: inPits }));
     if (onTrackCount > 0) msgs.push(t('admin_karts_on_track', { count: onTrackCount }));
     if (alreadyInPool > 0) msgs.push(t('admin_karts_already_pool', { count: alreadyInPool }));
-    if (msgs.length) alert(msgs.join('\n'));
-    else alert(t('admin_karts_none_added'));
+    if (msgs.length) showAlert(msgs.join('\n'));
+    else showAlert(t('admin_karts_none_added'));
     setKartInput('');
   };
 
@@ -430,9 +431,9 @@ const AdminPanel = () => {
     });
   };
 
-  const handleToggleLane = (laneId) => {
+  const handleToggleLane = async (laneId) => {
     const lane = linesData[laneId];
-    if (lane?.active && !confirmTwice(t('admin_confirm_disable_lane'), t('admin_confirm_disable_lane_final'))) return;
+    if (lane?.active && !(await showConfirmTwice(t('admin_confirm_disable_lane'), t('admin_confirm_disable_lane_final')))) return;
     toggleLaneEnabled(laneId);
   };
 
@@ -467,13 +468,13 @@ const AdminPanel = () => {
     syncPitsWithServer(updated);
   };
 
-  const handleRemoveLane = (laneId) => {
-    if (!confirmTwice(t('admin_confirm_remove_lane'), t('admin_confirm_remove_lane_final'))) return;
+  const handleRemoveLane = async (laneId) => {
+    if (!(await showConfirmTwice(t('admin_confirm_remove_lane'), t('admin_confirm_remove_lane_final')))) return;
     removeLane(laneId);
   };
 
   const addDriverToQueue = () => {
-    if (!canAddDriver) { alert(t('admin_alert_name_required')); return; }
+    if (!canAddDriver) { showAlert(t('admin_alert_name_required')); return; }
     const team = heatType === 'endurance' ? (drTeam.trim() || null) : null;
     if (isBulkDrivers) {
       setDriverQueue((q) => [...q, ...driverNames.map((name) => ({
@@ -484,8 +485,8 @@ const AdminPanel = () => {
     }
     const name = driverNames[0];
     if (showAdvancedReg) {
-      if (chkPhone && !drPhone.trim()) { alert(t('admin_alert_phone_required')); return; }
-      if (chkEmail && !drEmail.trim()) { alert(t('admin_alert_email_required')); return; }
+      if (chkPhone && !drPhone.trim()) { showAlert(t('admin_alert_phone_required')); return; }
+      if (chkEmail && !drEmail.trim()) { showAlert(t('admin_alert_email_required')); return; }
     }
     setDriverQueue((q) => [...q, {
       name,
@@ -503,7 +504,7 @@ const AdminPanel = () => {
 
   const saveLevelSettings = async (settingsPassword) => {
     if (settingsPassword && !isStrongPassword(settingsPassword)) {
-      alert(t('admin_password_weak'));
+      showAlert(t('admin_password_weak'));
       return;
     }
     try {
@@ -518,15 +519,15 @@ const AdminPanel = () => {
         }),
       }, trackSlug);
       const result = await res.json();
-      if (!result.success && result.error === 'weak_password') { alert(t('admin_password_weak')); return; }
+      if (!result.success && result.error === 'weak_password') { showAlert(t('admin_password_weak')); return; }
       if (settingsPassword) setHasPassword(true);
-      alert(t('admin_level_settings_saved'));
-    } catch { alert(t('admin_alert_server_error')); }
+      showAlert(t('admin_level_settings_saved'));
+    } catch { showAlert(t('admin_alert_server_error')); }
   };
 
   const updateDriverLevelInDB = async (lookup, level, password) => {
     if (!lookup?.trim()) return;
-    if (hasPassword && !password?.trim()) { alert(t('admin_edit_password_required')); return; }
+    if (hasPassword && !password?.trim()) { showAlert(t('admin_edit_password_required')); return; }
     try {
       const response = await apiFetch('/api/admin/update-driver-level', {
         method: 'POST',
@@ -534,10 +535,10 @@ const AdminPanel = () => {
         body: JSON.stringify({ lookup: lookup.trim(), level, password: password || '' }),
       }, trackSlug);
       const result = await response.json();
-      if (result.success) alert(t('admin_alert_driver_updated'));
-      else if (result.error === 'bad_password') alert(t('admin_edit_password_wrong'));
-      else alert(t('admin_alert_driver_not_found'));
-    } catch { alert(t('admin_alert_server_error')); }
+      if (result.success) showAlert(t('admin_alert_driver_updated'));
+      else if (result.error === 'bad_password') showAlert(t('admin_edit_password_wrong'));
+      else showAlert(t('admin_alert_driver_not_found'));
+    } catch { showAlert(t('admin_alert_server_error')); }
   };
 
   const runFinishHeat = useCallback(async (isAuto = false, startedAtOverride = null, settingsOverride = null) => {
@@ -553,16 +554,32 @@ const AdminPanel = () => {
       if (settingsOverride.startedAt != null) finishStartedAt = settingsOverride.startedAt;
     }
 
+    const ackAutoExport = async () => {
+      await apiFetch('/api/admin/auto-export-ack', { method: 'POST' }, trackSlug);
+      autoFinishHandledRef.current = true;
+      setAutoFinishHandled(true);
+    };
+
     if (!doCsv && !doPdf) {
-      if (!isAuto) alert(t('admin_export_select_one'));
+      if (isAuto) {
+        try {
+          await ackAutoExport();
+        } catch { /* ignore */ }
+      } else {
+        showAlert(t('admin_export_select_one'));
+      }
       return;
     }
+
     try {
-      await apiFetch('/api/admin/finish-heat', { method: 'POST' }, trackSlug);
+      if (!isAuto) {
+        await apiFetch('/api/admin/finish-heat', { method: 'POST' }, trackSlug);
+      }
       const res = await apiFetch('/api/admin/export-data', {}, trackSlug);
       const rows = await res.json();
       if (!Array.isArray(rows) || rows.length === 0) {
-        if (!isAuto) alert(t('admin_export_no_data'));
+        if (isAuto) await ackAutoExport();
+        else showAlert(t('admin_export_no_data'));
         return;
       }
       const baseName = buildExportFilename(finishHeatType, finishStartedAt, 'csv').replace('.csv', '');
@@ -582,16 +599,18 @@ const AdminPanel = () => {
       }));
       if (doCsv) downloadCsv(exportRows, `${baseName}.csv`, exportLabels);
       if (doPdf) printPdf(exportRows, `${baseName} — ${t('admin_export_title')}`, exportLabels);
-      if (!isAuto) alert(t('admin_finish_done'));
-      else alert(t('admin_finish_auto_done'));
-      setHeatDriverCount(0);
-      setAssignedHeatKarts(new Set());
-      setOnTrack([]);
-      setHeatClock((c) => ({ ...c, running: false, startedAt: null }));
-      autoFinishHandledRef.current = true;
-      setAutoFinishHandled(true);
+      if (isAuto) {
+        await ackAutoExport();
+        showAlert(t('admin_finish_auto_done'));
+      } else {
+        showAlert(t('admin_finish_done'));
+        setHeatDriverCount(0);
+        setAssignedHeatKarts(new Set());
+        setOnTrack([]);
+        setHeatClock((c) => ({ ...c, running: false, startedAt: null }));
+      }
     } catch {
-      if (!isAuto) alert(t('admin_alert_server_error'));
+      if (!isAuto) showAlert(t('admin_alert_server_error'));
     }
   }, [exportCsv, exportPdf, heatType, heatClock.startedAt, trackSlug, t]);
 
@@ -632,13 +651,16 @@ const AdminPanel = () => {
             setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (s.onTrack || []).map((k) => k.kart_number)));
           }
           if (typeof s.heatNumber === 'number') setHeatNumber(s.heatNumber);
-          if (s.autoFinishRequested && !autoFinishHandledRef.current) {
+          if (!s.autoFinishRequested) {
+            autoFinishHandledRef.current = false;
+            setAutoFinishHandled(false);
+          } else if (!autoFinishHandledRef.current) {
             const hs = s.heatSettings || {};
-            runFinishHeat(true, s.heatClock?.startedAt, {
+            runFinishHeat(true, s.autoFinishStartedAt ?? s.heatClock?.startedAt, {
               exportCsv: hs.exportCsv,
               exportPdf: hs.exportPdf,
               type: hs.type,
-              startedAt: s.heatClock?.startedAt,
+              startedAt: s.autoFinishStartedAt ?? s.heatClock?.startedAt,
             });
           }
         })
@@ -650,11 +672,11 @@ const AdminPanel = () => {
   }, [trackSlug, runFinishHeat]);
 
   const executeAutoAssignment = async () => {
-    if (driverQueue.length === 0) { alert(t('admin_alert_no_drivers')); return; }
+    if (driverQueue.length === 0) { showAlert(t('admin_alert_no_drivers')); return; }
     let duration = heatDuration;
     if (heatType === 'endurance') duration = (parseInt(enduranceHours, 10) || 0) * 60 + (parseInt(enduranceMinutes, 10) || 0);
     const laneKeys = Object.keys(linesData).filter((id) => linesData[id].active);
-    if (laneKeys.length === 0) { alert(t('admin_alert_no_lanes')); return; }
+    if (laneKeys.length === 0) { showAlert(t('admin_alert_no_lanes')); return; }
     const workingLines = JSON.parse(JSON.stringify(linesData));
     const isEndurance = heatType === 'endurance';
     const teams = isEndurance ? groupQueueByTeam(driverQueue) : null;
@@ -663,7 +685,7 @@ const AdminPanel = () => {
     const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount, {
       onTrackKarts: sessionActive ? onTrack.map((k) => k.kart_number) : [],
     });
-    if (!complete) { alert(t('admin_alert_not_enough_karts')); return; }
+    if (!complete) { showAlert(t('admin_alert_not_enough_karts')); return; }
 
     const assignments = isEndurance
       ? teams.map((team, i) => ({
@@ -719,8 +741,8 @@ const AdminPanel = () => {
       }, trackSlug);
       const data = await res.json();
       if (!data.success) {
-        if (data.error === 'not_enough_karts') alert(t('admin_alert_not_enough_karts'));
-        else alert(t('admin_alert_server_error'));
+        if (data.error === 'not_enough_karts') showAlert(t('admin_alert_not_enough_karts'));
+        else showAlert(t('admin_alert_server_error'));
         return;
       }
 
@@ -729,16 +751,16 @@ const AdminPanel = () => {
       if (typeof data.heatNumber === 'number') setHeatNumber(data.heatNumber);
       if (data.prepared) {
         setHeatDriverCount(heatDriverCount);
-        alert(t('admin_alert_assign_prepared'));
+        showAlert(t('admin_alert_assign_prepared'));
       } else {
         setHeatDriverCount(assignments.length);
-        alert(t('admin_alert_assign_done'));
+        showAlert(t('admin_alert_assign_done'));
       }
       setDriverQueue([]);
       setLinesData(workingLines);
       syncPitsWithServer(workingLines);
     } catch {
-      alert(t('admin_alert_server_error'));
+      showAlert(t('admin_alert_server_error'));
     }
   };
 
@@ -767,19 +789,19 @@ const AdminPanel = () => {
       }, trackSlug);
       const data = await res.json();
       if (!data.success) {
-        if (data.error === 'not_on_track') alert(t('admin_return_error_track'));
-        else alert(t('admin_alert_server_error'));
+        if (data.error === 'not_on_track') showAlert(t('admin_return_error_track'));
+        else showAlert(t('admin_alert_server_error'));
         return;
       }
       applySessionPayload(data);
     } catch {
-      alert(t('admin_alert_server_error'));
+      showAlert(t('admin_alert_server_error'));
     }
   };
 
   const resetWorkspace = async () => {
     if (!usesIsolatedWorkspace(trackSlug)) return;
-    if (!confirmTwice(t('admin_reset_confirm'), t('admin_reset_confirm_final'))) return;
+    if (!(await showConfirmTwice(t('admin_reset_confirm'), t('admin_reset_confirm_final')))) return;
     const oldId = getWorkspaceId(trackSlug);
     try {
       await apiFetch('/api/workspace/reset', { method: 'POST' }, trackSlug);
@@ -787,7 +809,7 @@ const AdminPanel = () => {
       resetWorkspaceId(trackSlug);
       window.location.reload();
     } catch {
-      alert(t('admin_alert_server_error'));
+      showAlert(t('admin_alert_server_error'));
     }
   };
 
@@ -909,9 +931,9 @@ const AdminPanel = () => {
         body: JSON.stringify({ kart_number: kart, seconds }),
       }, trackSlug);
       const data = await res.json();
-      if (!data.success) alert(t('admin_alert_server_error'));
+      if (!data.success) showAlert(t('admin_alert_server_error'));
     } catch {
-      alert(t('admin_alert_server_error'));
+      showAlert(t('admin_alert_server_error'));
     }
   };
 
@@ -925,9 +947,9 @@ const AdminPanel = () => {
         body: JSON.stringify({ kart_number: kart, driver_name: driverChangeName.trim() }),
       }, trackSlug);
       const data = await res.json();
-      if (!data.success) alert(t('admin_endurance_driver_error'));
+      if (!data.success) showAlert(t('admin_endurance_driver_error'));
     } catch {
-      alert(t('admin_alert_server_error'));
+      showAlert(t('admin_alert_server_error'));
     }
   };
 

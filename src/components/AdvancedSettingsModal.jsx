@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { useDialog } from '../i18n/DialogContext.jsx';
 import { isStrongPassword } from '../utils/password.js';
 import { apiFetch } from '../utils/apiClient.js';
 
@@ -24,6 +25,7 @@ export default function AdvancedSettingsModal({
   onFinishHeat,
 }) {
   const { t } = useLanguage();
+  const { showAlert } = useDialog();
   const [gatePassword, setGatePassword] = useState('');
   const [unlocked, setUnlocked] = useState(!hasPassword);
   const [settingsPassword, setSettingsPassword] = useState('');
@@ -39,12 +41,12 @@ export default function AdvancedSettingsModal({
     }, trackSlug);
     const data = await res.json();
     if (data.success) setUnlocked(true);
-    else alert(t('admin_edit_password_wrong'));
+    else showAlert(t('admin_edit_password_wrong'));
   };
 
   const saveSettings = () => {
     if (settingsPassword && !isStrongPassword(settingsPassword)) {
-      alert(t('admin_password_weak'));
+      showAlert(t('admin_password_weak'));
       return;
     }
     onSaveSettings(settingsPassword);

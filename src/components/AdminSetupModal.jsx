@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
+import { useDialog } from '../i18n/DialogContext.jsx';
 import { isStrongPassword } from '../utils/password.js';
 import { apiFetch } from '../utils/apiClient.js';
 
 export default function AdminSetupModal({ trackSlug, onComplete }) {
   const { t } = useLanguage();
+  const { showAlert } = useDialog();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [karts, setKarts] = useState('');
@@ -12,16 +14,16 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
 
   const submit = async () => {
     if (!karts.trim()) {
-      alert(t('admin_setup_karts_required'));
+      showAlert(t('admin_setup_karts_required'));
       return;
     }
     if (enforceSecurity) {
       if (!isStrongPassword(password)) {
-        alert(t('admin_password_weak'));
+        showAlert(t('admin_password_weak'));
         return;
       }
       if (password !== confirm) {
-        alert(t('admin_setup_password_mismatch'));
+        showAlert(t('admin_setup_password_mismatch'));
         return;
       }
     }
@@ -37,12 +39,12 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
       }, trackSlug);
       const data = await res.json();
       if (!data.success) {
-        alert(t('admin_alert_server_error'));
+        showAlert(t('admin_alert_server_error'));
         return;
       }
       onComplete({ kartNumbers: karts.trim(), hasPassword: enforceSecurity });
     } catch {
-      alert(t('admin_alert_server_error'));
+      showAlert(t('admin_alert_server_error'));
     }
   };
 
