@@ -282,6 +282,30 @@
   margin-inline-start: auto;
 }
 
+@media (min-width: 1200px) {
+  .live-timing-header.is-wide {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .live-timing-header.is-wide .live-header-row {
+    width: auto;
+  }
+
+  .live-timing-header.is-wide .live-header-row-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .live-timing-header.is-wide .live-header-row-actions {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+}
+
 .live-timing-header h1 {
   margin: 0;
   font-size: clamp(1.25rem, 4vw, 2rem);
@@ -951,11 +975,29 @@
 }
 
 .live-timing-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+
+.live-timing-layout.is-wide {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 220px);
   gap: 0.4rem;
   align-items: stretch;
+}
+
+.live-timing-primary {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.live-timing-layout.is-wide .live-timing-primary {
   min-height: 0;
 }
 
@@ -1009,10 +1051,55 @@
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 10px;
   padding: 0.45rem 0.55rem;
-  position: sticky;
-  top: 0.35rem;
   max-height: 100%;
   overflow-y: auto;
+}
+
+.live-timing-layout.is-wide .live-lap-stats {
+  position: sticky;
+  top: 0.35rem;
+}
+
+.live-lap-stats-collapsible {
+  flex-shrink: 0;
+  border-top: 1px solid var(--live-border);
+  background: var(--live-surface);
+}
+
+.live-lap-stats-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--live-border);
+  background: rgba(15, 23, 42, 0.35);
+  color: inherit;
+  padding: 0.45rem 0.65rem;
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: start;
+}
+
+.theme-light .live-lap-stats-toggle {
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.live-lap-stats-collapsible.is-open .live-lap-stats-toggle {
+  border-bottom-color: rgba(148, 163, 184, 0.25);
+}
+
+.live-lap-stats-chevron {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.live-lap-stats-embedded {
+  border: none;
+  border-radius: 0;
+  max-height: min(38vh, 320px);
 }
 
 .theme-light .live-lap-stats {
@@ -1111,17 +1198,24 @@
   font-weight: 700;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 770px) {
   .live-timing-header {
-    padding: 0.4rem 0.55rem;
-    gap: 0.35rem;
+    padding: 0.3rem 0.45rem;
+    gap: 0.22rem;
   }
 
   .live-timing-header h1 {
-    font-size: clamp(0.88rem, 3.5vw, 1.05rem);
-    width: auto;
+    font-size: clamp(0.82rem, 3.2vw, 0.98rem);
     display: inline;
-    margin-inline-end: 0.35rem;
+    margin-inline-end: 0.3rem;
+  }
+
+  .live-header-row-main {
+    align-items: center;
+  }
+
+  .live-header-badges {
+    gap: 0.2rem;
   }
 
   .live-session-badge,
@@ -1129,42 +1223,28 @@
   .live-ws-badge,
   .live-preview-badge,
   .live-heat-number-badge {
-    font-size: 0.58rem;
-    padding: 0.12rem 0.38rem;
-    margin-top: 0;
-    display: inline-block;
-    vertical-align: middle;
+    font-size: 0.55rem;
+    padding: 0.1rem 0.32rem;
   }
 
   .live-header-row-actions {
-    flex-direction: row;
-    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
   }
 
-  .live-header-row-actions .live-header-actions {
-    width: auto;
-    margin-inline-start: auto;
-  }
-
-  .live-header-actions {
-    width: auto;
-    justify-content: flex-end;
+  .live-race-clock {
+    font-size: 0.95rem;
+    padding: 0.2rem 0.45rem;
   }
 
   .live-mode-tabs button {
-    padding: 0.5rem 0.6rem;
-    font-size: 0.78rem;
-    min-height: 2.25rem;
+    padding: 0.38rem 0.5rem;
+    font-size: 0.72rem;
+    min-height: 2rem;
   }
 
-  .live-timing-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .live-lap-stats {
-    position: static;
-    order: -1;
-    padding: 0.35rem 0.45rem;
+  .live-header-logo.hf-logo-img {
+    height: 28px;
   }
 
   .live-lap-stats-head h2 {
@@ -1177,12 +1257,7 @@
   }
 
   .live-timing-table-wrap {
-    padding: 0.25rem 0.3rem;
-  }
-
-  .live-timing-table:not(.live-timing-dense) {
-    font-size: 0.95rem;
-    min-width: 520px;
+    padding: 0.2rem 0.25rem;
   }
 
   .live-timing-dense {
@@ -1194,15 +1269,15 @@
     display: none;
   }
 
+  .live-lap-stats-toggle {
+    padding: 0.38rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
   .live-display .live-assign-name {
     font-size: clamp(1rem, 3.5vw, 1.35rem);
-  }
-
-  .live-session-badge,
-  .live-demo-badge,
-  .live-ws-badge,
-  .live-preview-badge {
-    font-size: 0.68rem;
   }
 }
 

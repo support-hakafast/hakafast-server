@@ -844,6 +844,7 @@ const AdminPanel = () => {
       const data = await res.json();
       if (!data.success) {
         if (data.error === 'not_on_track') showAlert(t('admin_return_error_track'));
+        else if (data.error === 'keep_for_next_heat') showAlert(t('admin_return_error_next_heat'));
         else showAlert(t('admin_alert_server_error'));
         return;
       }

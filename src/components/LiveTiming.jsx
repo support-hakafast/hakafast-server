@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import '../assets/LiveTiming.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
@@ -18,6 +18,7 @@ import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useLiveTheme } from '../hooks/useLiveTheme.js';
 import { normalizeTimingColumns, normalizeTimingColumnOrder } from '../utils/liveTimingColumns.js';
 import { formatHeatClock, getHeatClockClassName } from '../utils/adminHelpers.js';
+import { useLiveWideLayout } from '../hooks/useLiveWideLayout.js';
 
 const HEAT_LABEL_KEYS = { time: 'heat_time', endurance: 'heat_endurance', sprint: 'heat_sprint' };
 
@@ -120,6 +121,13 @@ const LiveTiming = () => {
       : ['kart_number', 'driver_name', 'lap_count'],
   );
 
+  const isWide = useLiveWideLayout();
+  const [statsOpen, setStatsOpen] = useState(false);
+
+  useEffect(() => {
+    setStatsOpen(isWide);
+  }, [isWide]);
+
   const rowFlashClass = (row, index) => {
     const key = `${mode}-${row.kart_number || row.driver_name}`;
     return flashingKeys.has(key) ? 'live-row-flash' : '';
@@ -127,7 +135,7 @@ const LiveTiming = () => {
 
   return (
     <div className={`live-timing theme-${theme}`}>
-      <header className="live-timing-header">
+      <header className={`live-timing-header${isWide ? ' is-wide' : ''}`}>
         <div className="live-header-row live-header-row-main">
           <h1>{t(titleKey)}</h1>
           <div className="live-header-badges">
@@ -185,20 +193,45 @@ const LiveTiming = () => {
               isNextHeat={hasPreparedHeat}
             />
           ) : (
-            <div className="live-timing-layout">
-              <div className="live-timing-table-wrap">
-                <LiveTimingTable
-                  t={t}
-                  mode="timing"
-                  rows={rowsData}
-                  timingColumns={cols}
-                  timingColumnOrder={columnOrder}
-                  heatType={heatType}
-                  rowFlashClass={rowFlashClass}
-                  tableClassName="live-timing-table live-timing-dense"
-                />
+            <div className={`live-timing-layout${isWide ? ' is-wide' : ''}`}>
+              <div className="live-timing-primary">
+                <div className="live-timing-table-wrap">
+                  <LiveTimingTable
+                    t={t}
+                    mode="timing"
+                    rows={rowsData}
+                    timingColumns={cols}
+                    timingColumnOrder={columnOrder}
+                    heatType={heatType}
+                    rowFlashClass={rowFlashClass}
+                    tableClassName="live-timing-table live-timing-dense"
+                  />
+                </div>
+                {!isWide && (
+                  <div className={`live-lap-stats-collapsible${statsOpen ? ' is-open' : ''}`}>
+                    <button
+                      type="button"
+                      className="live-lap-stats-toggle"
+                      aria-expanded={statsOpen}
+                      onClick={() => setStatsOpen((open) => !open)}
+                    >
+                      <span>{t('live_stats_title')}</span>
+                      <span className="live-lap-stats-chevron" aria-hidden>{statsOpen ? '▲' : '▼'}</span>
+                    </button>
+                    {statsOpen && (
+                      <LiveLapStats
+                        t={t}
+                        topLaps={topLaps}
+                        heatNumber={heatNumber}
+                        embedded
+                      />
+                    )}
+                  </div>
+                )}
               </div>
-              <LiveLapStats t={t} topLaps={topLaps} heatNumber={heatNumber} />
+              {isWide && (
+                <LiveLapStats t={t} topLaps={topLaps} heatNumber={heatNumber} />
+              )}
             </div>
           )}
         </div>

@@ -260,22 +260,77 @@ function testHeatDrainBlocksNextLaunch() {
   store.heatRuntime.startedAt = Date.now() - 600000;
 
   demoStore.finishHeat(store, { keepOnTrack: true });
-  assert(store.heatFrozen, 'heat should freeze with karts on track');
-  assert(store.onTrack.length === 1, 'on-track karts should remain after timed finish');
-
-  const blocked = demoStore.launchKart(store, 7, 1);
-  assert(!blocked.success, 'next heat launch must wait while kart is on track');
-  assert(
-    blocked.error === 'session_still_active' || blocked.error === 'already_on_track',
-    `expected block error, got ${blocked.error}`,
-  );
-
-  demoStore.returnKart(store, 7, 1);
-  assert(store.onTrack.length === 0, 'kart should return');
-  assert(!store.heatFrozen, 'heat should drain after last return');
+  assert(!store.heatFrozen, 'heat should drain when only next-heat kart remains on track');
+  assert(store.onTrack.length === 1, 'next-heat kart should stay on track');
+  assert(Number(store.onTrack[0].kart_number) === 7, 'same kart remains on track after promote');
   assert(store.currentHeat.length === 1, 'next heat should promote after drain');
   assert(store.currentHeat[0].driver_name === 'Next Driver', 'promoted next heat drivers');
   assert(store.nextHeat.length === 0, 'next heat queue cleared on promote');
+
+  const blocked = demoStore.launchKart(store, 7, 1);
+  assert(!blocked.success, 'kart already on track should not relaunch');
+  assert(blocked.error === 'already_on_track', `expected already_on_track, got ${blocked.error}`);
+}
+
+function testReturnNonNextHeatKartsOnFinish() {
+  const wsId = 'verify025';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.currentHeat = [
+    { kart_number: 1, driver_name: 'A', driver_level: 'Amateur', lap_count: 2, lap_times: ['45.000', '44.000'] },
+    { kart_number: 2, driver_name: 'B', driver_level: 'Amateur', lap_count: 2, lap_times: ['46.000', '45.000'] },
+    { kart_number: 3, driver_name: 'C', driver_level: 'Amateur', lap_count: 2, lap_times: ['47.000', '46.000'] },
+  ];
+  store.nextHeat = [
+    { kart_number: 1, driver_name: 'A2', driver_level: 'Amateur', lap_count: 0, lap_times: [] },
+    { kart_number: 4, driver_name: 'D', driver_level: 'Amateur', lap_count: 0, lap_times: [] },
+  ];
+  store.onTrack = [
+    { kart_number: 1, launchedAt: Date.now(), lastLapAt: Date.now(), originLaneId: 1 },
+    { kart_number: 2, launchedAt: Date.now(), lastLapAt: Date.now(), originLaneId: 1 },
+    { kart_number: 3, launchedAt: Date.now(), lastLapAt: Date.now(), originLaneId: 1 },
+  ];
+  store.pitLines[1].karts = [];
+  store.heatRuntime.startedAt = Date.now() - 600000;
+
+  demoStore.finishHeat(store, { keepOnTrack: true });
+  assert(!store.heatFrozen, 'should promote when only next-heat kart 1 remains');
+  assert(store.onTrack.length === 1, 'only next-heat kart stays on track');
+  assert(Number(store.onTrack[0].kart_number) === 1, 'kart 1 stays for next heat');
+  assert(store.pitLines[1].karts.includes(2), 'kart 2 should return to pits');
+  assert(store.pitLines[1].karts.includes(3), 'kart 3 should return to pits');
+  assert(store.currentHeat[0].driver_name === 'A2', 'next heat promoted with new driver on kart 1');
+}
+
+function testCooldownReturnsNonNextHeatKarts() {
+  const wsId = 'verify026';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  const startedAt = Date.now() - 700000;
+  store.heatSettings = { type: 'time', duration: 10 };
+  store.heatRuntime.startedAt = startedAt;
+  store.currentHeat = [
+    { kart_number: 1, driver_name: 'A', driver_level: 'Amateur', lap_count: 2, lap_times: ['45.000', '44.000'] },
+    { kart_number: 2, driver_name: 'B', driver_level: 'Amateur', lap_count: 2, lap_times: ['46.000', '45.000'] },
+  ];
+  store.nextHeat = [
+    { kart_number: 1, driver_name: 'A2', driver_level: 'Amateur', lap_count: 0, lap_times: [] },
+  ];
+  store.onTrack = [
+    { kart_number: 1, launchedAt: startedAt, lastLapAt: Date.now() - 45000, simulatedLaps: 2 },
+    { kart_number: 2, launchedAt: startedAt, lastLapAt: Date.now() - 45000, simulatedLaps: 2, originLaneId: 1 },
+  ];
+  store.pitLines[1].karts = [];
+
+  demoStore.getSessionState(store);
+  assert(store.heatCooldownPhase, 'timed expiry should enter cooldown');
+  assert(store.onTrack.length === 1, 'non-next kart should return at cooldown start');
+  assert(Number(store.onTrack[0].kart_number) === 1, 'next-heat kart stays on track for cooldown lap');
+  assert(store.pitLines[1].karts.includes(2), 'other karts go to pits for staff');
+
+  const blocked = demoStore.returnKart(store, 1, 1);
+  assert(!blocked.success, 'next-heat kart should stay on track during cooldown');
+  assert(blocked.error === 'keep_for_next_heat', `expected keep_for_next_heat, got ${blocked.error}`);
 }
 
 function testAutoFinishExportMetadata() {
@@ -547,11 +602,11 @@ function testTimedExpiryStopsSimulationWithNextHeat() {
   const lapsBefore = store.currentHeat[0].lap_count;
   demoStore.getTimingData(store);
 
-  assert(store.heatCooldownPhase, 'timed expiry with karts on track should enter cooldown');
-  assert(!store.heatFrozen, 'heat should not freeze until cooldown return');
-  assert(store.currentHeat[0].driver_name === 'Current', 'current drivers kept until drain');
+  assert(store.onTrack.length === 0, 'non-next kart should return to pits when next heat is queued');
+  assert(store.heatFrozen, 'heat should auto-freeze after non-next kart returns');
+  assert(store.currentHeat[0].driver_name === 'Current', 'current drivers kept until export ack');
   assert(store.nextHeat.length === 1, 'next heat still queued');
-  assert(store.currentHeat[0].lap_count === lapsBefore, 'counted laps must not increase during cooldown');
+  assert(store.currentHeat[0].lap_count === lapsBefore, 'counted laps must not increase after expiry');
   assert(!demoStore.hasActiveTimingSession(store), 'session must not stay active after expiry');
 }
 
@@ -671,7 +726,9 @@ async function main() {
   await run('simulation catch-up laps', testSimulationCatchUp);
   await run('next-heat uses on-track karts', testOnTrackKartPool);
   await run('retire does not stop heat clock', () => testRetireDoesNotStopClock());
-  await run('timed finish waits for kart return', () => testHeatDrainBlocksNextLaunch());
+  await run('next-heat kart stays on track after finish', () => testHeatDrainBlocksNextLaunch());
+  await run('finish returns non-next karts to pits', () => testReturnNonNextHeatKartsOnFinish());
+  await run('cooldown returns non-next karts to pits', () => testCooldownReturnsNonNextHeatKarts());
   await run('timed expiry stops current heat with next waiting', () => testTimedExpiryStopsSimulationWithNextHeat());
   await run('timed cooldown then auto finish', () => testTimedCooldownThenAutoFinish());
   await run('sprint clock up + cooldown lap', () => testSprintClockAndCooldown());

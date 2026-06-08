@@ -9,20 +9,22 @@ function driverLabel(row) {
   return row.driver_name || row.stint_driver || '—';
 }
 
-export default function LiveLapStats({ t, topLaps, heatNumber }) {
+export default function LiveLapStats({ t, topLaps, heatNumber, embedded = false }) {
   const [period, setPeriod] = useState('day');
   const laps = topLaps?.[period] || [];
 
   return (
-    <aside className="live-lap-stats">
-      <div className="live-lap-stats-head">
-        <h2>{t('live_stats_title')}</h2>
-        {heatNumber ? (
-          <span className="live-heat-number-badge">
-            {t('live_heat_number', { n: heatNumber })}
-          </span>
-        ) : null}
-      </div>
+    <aside className={`live-lap-stats${embedded ? ' live-lap-stats-embedded' : ''}`}>
+      {!embedded && (
+        <div className="live-lap-stats-head">
+          <h2>{t('live_stats_title')}</h2>
+          {heatNumber ? (
+            <span className="live-heat-number-badge">
+              {t('live_heat_number', { n: heatNumber })}
+            </span>
+          ) : null}
+        </div>
+      )}
       <div className="live-stats-period-tabs">
         {PERIODS.map((p) => (
           <button
