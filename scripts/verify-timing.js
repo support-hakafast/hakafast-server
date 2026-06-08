@@ -84,7 +84,7 @@ function testLapRecording(store) {
 
   const row1 = store.currentHeat.find((r) => r.kart_number === 1);
   assert(row1.lap_count === 1, 'lap count should be 1');
-  assert(row1.best_lap_time == null, 'best lap should stay empty on first lap');
+  assert(row1.best_lap_time === '42.500', 'best lap should update on first lap');
   assert(row1.lap_times.length === 1, 'lap history should have 1 entry');
 
   const lap2 = demoStore.processTransponderLap(store, '1', 41.2);

@@ -123,12 +123,17 @@
 
 .live-preview-table .live-driver-name {
   text-align: start !important;
-  font-size: 1.05rem;
-  font-weight: 800;
 }
 
-.live-preview-table .live-kart-num {
-  font-weight: 800;
+.live-preview-table .live-kart-cell .live-assign-kart-num {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  font-size: 1.25rem;
+  margin: 0 auto;
+}
+
+.live-preview-table .live-driver-name .live-assign-name {
+  font-size: 1.05rem;
 }
 
 .live-preview-table th,

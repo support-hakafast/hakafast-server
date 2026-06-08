@@ -42,7 +42,6 @@ export default function LiveAssignmentsBoard({
               key={`assign-card-${row.position ?? index}-${row.kart_number || row.driver_name}`}
               className={`live-assign-card${flash ? ` ${flash}` : ''}${waiting ? ' is-waiting' : ''}${onTrackWait ? ' is-on-track-wait' : ''}`}
             >
-              <span className="live-assign-order">{row.position ?? index + 1}</span>
               <div className="live-assign-kart" aria-label={t('kart')}>
                 {hasKart ? (
                   <span className="live-assign-kart-num">{row.kart_number}</span>

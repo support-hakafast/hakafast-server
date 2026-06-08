@@ -99,14 +99,14 @@ const LiveTiming = () => {
 
   const flashingKeys = useRowFlash(
     rowsData,
-    (row) => `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`,
+    (row) => `${mode}-${row.kart_number || row.driver_name}`,
     mode === 'timing'
       ? ['last_lap_time', 'best_lap_time', 'lap_count']
       : ['kart_number', 'driver_name', 'lap_count'],
   );
 
   const rowFlashClass = (row, index) => {
-    const key = `${mode}-${row.position ?? ''}-${row.kart_number || row.driver_name}`;
+    const key = `${mode}-${row.kart_number || row.driver_name}`;
     return flashingKeys.has(key) ? 'live-row-flash' : '';
   };
 

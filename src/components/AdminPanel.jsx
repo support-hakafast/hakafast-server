@@ -809,6 +809,21 @@ const AdminPanel = () => {
     }
   };
 
+  const simulateTransponderLap = async (kartNum) => {
+    try {
+      const res = await apiFetch('/api/transponder/lap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transponder_id: String(kartNum) }),
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) return;
+      if (data.pitLines || data.onTrack) applySessionPayload(data);
+    } catch {
+      /* ignore simulation errors */
+    }
+  };
+
   const renderExitZone = (laneId, exitKart) => {
     const transponderReady = exitKart && assignedHeatKarts.has(Number(exitKart));
     return (
@@ -1040,7 +1055,8 @@ const AdminPanel = () => {
                           key={ot.kart_number}
                           type="button"
                           className="on-track-num"
-                          title={t('admin_kart_return_dblclick')}
+                          title={t('admin_on_track_simulate_lap')}
+                          onClick={() => simulateTransponderLap(ot.kart_number)}
                           onDoubleClick={() => returnKartFromTrack(ot.kart_number, ot.laneId || ot.originLaneId)}
                         >
                           {ot.kart_number}

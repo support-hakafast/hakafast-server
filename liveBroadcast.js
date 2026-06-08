@@ -122,7 +122,7 @@ function createLiveBroadcast(httpServer, deps) {
     });
   }
 
-  const interval = setInterval(broadcastAll, 1500);
+  const interval = setInterval(broadcastAll, 500);
 
   return {
     broadcastAll,

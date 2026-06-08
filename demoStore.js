@@ -411,21 +411,18 @@ function enrichEnduranceTiming(store, row, ot) {
 function recordLapCrossing(store, ot, row, lapSec) {
   const now = Date.now();
   ot.lastLapAt = now;
-  ot.simulatedLaps = (ot.simulatedLaps || 0) + 1;
 
   row.lap_count = (row.lap_count || 0) + 1;
   row.last_lap_time = formatLap(lapSec);
   if (!Array.isArray(row.lap_times)) row.lap_times = [];
   row.lap_times.push(formatLap(lapSec));
 
-  if (row.lap_count > 1) {
-    const currentBest = lapToSeconds(row.best_lap_time);
-    if (currentBest === Infinity || lapSec < currentBest) {
-      if (currentBest !== Infinity) row.second_best_lap_time = row.best_lap_time;
-      row.best_lap_time = formatLap(lapSec);
-    } else if (!row.second_best_lap_time || lapSec < lapToSeconds(row.second_best_lap_time)) {
-      row.second_best_lap_time = formatLap(lapSec);
-    }
+  const currentBest = lapToSeconds(row.best_lap_time);
+  if (currentBest === Infinity || lapSec < currentBest) {
+    if (currentBest !== Infinity) row.second_best_lap_time = row.best_lap_time;
+    row.best_lap_time = formatLap(lapSec);
+  } else if (!row.second_best_lap_time || lapSec < lapToSeconds(row.second_best_lap_time)) {
+    row.second_best_lap_time = formatLap(lapSec);
   }
 
   row.avg_lap_time = computeAvgLapFromTimes(row.lap_times);
@@ -448,6 +445,7 @@ function recordLapCrossing(store, ot, row, lapSec) {
   }
 
   ot.lap_count = row.lap_count;
+  ot.simulatedLaps = row.lap_count;
 }
 
 function tickHeatSimulation(store) {
@@ -460,18 +458,16 @@ function tickHeatSimulation(store) {
     if (!row) return;
 
     const sinceLapStart = (now - (ot.lastLapAt || ot.launchedAt)) / 1000;
-    const totalElapsed = (now - ot.launchedAt) / 1000;
-    ot.trackPosition = Math.min(0.999, (sinceLapStart % avgLap) / avgLap);
+    ot.trackPosition = Math.min(0.999, sinceLapStart / avgLap);
 
-    const completedLaps = Math.floor(totalElapsed / avgLap);
-    while ((ot.simulatedLaps || 0) < completedLaps) {
+    const completedLaps = Math.floor((now - ot.launchedAt) / 1000 / avgLap);
+    while ((row.lap_count || 0) < completedLaps) {
       const jitter = ((ot.kart_number % 7) - 3) * 0.12;
       const lapSec = store.heatSettings?.type === 'endurance'
         ? avgLap + jitter
         : simulatedBestSec(avgLap, ot.kart_number) + jitter * 0.5;
       recordLapCrossing(store, ot, row, Math.max(1, lapSec));
     }
-    ot.simulatedLaps = completedLaps;
   });
 }
 
