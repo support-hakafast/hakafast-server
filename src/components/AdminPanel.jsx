@@ -110,6 +110,7 @@ const AdminPanel = () => {
   const [driverChangeKart, setDriverChangeKart] = useState('');
   const [driverChangeName, setDriverChangeName] = useState('');
   const autoFinishHandledRef = useRef(false);
+  const pitsLocalEditUntilRef = useRef(0);
 
   const confirmTwice = (msg1, msg2) => window.confirm(msg1) && window.confirm(msg2);
 
@@ -336,7 +337,7 @@ const AdminPanel = () => {
     return next;
   };
 
-  const dropKart = (num, laneNum, fromLaneId = null, fromLaneIndex = -1) => {
+  const dropKart = async (num, laneNum, fromLaneId = null, fromLaneIndex = -1, insertAt = 'append') => {
     const key = String(num);
     const kart = allKarts[key] || allKarts[num];
     let updatedLines = { ...linesData };
@@ -350,19 +351,24 @@ const AdminPanel = () => {
 
     if (laneKey && updatedLines[laneKey]) {
       const targetLane = updatedLines[laneKey];
-      if (kart && !kart.active && targetLane.active) return;
-
-      const n = Number(num);
-      const onTrackNow = onTrack.some((ot) => Number(ot.kart_number) === n);
-      const alreadyInLane = targetLane.karts.some((k) => Number(k) === n);
-      const inOtherLane = Object.entries(updatedLines).some(([id, lane]) => (
-        id !== laneKey && (lane.karts || []).some((k) => Number(k) === n)
-      ));
-      if (!onTrackNow && !alreadyInLane && !inOtherLane) {
-        updatedLines[laneKey] = {
-          ...targetLane,
-          karts: [...targetLane.karts, n],
-        };
+      if (kart && !kart.active && targetLane.active) {
+        /* inactive kart cannot enter active lane — fall through to pool/warehouse */
+      } else {
+        const n = Number(num);
+        const onTrackNow = onTrack.some((ot) => Number(ot.kart_number) === n);
+        const alreadyInLane = targetLane.karts.some((k) => Number(k) === n);
+        const inOtherLane = Object.entries(updatedLines).some(([id, lane]) => (
+          id !== laneKey && (lane.karts || []).some((k) => Number(k) === n)
+        ));
+        if (!onTrackNow && !alreadyInLane && !inOtherLane) {
+          const karts = [...targetLane.karts];
+          if (insertAt === 'front') {
+            karts.unshift(n);
+          } else {
+            karts.push(n);
+          }
+          updatedLines[laneKey] = { ...targetLane, karts };
+        }
       }
     }
 
@@ -371,7 +377,8 @@ const AdminPanel = () => {
     setAllKarts((prev) => {
       const existing = prev[key] || prev[num];
       const base = existing || { number: num, active: true, lane: null, onTrack: false };
-      const nextLane = laneKey ? Number(laneKey) : null;
+      const inTargetLane = laneKey && (updatedLines[laneKey]?.karts || []).some((k) => Number(k) === Number(num));
+      const nextLane = inTargetLane ? Number(laneKey) : null;
       const inDisabledLane = laneKey && !updatedLines[laneKey]?.active;
       return {
         ...prev,
@@ -385,18 +392,21 @@ const AdminPanel = () => {
       };
     });
     setLinesData(updatedLines);
-    syncPitsWithServer(updatedLines);
+    pitsLocalEditUntilRef.current = Date.now() + 2000;
+    await syncPitsWithServer(updatedLines);
   };
 
-  const handleDropToLane = (e, laneNum) => {
+  const handleDropToLane = (e, laneNum, insertAt = 'append') => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverLane(null);
     const payload = parseDragPayload(e);
-    if (payload) dropKart(payload.num, laneNum, payload.laneId, payload.laneIndex);
+    if (payload) dropKart(payload.num, laneNum, payload.laneId, payload.laneIndex, insertAt);
   };
 
   const handleDropToPool = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverPool(false);
     const payload = parseDragPayload(e);
     if (payload) dropKart(payload.num, null, payload.laneId, payload.laneIndex);
@@ -616,7 +626,7 @@ const AdminPanel = () => {
           }
           if (s.onTrack) setOnTrack(s.onTrack);
           if (s.pitExitPosition) setPitExitPosition(s.pitExitPosition);
-          if (s.pitLines) {
+          if (s.pitLines && Date.now() > pitsLocalEditUntilRef.current) {
             const lines = normalizeLinesData(s.pitLines);
             setLinesData(lines);
             setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (s.onTrack || []).map((k) => k.kart_number)));
@@ -804,8 +814,8 @@ const AdminPanel = () => {
     return (
       <div
         className="lane-exit-zone lane-transponder-zone"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => handleDropToLane(e, laneId)}
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onDrop={(e) => handleDropToLane(e, laneId, 'front')}
       >
         <div className="transponder-beacon-row">
           <button
@@ -844,7 +854,11 @@ const AdminPanel = () => {
   const renderWaitingZone = (laneId, waitingKarts, exitAtBottom) => {
     const displayKarts = exitAtBottom ? [...waitingKarts].reverse() : waitingKarts;
     return (
-      <div className="lane-waiting-zone">
+      <div
+        className="lane-waiting-zone"
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onDrop={(e) => handleDropToLane(e, laneId, 'append')}
+      >
         {displayKarts.map((num, idx) => {
           const laneIndex = exitAtBottom ? waitingKarts.length - idx : idx + 1;
           const kart = allKarts[num] || allKarts[String(num)];
@@ -985,7 +999,7 @@ const AdminPanel = () => {
                       className={`lane lane-flow-${exitAtBottom ? 'bottom' : 'top'}${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}`}
                       onDragOver={(e) => { e.preventDefault(); setDragOverLane(laneId); }}
                       onDragLeave={() => setDragOverLane(null)}
-                      onDrop={(e) => handleDropToLane(e, laneId)}
+                      onDrop={(e) => handleDropToLane(e, laneId, 'append')}
                     >
                       <input type="text" className="lane-header-input" value={lane.name} onChange={(e) => changeLaneName(laneId, e.target.value)} />
                       <div className="lane-controls">

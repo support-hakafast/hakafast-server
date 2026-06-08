@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 function KartSvg() {
   return (
-    <svg className="kart-svg" viewBox="0 0 100 56" aria-hidden="true">
+    <svg className="kart-svg" viewBox="0 0 100 56" aria-hidden="true" draggable={false}>
       <path
         className="kart-shell"
         d="M8 34 L18 20 L36 14 L64 14 L82 20 L92 34 L88 42 L70 48 L30 48 L12 42 Z"
@@ -27,19 +27,25 @@ export default function KartCard({
   laneIndex = -1,
 }) {
   const inactive = !kart.active;
+  const [dragging, setDragging] = useState(false);
+  const canDrag = Boolean(draggable) && !inactive;
 
   return (
     <div
-      className={`kart-shape kart-variant-${variant}${inactive ? ' is-disabled' : ''}${transponderActive ? ' transponder-active' : ''}`}
-      draggable={draggable}
+      className={`kart-shape kart-variant-${variant}${inactive ? ' is-disabled' : ''}${transponderActive ? ' transponder-active' : ''}${dragging ? ' is-dragging' : ''}`}
+      draggable={canDrag}
       onDragStart={(e) => {
-        if (!draggable) { e.preventDefault(); return; }
+        if (!canDrag) { e.preventDefault(); return; }
+        e.stopPropagation();
+        e.dataTransfer.effectAllowed = 'move';
         if (laneId != null && laneIndex >= 0) {
           e.dataTransfer.setData('text', JSON.stringify({ num, laneId, laneIndex }));
         } else {
           e.dataTransfer.setData('text', String(num));
         }
+        setDragging(true);
       }}
+      onDragEnd={() => setDragging(false)}
       title={`#${num}`}
     >
       <KartSvg />

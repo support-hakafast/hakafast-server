@@ -849,6 +849,9 @@ html:has(.admin-no-scroll) body {
   height: 100%;
   display: block;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 128, 0.15));
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .kart-shell {
@@ -928,7 +931,18 @@ html:has(.admin-no-scroll) body {
 
 .kart-variant-exiting {
   margin: 0 auto;
+  cursor: grab;
+}
+
+.kart-variant-exiting:not(.is-dragging) {
   animation: kartExitDrive 1.8s ease-in-out infinite;
+}
+
+.kart-variant-exiting.is-dragging {
+  animation: none;
+  transform: none;
+  opacity: 0.65;
+  cursor: grabbing;
 }
 
 .kart-exit-glow {
