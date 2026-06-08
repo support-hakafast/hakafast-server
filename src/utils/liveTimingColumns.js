@@ -18,16 +18,29 @@ export const ENDURANCE_DEFAULT_COLUMNS = {
   stint: true,
 };
 
+export const TIMING_COLUMN_GROUPS = [
+  {
+    id: 'session',
+    labelKey: 'admin_timing_group_session',
+    descriptionKey: 'admin_timing_group_session_hint',
+  },
+  {
+    id: 'race',
+    labelKey: 'admin_timing_group_race',
+    descriptionKey: 'admin_timing_group_race_hint',
+  },
+];
+
 export const OPTIONAL_TIMING_COLUMNS = [
-  { id: 'laps', labelKey: 'laps' },
-  { id: 'second_best', labelKey: 'live_col_second_best' },
-  { id: 'avg_lap', labelKey: 'live_col_avg_lap' },
-  { id: 'level', labelKey: 'live_col_level' },
-  { id: 'gap', labelKey: 'live_col_gap' },
-  { id: 'pit_visits', labelKey: 'live_col_pit_visits' },
-  { id: 'pit_time', labelKey: 'live_col_pit_time' },
-  { id: 'penalty', labelKey: 'live_col_penalty' },
-  { id: 'stint', labelKey: 'live_col_stint' },
+  { id: 'laps', labelKey: 'laps', group: 'session' },
+  { id: 'second_best', labelKey: 'live_col_second_best', group: 'session' },
+  { id: 'avg_lap', labelKey: 'live_col_avg_lap', group: 'session' },
+  { id: 'level', labelKey: 'live_col_level', group: 'session' },
+  { id: 'gap', labelKey: 'live_col_gap', group: 'session' },
+  { id: 'pit_visits', labelKey: 'live_col_pit_visits', group: 'race' },
+  { id: 'pit_time', labelKey: 'live_col_pit_time', group: 'race' },
+  { id: 'penalty', labelKey: 'live_col_penalty', group: 'race' },
+  { id: 'stint', labelKey: 'live_col_stint', group: 'race' },
 ];
 
 export function normalizeTimingColumns(raw) {

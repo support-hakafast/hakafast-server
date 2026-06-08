@@ -28,6 +28,7 @@ import {
   DEFAULT_TIMING_COLUMNS,
   ENDURANCE_DEFAULT_COLUMNS,
   OPTIONAL_TIMING_COLUMNS,
+  TIMING_COLUMN_GROUPS,
   normalizeTimingColumns,
 } from '../utils/liveTimingColumns.js';
 import { apiFetch } from '../utils/apiClient.js';
@@ -97,6 +98,7 @@ const AdminPanel = () => {
 
   const [dragOverLane, setDragOverLane] = useState(null);
   const [dragOverPool, setDragOverPool] = useState(false);
+  const [transponderFlashLane, setTransponderFlashLane] = useState(null);
   const [heatClock, setHeatClock] = useState({ running: false, remainingSec: 600, durationMin: 10, hasDrivers: false });
   const [onTrack, setOnTrack] = useState([]);
   const [heatDriverCount, setHeatDriverCount] = useState(0);
@@ -779,28 +781,65 @@ const AdminPanel = () => {
     }
   };
 
-  const renderExitZone = (laneId, exitKart) => (
-    <div className="lane-exit-zone lane-transponder-zone">
-      <div className="transponder-beacon-row">
-        <span className="transponder-beacon" aria-hidden />
+  const simulateTransponderPitExit = async (laneId, kartNum) => {
+    if (!assignedHeatKarts.has(Number(kartNum))) return;
+    try {
+      const res = await apiFetch('/api/transponder/pit-exit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transponder_id: String(kartNum) }),
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) return;
+      setTransponderFlashLane(laneId);
+      window.setTimeout(() => setTransponderFlashLane((prev) => (prev === laneId ? null : prev)), 700);
+      applySessionPayload(data);
+    } catch {
+      /* ignore simulation errors */
+    }
+  };
+
+  const renderExitZone = (laneId, exitKart) => {
+    const transponderReady = exitKart && assignedHeatKarts.has(Number(exitKart));
+    return (
+      <div
+        className="lane-exit-zone lane-transponder-zone"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => handleDropToLane(e, laneId)}
+      >
+        <div className="transponder-beacon-row">
+          <button
+            type="button"
+            className={`transponder-beacon-btn${transponderFlashLane === laneId ? ' is-detected' : ''}`}
+            onClick={() => exitKart && simulateTransponderPitExit(laneId, exitKart)}
+            disabled={!transponderReady}
+            title={transponderReady ? t('admin_transponder_simulate') : t('admin_transponder_idle')}
+            aria-label={t('admin_transponder_simulate')}
+          >
+            <span className="transponder-beacon" aria-hidden />
+          </button>
+          {transponderReady && (
+            <span className="transponder-hint">{t('admin_transponder_simulate')}</span>
+          )}
+        </div>
+        <div className="lane-exit-track" />
+        {exitKart && allKarts[exitKart] ? (
+          <KartCard
+            key={`${laneId}-exit-${exitKart}-0`}
+            num={exitKart}
+            kart={allKarts[exitKart]}
+            draggable
+            variant="exiting"
+            laneId={laneId}
+            laneIndex={0}
+            transponderActive={transponderReady}
+          />
+        ) : (
+          <div className="lane-exit-slot" aria-hidden />
+        )}
       </div>
-      <div className="lane-exit-track" />
-      {exitKart && allKarts[exitKart] ? (
-        <KartCard
-          key={`${laneId}-exit-${exitKart}-0`}
-          num={exitKart}
-          kart={allKarts[exitKart]}
-          draggable={false}
-          variant="exiting"
-          laneId={laneId}
-          laneIndex={0}
-          transponderActive={assignedHeatKarts.has(Number(exitKart))}
-        />
-      ) : (
-        <div className="lane-exit-slot" aria-hidden />
-      )}
-    </div>
-  );
+    );
+  };
 
   const renderWaitingZone = (laneId, waitingKarts, exitAtBottom) => {
     const displayKarts = exitAtBottom ? [...waitingKarts].reverse() : waitingKarts;
@@ -1163,20 +1202,31 @@ const AdminPanel = () => {
 
           <div className="timing-columns-bar">
             <span className="field-label">{t('admin_timing_columns')}</span>
-            <div className="timing-columns-chips">
+            <p className="timing-columns-intro">{t('admin_timing_columns_hint')}</p>
+            <div className="timing-columns-fixed">
               <span className="timing-chip timing-chip-fixed">{t('best_lap')}</span>
               <span className="timing-chip timing-chip-fixed">{t('last_lap')}</span>
-              {OPTIONAL_TIMING_COLUMNS.map((col) => (
-                <button
-                  key={col.id}
-                  type="button"
-                  className={`timing-chip${timingColumns[col.id] ? ' active' : ''}`}
-                  onClick={() => setTimingColumns((prev) => ({ ...prev, [col.id]: !prev[col.id] }))}
-                >
-                  {t(col.labelKey)}
-                </button>
-              ))}
             </div>
+            {TIMING_COLUMN_GROUPS.map((group) => (
+              <div key={group.id} className={`timing-column-group timing-column-group-${group.id}`}>
+                <div className="timing-group-head">
+                  <span className="timing-group-label">{t(group.labelKey)}</span>
+                  <span className="timing-group-hint">{t(group.descriptionKey)}</span>
+                </div>
+                <div className="timing-columns-chips">
+                  {OPTIONAL_TIMING_COLUMNS.filter((col) => col.group === group.id).map((col) => (
+                    <button
+                      key={col.id}
+                      type="button"
+                      className={`timing-chip timing-chip-${group.id}${timingColumns[col.id] ? ' active' : ''}`}
+                      onClick={() => setTimingColumns((prev) => ({ ...prev, [col.id]: !prev[col.id] }))}
+                    >
+                      {t(col.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           <button type="button" className="btn-advanced-link" onClick={() => setShowAdvanced(true)}>{t('admin_advanced_settings')}</button>

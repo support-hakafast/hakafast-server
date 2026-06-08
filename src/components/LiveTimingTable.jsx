@@ -49,7 +49,7 @@ export default function LiveTimingTable({
           <th className="live-col-highlight">{t('best_lap')}</th>
           <th className="live-col-highlight">{t('last_lap')}</th>
           {optionalCols.map((col) => (
-            <th key={col.id}>{t(col.labelKey)}</th>
+            <th key={col.id} className={`live-col-optional live-col-${col.group}`}>{t(col.labelKey)}</th>
           ))}
           {isEndurance && timingColumns?.stint && <th>{t('live_col_stint_driver')}</th>}
         </tr>
@@ -78,31 +78,32 @@ export default function LiveTimingTable({
                 {formatLapCell(row.last_lap_time)}
               </td>
               {optionalCols.map((col) => {
+                const cellClass = `live-col-optional live-col-${col.group}`;
                 if (col.id === 'laps') {
-                  return <td key={col.id}>{row.lap_count ?? row.total_laps ?? 0}</td>;
+                  return <td key={col.id} className={cellClass}>{row.lap_count ?? row.total_laps ?? 0}</td>;
                 }
                 if (col.id === 'second_best') {
-                  return <td key={col.id}>{formatLapCell(row.second_best_lap_time)}</td>;
+                  return <td key={col.id} className={cellClass}>{formatLapCell(row.second_best_lap_time)}</td>;
                 }
                 if (col.id === 'avg_lap') {
-                  return <td key={col.id}>{formatLapCell(row.avg_lap_time)}</td>;
+                  return <td key={col.id} className={cellClass}>{formatLapCell(row.avg_lap_time)}</td>;
                 }
                 if (col.id === 'level') {
-                  return <td key={col.id}>{row.driver_level ? t(`level_${row.driver_level.toLowerCase()}`) : '—'}</td>;
+                  return <td key={col.id} className={cellClass}>{row.driver_level ? t(`level_${row.driver_level.toLowerCase()}`) : '—'}</td>;
                 }
                 if (col.id === 'gap') {
                   return (
-                    <td key={col.id}>
+                    <td key={col.id} className={cellClass}>
                       {gapToLeader(row, leader, heatType, lapToSeconds)}
                     </td>
                   );
                 }
                 if (col.id === 'pit_visits') {
-                  return <td key={col.id}>{row.pit_visits ?? 0}</td>;
+                  return <td key={col.id} className={cellClass}>{row.pit_visits ?? 0}</td>;
                 }
                 if (col.id === 'pit_time') {
                   return (
-                    <td key={col.id}>
+                    <td key={col.id} className={cellClass}>
                       {row.in_pits
                         ? (row.pit_duration_display || '0:00')
                         : (row.total_pit_time_display || '0:00')}
@@ -110,19 +111,19 @@ export default function LiveTimingTable({
                   );
                 }
                 if (col.id === 'penalty') {
-                  return <td key={col.id} className="live-penalty-cell">{row.penalty_display || '—'}</td>;
+                  return <td key={col.id} className={`${cellClass} live-penalty-cell`}>{row.penalty_display || '—'}</td>;
                 }
                 if (col.id === 'stint') {
                   const stint = row.current_stint;
-                  if (!stint) return <td key={col.id}>—</td>;
+                  if (!stint) return <td key={col.id} className={cellClass}>—</td>;
                   return (
-                    <td key={col.id}>
+                    <td key={col.id} className={cellClass}>
                       {stint.duration_display || '0:00'}
                       {stint.lap_count > 0 ? ` · ${stint.lap_count}${t('laps_short')}` : ''}
                     </td>
                   );
                 }
-                return <td key={col.id}>—</td>;
+                return <td key={col.id} className={cellClass}>—</td>;
               })}
               {isEndurance && timingColumns?.stint && (
                 <td className="live-stint-driver">

@@ -324,11 +324,62 @@ html:has(.admin-no-scroll) body {
   margin-bottom: 10px;
 }
 
+.timing-columns-intro {
+  margin: 4px 0 10px;
+  font-size: 0.68rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.timing-columns-fixed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.timing-column-group {
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.timing-column-group:last-child {
+  margin-bottom: 0;
+}
+
+.timing-column-group-session {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.timing-column-group-race {
+  background: #faf5ff;
+  border: 1px solid #ddd6fe;
+}
+
+.timing-group-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.timing-group-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.timing-group-hint {
+  font-size: 0.62rem;
+  color: #64748b;
+}
+
 .timing-columns-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 8px;
 }
 
 .timing-chip {
@@ -349,12 +400,19 @@ html:has(.admin-no-scroll) body {
   border-color: var(--navy);
 }
 
-.timing-chip.active {
-  background: var(--turquoise);
-  border-color: var(--navy);
+.timing-chip-session.active {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1e3a8a;
 }
 
-.timing-chip:not(.timing-chip-fixed):hover {
+.timing-chip-race.active {
+  background: #ede9fe;
+  border-color: #7c3aed;
+  color: #5b21b6;
+}
+
+.timing-chip:not(.timing-chip-fixed):not(.active):hover {
   border-color: var(--turquoise);
 }
 
@@ -482,6 +540,36 @@ html:has(.admin-no-scroll) body {
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
+}
+
+.transponder-beacon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  cursor: default;
+}
+
+.transponder-beacon-btn:not(:disabled) {
+  cursor: pointer;
+}
+
+.transponder-beacon-btn:not(:disabled):hover {
+  background: rgba(13, 148, 136, 0.12);
+  border-color: rgba(13, 148, 136, 0.35);
+}
+
+.transponder-beacon-btn.is-detected .transponder-beacon {
+  background: #fbbf24;
+  box-shadow: 0 0 12px 4px rgba(251, 191, 36, 0.75);
+  animation: none;
+}
+
+.transponder-beacon-btn:disabled {
+  opacity: 0.45;
 }
 
 .transponder-beacon {

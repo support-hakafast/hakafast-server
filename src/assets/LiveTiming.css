@@ -353,6 +353,26 @@
   background: rgba(64, 224, 208, 0.18);
 }
 
+.live-timing-table th.live-col-session,
+.live-timing-table td.live-col-session {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.live-timing-table th.live-col-race,
+.live-timing-table td.live-col-race {
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.theme-dark .live-timing-table th.live-col-session,
+.theme-dark .live-timing-table td.live-col-session {
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.theme-dark .live-timing-table th.live-col-race,
+.theme-dark .live-timing-table td.live-col-race {
+  background: rgba(167, 139, 250, 0.1);
+}
+
 .live-last-lap {
   font-variant-numeric: tabular-nums;
 }
