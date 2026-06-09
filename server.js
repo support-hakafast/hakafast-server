@@ -131,6 +131,23 @@ const distPath = path.join(__dirname, 'dist');
 const indexPath = path.join(distPath, 'index.html');
 const hasBuild = fs.existsSync(indexPath);
 
+function validateDistAssets() {
+  if (!hasBuild) return;
+  const html = fs.readFileSync(indexPath, 'utf8');
+  const refs = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
+  const missing = refs.filter((ref) => {
+    const filePath = path.join(distPath, ref.replace(/^\//, '').split('/').join(path.sep));
+    return !fs.existsSync(filePath);
+  });
+  if (missing.length) {
+    console.error('ERROR: Frontend build is incomplete. Missing files:');
+    missing.forEach((ref) => console.error(`  - ${ref}`));
+    console.error('Run npm run build locally, or ensure Render buildCommand succeeds.');
+  }
+}
+
+validateDistAssets();
+
 if (!hasBuild) {
   console.warn('WARNING: dist/index.html not found. Run "npm run build" before starting.');
 }
