@@ -3,11 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "vite",
+    "dev": "node ./node_modules/vite/bin/vite.js",
     "dev:api": "node server.js",
-    "build": "vite build",
+    "build": "node ./node_modules/vite/bin/vite.js build",
     "postbuild": "node scripts/verify-build.js",
-    "preview": "vite preview",
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
     "server": "node server.js",
     "start": "node scripts/ensure-build.js && node server.js",
     "build:serve": "npm run build && node server.js",
@@ -16,7 +16,7 @@
     "build:installer": "powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1"
   },
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.1",
