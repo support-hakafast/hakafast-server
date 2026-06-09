@@ -605,6 +605,12 @@ function recordLapCrossing(store, ot, row, lapSec, options = {}) {
     ot.lap_count = row.lap_count || 0;
     ot.simulatedLaps = row.lap_count || 0;
     checkAutoFinish(store);
+    const kartNum = Number(ot.kart_number);
+    if (!isKartReservedForNextHeat(store, kartNum)) {
+      returnKart(store, kartNum, ot.originLaneId ?? ot.laneId ?? 1, {
+        skipNextHeatGuard: true,
+      });
+    }
     return;
   }
 
@@ -771,6 +777,64 @@ function allOnTrackClearedOrReadyForNextHeatDrain(store) {
   return true;
 }
 
+function orderOnTrackKartsForPitEntryLocal(onTrackList = []) {
+  const entries = onTrackList.map((item) => {
+    if (item != null && typeof item === 'object') {
+      return {
+        kart: Number(item.kart_number ?? item.kart),
+        cooldownLapPending: Boolean(item.cooldownLapPending),
+        lastLapAt: Number(item.lastLapAt) || 0,
+        launchedAt: Number(item.launchedAt) || 0,
+      };
+    }
+    return {
+      kart: Number(item),
+      cooldownLapPending: false,
+      lastLapAt: 0,
+      launchedAt: 0,
+    };
+  }).filter((e) => !Number.isNaN(e.kart) && e.kart > 0);
+
+  return entries.sort((a, b) => {
+    if (a.cooldownLapPending !== b.cooldownLapPending) {
+      return a.cooldownLapPending ? -1 : 1;
+    }
+    const aTime = a.lastLapAt || a.launchedAt;
+    const bTime = b.lastLapAt || b.launchedAt;
+    if (aTime !== bTime) return aTime - bTime;
+    return a.kart - b.kart;
+  }).map((e) => e.kart);
+}
+
+function returnAllDrainingKartsToPits(store, options = {}) {
+  const onlyCooldownDone = Boolean(options.onlyCooldownDone);
+  const skipDrain = Boolean(options.skipDrain);
+  const snapshot = [...store.onTrack];
+  const ordered = orderOnTrackKartsForPitEntryLocal(snapshot);
+  const returned = [];
+
+  ordered.forEach((n) => {
+    const ot = store.onTrack.find((k) => Number(k.kart_number) === n);
+    if (!ot) return;
+    if (isKartReservedForNextHeat(store, n)) return;
+    if (onlyCooldownDone) {
+      const inCooldown = store.heatCooldownPhase && ot.cooldownLapPending && !ot.cooldownLapDone;
+      if (inCooldown) return;
+    }
+    const result = returnKart(store, n, ot.originLaneId ?? ot.laneId ?? 1, {
+      skipNextHeatGuard: true,
+      skipDrain: true,
+    });
+    if (result.success) returned.push(n);
+  });
+
+  if (!skipDrain) {
+    maybeDrainFinishedHeat(store);
+    checkAutoFinish(store);
+  }
+  return { returned };
+}
+
 function maybeDrainFinishedHeat(store) {
   if (!store.heatFrozen || store.autoFinishExportPending) return;
 
@@ -783,6 +847,19 @@ function maybeDrainFinishedHeat(store) {
     if (store.nextHeat.length > 0) {
       promoteNextHeat(store);
     }
+    return;
+  }
+
+  if (!store.nextHeat.length && (!store.heatCooldownPhase || allCooldownLapsComplete(store))) {
+    returnAllDrainingKartsToPits(store, { onlyCooldownDone: true, skipDrain: true });
+    if (store.onTrack.length === 0) {
+      store.currentHeat = [];
+      store.heatFrozen = false;
+      store.heatAutoFinishTriggered = false;
+      store.heatCooldownPhase = false;
+      store.heatCooldownStartedAt = null;
+    }
+    checkAutoFinish(store);
     return;
   }
 
@@ -1938,6 +2015,8 @@ function finishHeat(store, options = {}) {
     store.heatFrozen = true;
     if (store.nextHeat.length > 0) {
       returnKartsNotInNextHeat(store);
+    } else {
+      returnAllDrainingKartsToPits(store);
     }
   } else {
     enduranceRules.tickEnduranceRules(store, { final: true });
@@ -2269,6 +2348,7 @@ module.exports = {
   beginRacingPhase,
   returnKart,
   returnKartsNotInNextHeat,
+  returnAllDrainingKartsToPits,
   processTransponderPitExit,
   processTransponderPitEntry,
   processTransponderLap,

@@ -483,7 +483,9 @@ function testTimedAutoFinishAfterCooldownLaps() {
     launchedAt: startedAt,
     lastLapAt: Date.now() - 10000,
     simulatedLaps: 12,
+    originLaneId: 1,
   }];
+  store.pitLines[1].karts = [];
 
   demoStore.getSessionState(store);
   assert(store.heatCooldownPhase, 'timed expiry should enter cooldown phase');
@@ -491,7 +493,7 @@ function testTimedAutoFinishAfterCooldownLaps() {
 
   store.onTrack[0].lastLapAt = Date.now() - 60000;
   demoStore.getTimingData(store);
-  assert(store.onTrack[0].cooldownLapDone, 'simulation should complete cooldown lap');
+  assert(store.pitLines[1].karts.includes(1), 'kart should return to pits after cooldown lap');
   assert(store.heatFrozen, 'classic heat should auto-finish after cooldown laps');
   assert(store.autoFinishExportPending, 'export should be pending after auto finish');
 
@@ -740,7 +742,9 @@ function testCooldownCompletesFromPhaseTimer() {
     launchedAt: startedAt,
     lastLapAt: Date.now() - 2000,
     simulatedLaps: 8,
+    originLaneId: 1,
   }];
+  store.pitLines[1].karts = [];
 
   demoStore.getSessionState(store);
   assert(store.heatCooldownPhase, 'should enter cooldown at expiry');
@@ -748,8 +752,118 @@ function testCooldownCompletesFromPhaseTimer() {
 
   store.heatCooldownStartedAt = Date.now() - 50000;
   demoStore.getSessionState(store);
-  assert(store.onTrack[0].cooldownLapDone, 'cooldown should complete from phase timer');
-  assert(store.heatFrozen, 'heat should auto-finish after forced cooldown');
+  assert(store.onTrack.length === 0, 'kart should auto-return to pits after cooldown');
+  assert(store.pitLines[1].karts.includes(1), 'kart 1 should be in pit lane after cooldown');
+  assert(!store.heatFrozen, 'heat should drain after kart returns when export disabled');
+}
+
+function testFinishWithoutNextHeatReturnsKartsToPits() {
+  const wsId = 'verify-finish-no-next';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.currentHeat = [
+    { kart_number: 1, driver_name: 'A', driver_level: 'Amateur', lap_count: 2, lap_times: ['45.000', '44.000'] },
+    { kart_number: 2, driver_name: 'B', driver_level: 'Amateur', lap_count: 2, lap_times: ['46.000', '45.000'] },
+    { kart_number: 3, driver_name: 'C', driver_level: 'Amateur', lap_count: 2, lap_times: ['47.000', '46.000'] },
+  ];
+  store.onTrack = [
+    { kart_number: 1, launchedAt: Date.now(), lastLapAt: Date.now(), originLaneId: 1 },
+    { kart_number: 2, launchedAt: Date.now(), lastLapAt: Date.now(), originLaneId: 1 },
+    { kart_number: 3, launchedAt: Date.now(), lastLapAt: Date.now(), originLaneId: 2 },
+  ];
+  store.pitLines[1].karts = [];
+  store.pitLines[2].karts = [];
+  store.nextHeat = [];
+
+  demoStore.finishHeat(store, { keepOnTrack: true });
+  assert(store.onTrack.length === 0, 'all karts should leave track');
+  assert(store.pitLines[1].karts.includes(1), 'kart 1 in pit lane 1');
+  assert(store.pitLines[1].karts.includes(2), 'kart 2 in pit lane 1');
+  assert(store.pitLines[2].karts.includes(3), 'kart 3 in pit lane 2');
+  assert(!store.heatFrozen, 'heat should drain after karts return');
+}
+
+function testCooldownAutoReturnWithoutNextHeat() {
+  const wsId = 'verify-cooldown-auto-return';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  const startedAt = Date.now() - 700000;
+  store.heatSettings = { type: 'time', duration: 10, exportCsv: false };
+  store.heatRuntime.startedAt = startedAt;
+  store.currentHeat = [{
+    kart_number: 2,
+    driver_name: 'B',
+    driver_level: 'Amateur',
+    lap_count: 5,
+    lap_times: Array(5).fill('45.000'),
+  }];
+  store.onTrack = [{
+    kart_number: 2,
+    launchedAt: startedAt,
+    lastLapAt: Date.now() - 3000,
+    simulatedLaps: 5,
+    originLaneId: 1,
+  }];
+  store.pitLines[1].karts = [];
+
+  demoStore.getTimingData(store);
+  assert(store.heatCooldownPhase, 'timed expiry should enter cooldown');
+  store.heatCooldownStartedAt = Date.now() - 50000;
+  demoStore.getTimingData(store);
+  assert(store.onTrack.length === 0, 'kart should auto-return after cooldown without next heat');
+  assert(store.pitLines[1].karts.includes(2), 'kart 2 should be in pits');
+}
+
+async function testOverlapAssignmentDuringDrain() {
+  const { pickKartsForAssignment } = await import('../src/utils/adminHelpers.js');
+  const lines = {
+    1: { active: true, karts: [9, 10, 11] },
+    2: { active: true, karts: [] },
+  };
+  const onTrack = [
+    { kart_number: 1, cooldownLapDone: true, lastLapAt: 1000 },
+    { kart_number: 2, cooldownLapPending: true, lastLapAt: 5000 },
+  ];
+  const result = pickKartsForAssignment(JSON.parse(JSON.stringify(lines)), ['1', '2'], 5, {
+    onTrackKarts: onTrack,
+    pendingOnTrackSlots: true,
+  });
+  assert(result.complete, '3 pits + 2 on-track should cover 5 drivers');
+  assert(result.assigned.filter((a) => a.source === 'pit').length === 3, '3 from pits');
+  assert(result.assigned.filter((a) => a.pendingFromTrack).length === 2, '2 pending on track');
+}
+
+function testPendingFilledOnPitReturn() {
+  const wsId = 'verify-pending-fill';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.pitLines = {
+    1: { active: true, karts: [] },
+    2: { active: true, karts: [] },
+  };
+  store.currentHeat = [
+    { kart_number: 1, driver_name: 'D1', lap_count: 1, lap_times: ['45.000'] },
+    { kart_number: 2, driver_name: 'D2', lap_count: 1, lap_times: ['46.000'] },
+  ];
+  store.onTrack = [
+    { kart_number: 1, originLaneId: 1, launchedAt: Date.now() - 60000, lastLapAt: Date.now() - 5000 },
+    { kart_number: 2, originLaneId: 2, launchedAt: Date.now() - 60000, lastLapAt: Date.now() - 10000 },
+  ];
+  store.heatRuntime.startedAt = Date.now() - 60000;
+  store.heatSettings = { type: 'time', duration: 10 };
+
+  demoStore.assignHeatBatch(store, [
+    { kart_number: null, driver_name: 'N1', assignment_order: 1, kart_pending: true },
+    { kart_number: null, driver_name: 'N2', assignment_order: 2, kart_pending: true },
+  ], { type: 'time', duration: 10 });
+
+  assert(store.nextHeat.length === 2, 'next heat queued with pending slots');
+  demoStore.returnKart(store, 2, 2);
+  demoStore.returnKart(store, 1, 1);
+  const assigned = store.nextHeat.filter((r) => !r.kart_pending);
+  assert(assigned.some((r) => Number(r.kart_number) === 2), 'first returning kart (2) fills pending slot');
+  assert(assigned.some((r) => Number(r.kart_number) === 1), 'second returning kart (1) fills pending slot');
+  assert(store.pitLines[1].karts[0] === 1 || store.pitLines[2].karts[0] === 2, 'assigned karts at pit exit');
 }
 
 async function testOnTrackKartPool() {
@@ -1149,6 +1263,10 @@ async function main() {
   await run('timed auto finish after cooldown laps', () => testTimedAutoFinishAfterCooldownLaps());
   await run('daily 6-kart cooldown with next on track', () => testDailySixKartCooldownWithNextOnTrack());
   await run('cooldown completes from phase timer', () => testCooldownCompletesFromPhaseTimer());
+  await run('finish without next heat returns karts to pits', () => testFinishWithoutNextHeatReturnsKartsToPits());
+  await run('cooldown auto-return without next heat', () => testCooldownAutoReturnWithoutNextHeat());
+  await run('overlap assignment during drain', testOverlapAssignmentDuringDrain);
+  await run('pending slots filled on pit return', () => testPendingFilledOnPitReturn());
   await run('formation laps before race clock', () => testFormationLapsBeforeRaceClock());
   await run('le mans grid deploy', () => testLeMansGridDeploy());
   await run('auto finish export metadata', () => testAutoFinishExportMetadata());

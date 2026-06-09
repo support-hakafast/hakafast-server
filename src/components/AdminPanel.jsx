@@ -728,7 +728,6 @@ const AdminPanel = () => {
         showAlert(t('admin_finish_done'));
         setHeatDriverCount(0);
         setAssignedHeatKarts(new Set());
-        setOnTrack([]);
         setHeatClock((c) => ({ ...c, running: false, startedAt: null }));
       }
     } catch (err) {
@@ -810,12 +809,14 @@ const AdminPanel = () => {
     const isEndurance = heatType === 'endurance';
     const teams = isEndurance ? groupQueueByTeam(driverQueue) : null;
     const assignCount = isEndurance ? teams.length : driverQueue.length;
-    const sessionActive = onTrack.length > 0
-      ? !heatClock.cooldownPhase && !heatClock.draining
-      : Boolean(heatClock.startedAt && heatClock.running && !heatClock.cooldownPhase);
+    const overlapMode = onTrack.length > 0 && (heatClock.draining || heatClock.cooldownPhase);
+    const sessionRunning = Boolean(
+      heatClock.startedAt && heatClock.running && !heatClock.cooldownPhase && !heatClock.draining,
+    );
+    const canUseTrackPool = overlapMode || sessionRunning;
     const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount, {
-      onTrackKarts: sessionActive ? onTrack : [],
-      pendingOnTrackSlots: sessionActive,
+      onTrackKarts: canUseTrackPool ? onTrack : [],
+      pendingOnTrackSlots: canUseTrackPool,
     });
     if (!complete) { showAlert(t('admin_alert_not_enough_karts')); return; }
 
