@@ -15,7 +15,7 @@ export default function InstallGuidePage() {
       <header className="sales-nav">
         <HakafastLogo to="/" />
         <div className="sales-nav-end">
-          <Link to="/quote">{t('nav_quote')}</Link>
+          <Link to="/">{t('nav_home')}</Link>
           <LanguageSwitcher />
         </div>
       </header>

@@ -1,9 +1,9 @@
 /** HAKAFAST pricing — single source (ILS, before VAT). */
 export const PRICING = {
   license: {
-    Standard: { karts: 'עד 15', price: 28000 },
-    Pro: { karts: '16–25', price: 42000 },
-    Enterprise: { karts: '26+', price: 58000 },
+    Standard: { karts: 'עד 15', minKarts: 1, maxKarts: 15, price: 28000 },
+    Pro: { karts: '16–25', minKarts: 16, maxKarts: 25, price: 42000 },
+    Enterprise: { karts: '26+', minKarts: 26, maxKarts: null, price: 58000 },
   },
   services: {
     install: 8500,
@@ -24,8 +24,34 @@ export const PRICING = {
   vat: 0.18,
 };
 
+export const TIER_ORDER = ['Standard', 'Pro', 'Enterprise'];
+
 export function formatIls(n) {
   return `₪${Number(n).toLocaleString('he-IL')}`;
+}
+
+/** Required license tier for a kart fleet size (cannot pick a lower tier). */
+export function tierForKartCount(count) {
+  const n = Math.max(1, Number(count) || 0);
+  if (n <= PRICING.license.Standard.maxKarts) return 'Standard';
+  if (n <= PRICING.license.Pro.maxKarts) return 'Pro';
+  return 'Enterprise';
+}
+
+export function nextTier(tier) {
+  const idx = TIER_ORDER.indexOf(tier);
+  if (idx < 0 || idx >= TIER_ORDER.length - 1) return null;
+  return TIER_ORDER[idx + 1];
+}
+
+export function upgradeCost(fromTier, toTier) {
+  if (!fromTier || !toTier || fromTier === toTier) return null;
+  return PRICING.upgrade[`${fromTier}→${toTier}`] ?? null;
+}
+
+export function upgradeCostToNext(tier) {
+  const target = nextTier(tier);
+  return target ? upgradeCost(tier, target) : null;
 }
 
 export function supportYearly(tier) {
