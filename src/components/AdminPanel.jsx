@@ -833,6 +833,7 @@ const AdminPanel = () => {
       }));
 
     const payload = assignments.map((assign, i) => {
+      const slot = kartSlots[i];
       const driverLabel = isEndurance
         ? assign.teamDrivers.join(' · ')
         : assign.driver.name;
