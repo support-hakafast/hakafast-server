@@ -10,6 +10,7 @@ import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
 import LivePreviewFloat from './LivePreviewFloat.jsx';
+import TimingColumnOrderList from './TimingColumnOrderList.jsx';
 import '../assets/SalesPages.css';
 import KartCard from './KartCard.jsx';
 import { isStrongPassword } from '../utils/password.js';
@@ -38,7 +39,8 @@ import {
   normalizeTimingColumns,
   normalizeTimingColumnOrder,
   getReorderableTimingColumns,
-  moveColumnOrder,
+  getVisibleTimingColumnGroupIds,
+  reorderColumnOrder,
 } from '../utils/liveTimingColumns.js';
 import { calculateDayPlan } from '../utils/trackProfileClient.js';
 import { apiFetch } from '../utils/apiClient.js';
@@ -326,10 +328,19 @@ const AdminPanel = () => {
     return () => clearTimeout(timer);
   }, [allKarts, trackSlug]);
 
+  const visibleColumnGroups = useMemo(
+    () => TIMING_COLUMN_GROUPS.filter((g) => getVisibleTimingColumnGroupIds(heatType).includes(g.id)),
+    [heatType],
+  );
+
   const reorderableColumns = useMemo(
     () => getReorderableTimingColumns(timingColumns, timingColumnOrder, heatType === 'endurance'),
     [timingColumns, timingColumnOrder, heatType],
   );
+
+  const handleTimingColumnReorder = useCallback((fromId, toId) => {
+    setTimingColumnOrder((prev) => reorderColumnOrder(prev, fromId, toId));
+  }, []);
 
   const selectedEnduranceTeam = useMemo(
     () => enduranceTeams.find((team) => String(team.kart_number) === String(driverChangeKart)),
@@ -341,9 +352,6 @@ const AdminPanel = () => {
     return groupQueueByTeam(driverQueue);
   }, [driverQueue, heatType]);
 
-  const moveTimingColumn = (columnId, direction) => {
-    setTimingColumnOrder((prev) => moveColumnOrder(prev, columnId, direction));
-  };
   const levelLabel = (level) => t(`level_${(level || 'Amateur').toLowerCase()}`);
   const driverNames = useMemo(() => parseDriverNames(drName), [drName]);
   const isBulkDrivers = isBulkDriverInput(drName);
@@ -1510,7 +1518,7 @@ const AdminPanel = () => {
           <div className="timing-columns-bar">
             <span className="field-label">{t('admin_timing_columns')}</span>
             <p className="timing-columns-intro">{t('admin_timing_columns_hint')}</p>
-            {TIMING_COLUMN_GROUPS.map((group) => (
+            {visibleColumnGroups.map((group) => (
               <div key={group.id} className={`timing-column-group timing-column-group-${group.id}`}>
                 <div className="timing-group-head">
                   <span className="timing-group-label">{t(group.labelKey)}</span>
@@ -1534,33 +1542,12 @@ const AdminPanel = () => {
               <div className="timing-column-order">
                 <span className="field-label">{t('admin_timing_column_order')}</span>
                 <p className="timing-columns-intro">{t('admin_timing_column_order_fixed')}</p>
-                <ul className="timing-order-list">
-                  {reorderableColumns.map((col, idx) => (
-                    <li key={col.id} className="timing-order-row">
-                      <span>{t(col.labelKey)}</span>
-                      <span className="timing-order-actions">
-                        <button
-                          type="button"
-                          className="timing-order-btn"
-                          disabled={idx === 0}
-                          onClick={() => moveTimingColumn(col.id, -1)}
-                          aria-label={t('admin_move_column_up')}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className="timing-order-btn"
-                          disabled={idx === reorderableColumns.length - 1}
-                          onClick={() => moveTimingColumn(col.id, 1)}
-                          aria-label={t('admin_move_column_down')}
-                        >
-                          ↓
-                        </button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <TimingColumnOrderList
+                  columns={reorderableColumns}
+                  onReorder={handleTimingColumnReorder}
+                  dragHint={t('admin_timing_column_drag_hint')}
+                  getLabel={(col) => t(col.labelKey)}
+                />
               </div>
             )}
           </div>

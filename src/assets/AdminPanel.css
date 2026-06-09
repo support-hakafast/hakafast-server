@@ -472,7 +472,8 @@ html:has(.admin-no-scroll) body {
   border-top: 1px dashed #cbd5e0;
 }
 
-.timing-order-list {
+.timing-order-list,
+.timing-order-table {
   list-style: none;
   margin: 6px 0 0;
   padding: 0;
@@ -484,13 +485,56 @@ html:has(.admin-no-scroll) body {
 .timing-order-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 6px 8px;
   border-radius: 8px;
   background: #f8fafc;
+  border: 1px solid #e2e8f0;
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.timing-order-row-draggable {
+  touch-action: none;
+  user-select: none;
+}
+
+.timing-order-row-draggable.is-dragging {
+  opacity: 0.55;
+  border-color: var(--turquoise);
+  box-shadow: 0 2px 8px rgba(0, 0, 128, 0.12);
+}
+
+.timing-order-row-draggable.is-drop-target {
+  border-color: var(--turquoise);
+  background: #ecfeff;
+}
+
+.timing-order-grip {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  cursor: grab;
+  font-size: 0.65rem;
+  line-height: 1;
+  letter-spacing: -0.08em;
+}
+
+.timing-order-grip:active {
+  cursor: grabbing;
+}
+
+.timing-order-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--navy);
 }
 
 .timing-order-actions {

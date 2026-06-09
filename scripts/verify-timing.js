@@ -801,6 +801,8 @@ function testFixedTimingColumnPrefix() {
   const {
     normalizeTimingColumnOrder,
     moveColumnOrder,
+    reorderColumnOrder,
+    getVisibleTimingColumnGroupIds,
     FIXED_TIMING_COLUMN_IDS,
   } = require('../src/utils/liveTimingColumns.js');
   const order = normalizeTimingColumnOrder(['gap', 'best_lap', 'pos', 'kart_driver', 'last_lap']);
@@ -810,6 +812,10 @@ function testFixedTimingColumnPrefix() {
   assert(blocked[0] === 'pos', 'position column stays fixed');
   const movedGap = moveColumnOrder(order, 'gap', -1);
   assert(movedGap.indexOf('gap') >= FIXED_TIMING_COLUMN_IDS.length, 'only columns after fixed prefix move');
+  const dragged = reorderColumnOrder(order, 'last_lap', 'gap');
+  assert(dragged.indexOf('last_lap') < dragged.indexOf('gap'), 'drag reorder moves column before target');
+  assert(getVisibleTimingColumnGroupIds('time').join() === 'session', 'time heat shows session columns only');
+  assert(getVisibleTimingColumnGroupIds('endurance').join() === 'session,race', 'endurance shows session and race');
 }
 
 function testEnduranceRulesParsing() {

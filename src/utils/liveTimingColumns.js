@@ -169,6 +169,31 @@ export function moveColumnOrder(order, columnId, direction) {
   return next;
 }
 
+/** Move a reorderable column before/onto another slot (drag-and-drop). */
+export function reorderColumnOrder(order, fromColumnId, toColumnId) {
+  if (fromColumnId === toColumnId) return normalizeTimingColumnOrder(order);
+  if (isFixedTimingColumn(fromColumnId) || isFixedTimingColumn(toColumnId)) {
+    return normalizeTimingColumnOrder(order);
+  }
+  const next = [...normalizeTimingColumnOrder(order)];
+  const fromIdx = next.indexOf(fromColumnId);
+  const toIdx = next.indexOf(toColumnId);
+  if (fromIdx < 0 || toIdx < 0) return next;
+  next.splice(fromIdx, 1);
+  next.splice(toIdx, 0, fromColumnId);
+  return next;
+}
+
+export function isCompetitiveHeatType(heatType) {
+  return heatType === 'sprint' || heatType === 'endurance';
+}
+
+/** Column chip groups shown in admin for the selected heat type. */
+export function getVisibleTimingColumnGroupIds(heatType) {
+  if (heatType === 'endurance') return ['session', 'race'];
+  return ['session'];
+}
+
 export function formatLapCell(value) {
   return value || '--.---';
 }
