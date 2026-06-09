@@ -234,6 +234,29 @@ export function pickKartsForAssignment(workingLines, laneKeys, driverCount, opti
   return { assigned, complete: true };
 }
 
+/** Move assigned karts to the front of their pit lanes (exit first), preserving assignment order. */
+export function reorderAssignedKartsToPitFront(workingLines, assignedSlots) {
+  if (!workingLines || !assignedSlots?.length) return workingLines;
+  const byLane = {};
+  assignedSlots.forEach((slot, i) => {
+    if (slot.kart == null || slot.lane == null) return;
+    const laneId = String(slot.lane);
+    if (!byLane[laneId]) byLane[laneId] = [];
+    byLane[laneId].push({ kart: Number(slot.kart), order: slot.driverIndex ?? i });
+  });
+  Object.entries(byLane).forEach(([laneId, entries]) => {
+    const lane = workingLines[laneId];
+    if (!lane) return;
+    const ordered = entries
+      .sort((a, b) => a.order - b.order)
+      .map((e) => e.kart);
+    const orderedSet = new Set(ordered);
+    const rest = (lane.karts || []).filter((k) => !orderedSet.has(Number(k)));
+    lane.karts = [...ordered, ...rest];
+  });
+  return workingLines;
+}
+
 export function buildExportFilename(heatType, startedAt, ext = 'csv') {
   const typeSlug = { time: 'time', endurance: 'endurance', sprint: 'sprint' }[heatType] || 'heat';
   const d = startedAt ? new Date(startedAt) : new Date();

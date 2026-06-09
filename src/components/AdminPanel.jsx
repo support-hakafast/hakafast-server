@@ -25,6 +25,7 @@ import {
   getHeatClockClassName,
   buildExportFilename,
   pickKartsForAssignment,
+  reorderAssignedKartsToPitFront,
   groupQueueByTeam,
   getExitKartNumber,
   getWaitingKartNumbers,
@@ -668,7 +669,9 @@ const AdminPanel = () => {
 
     if (settingsOverride) {
       if (typeof settingsOverride.exportCsv === 'boolean') doCsv = settingsOverride.exportCsv;
+      else if (isAuto) doCsv = settingsOverride.exportCsv !== false;
       if (typeof settingsOverride.exportPdf === 'boolean') doPdf = settingsOverride.exportPdf;
+      else if (isAuto) doPdf = Boolean(settingsOverride.exportPdf);
       if (settingsOverride.type) finishHeatType = settingsOverride.type;
       if (settingsOverride.startedAt != null) finishStartedAt = settingsOverride.startedAt;
     }
@@ -728,8 +731,13 @@ const AdminPanel = () => {
         setOnTrack([]);
         setHeatClock((c) => ({ ...c, running: false, startedAt: null }));
       }
-    } catch {
-      if (!isAuto) showAlert(t('admin_alert_server_error'));
+    } catch (err) {
+      if (isAuto) {
+        console.error('Auto export failed', err);
+        showAlert(t('admin_alert_server_error'));
+      } else {
+        showAlert(t('admin_alert_server_error'));
+      }
     }
   }, [exportCsv, exportPdf, heatType, heatClock.startedAt, trackSlug, t]);
 
@@ -778,8 +786,8 @@ const AdminPanel = () => {
           } else if (!autoFinishHandledRef.current) {
             const hs = s.heatSettings || {};
             runFinishHeat(true, s.autoFinishStartedAt ?? s.heatClock?.startedAt, {
-              exportCsv: hs.exportCsv,
-              exportPdf: hs.exportPdf,
+              exportCsv: hs.exportCsv !== false,
+              exportPdf: Boolean(hs.exportPdf),
               type: hs.type,
               startedAt: s.autoFinishStartedAt ?? s.heatClock?.startedAt,
             });
@@ -810,6 +818,8 @@ const AdminPanel = () => {
       pendingOnTrackSlots: sessionActive,
     });
     if (!complete) { showAlert(t('admin_alert_not_enough_karts')); return; }
+
+    reorderAssignedKartsToPitFront(workingLines, kartSlots);
 
     const assignments = isEndurance
       ? teams.map((team, i) => {

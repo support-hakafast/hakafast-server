@@ -660,6 +660,98 @@ function testTimedExpiryStopsSimulationWithNextHeat() {
   assert(!demoStore.hasActiveTimingSession(store), 'session must not stay active after expiry');
 }
 
+function testDailySixKartCooldownWithNextOnTrack() {
+  const wsId = 'verify-daily-6-next-track';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  const startedAt = Date.now() - 700000;
+  store.heatSettings = { type: 'time', duration: 10, exportCsv: true, exportPdf: false };
+  store.heatRuntime.startedAt = startedAt;
+  const currentKarts = [1, 2, 3, 4, 5, 6];
+  store.currentHeat = currentKarts.map((k) => ({
+    kart_number: k,
+    driver_name: `D${k}`,
+    driver_level: 'Amateur',
+    lap_count: 10,
+    last_lap_time: '45.000',
+    best_lap_time: '44.000',
+    lap_times: Array(10).fill('45.000'),
+  }));
+  store.nextHeat = [
+    { kart_number: 1, driver_name: 'N1', driver_level: 'Amateur', lap_count: 0, lap_times: [] },
+    { kart_number: 7, driver_name: 'Next', driver_level: 'Amateur', lap_count: 0, lap_times: [] },
+  ];
+  store.onTrack = [
+    ...currentKarts.map((k) => ({
+      kart_number: k,
+      launchedAt: startedAt,
+      lastLapAt: Number(k) === 1 ? Date.now() - 5000 : Date.now() - 60000,
+      simulatedLaps: 10,
+      originLaneId: 1,
+    })),
+    {
+      kart_number: 7,
+      launchedAt: Date.now() - 120000,
+      lastLapAt: Date.now() - 30000,
+      simulatedLaps: 0,
+      cooldownLapPending: true,
+    },
+  ];
+
+  demoStore.getSessionState(store);
+  assert(store.heatCooldownPhase, 'timed expiry should enter cooldown');
+  assert(store.onTrack.some((ot) => Number(ot.kart_number) === 1), 'next-heat kart 1 stays for cooldown lap');
+  assert(store.onTrack.some((ot) => Number(ot.kart_number) === 7), 'next-heat kart 7 stays on track');
+  const nextOt = store.onTrack.find((ot) => Number(ot.kart_number) === 7);
+  assert(!nextOt?.cooldownLapPending, 'next-heat-only kart must not block cooldown');
+  assert(!store.heatFrozen, 'current heat kart still owes cooldown lap');
+
+  store.heatCooldownStartedAt = Date.now() - 50000;
+  demoStore.getSessionState(store);
+  assert(store.heatFrozen, '6-kart daily heat should auto-finish after cooldown');
+  assert(store.autoFinishExportPending, 'export should be pending');
+
+  const exportRows = demoStore.exportData(store);
+  assert(exportRows.length === 6, `export should include 6 drivers (got ${exportRows.length})`);
+
+  const clock = demoStore.getHeatClock(store);
+  assert(clock.racePhase === 'checkered', 'race phase should be checkered after auto finish');
+
+  demoStore.acknowledgeAutoExport(store);
+  assert(!store.autoFinishExportPending, 'ack clears export pending');
+}
+
+function testCooldownCompletesFromPhaseTimer() {
+  const wsId = 'verify-cooldown-phase-timer';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  const startedAt = Date.now() - 700000;
+  store.heatSettings = { type: 'time', duration: 10, exportCsv: false };
+  store.heatRuntime.startedAt = startedAt;
+  store.currentHeat = [{
+    kart_number: 1,
+    driver_name: 'A',
+    driver_level: 'Amateur',
+    lap_count: 8,
+    lap_times: Array(8).fill('45.000'),
+  }];
+  store.onTrack = [{
+    kart_number: 1,
+    launchedAt: startedAt,
+    lastLapAt: Date.now() - 2000,
+    simulatedLaps: 8,
+  }];
+
+  demoStore.getSessionState(store);
+  assert(store.heatCooldownPhase, 'should enter cooldown at expiry');
+  assert(!store.heatFrozen, 'fresh lap at expiry should wait for cooldown timer');
+
+  store.heatCooldownStartedAt = Date.now() - 50000;
+  demoStore.getSessionState(store);
+  assert(store.onTrack[0].cooldownLapDone, 'cooldown should complete from phase timer');
+  assert(store.heatFrozen, 'heat should auto-finish after forced cooldown');
+}
+
 async function testOnTrackKartPool() {
   const { pickKartsForAssignment } = await import('../src/utils/adminHelpers.js');
   const lines = {
@@ -953,6 +1045,59 @@ function testSessionHeatAutoPromoteWithoutExport() {
   assert(store.nextHeat.length === 0, 'queue cleared');
 }
 
+function testPitReorderAfterAssignment() {
+  const { reorderAssignedKartsToPitFront } = require('../src/utils/adminHelpers.js');
+  const lines = {
+    1: { active: true, karts: [10, 8, 14, 1] },
+  };
+  reorderAssignedKartsToPitFront(lines, [
+    { kart: 8, lane: '1', driverIndex: 0 },
+    { kart: 14, lane: '1', driverIndex: 1 },
+    { kart: 1, lane: '1', driverIndex: 2 },
+  ]);
+  assert(lines[1].karts[0] === 8, 'first assigned driver kart should be at pit exit');
+  assert(lines[1].karts[1] === 14, 'second assigned kart should queue next at exit');
+  assert(lines[1].karts.includes(10), 'unassigned karts remain in lane');
+}
+
+function testSequentialPitLaunch() {
+  const wsId = 'verify-seq-launch';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.heatSettings = { type: 'time', duration: 10 };
+  store.currentHeat = [
+    { kart_number: 8, driver_name: 'A', lap_count: 0, lap_times: [] },
+    { kart_number: 14, driver_name: 'B', lap_count: 0, lap_times: [] },
+  ];
+  store.pitLines[1].karts = [8, 14];
+
+  const first = demoStore.launchKart(store, 8, 1);
+  assert(first.success, 'first kart should launch from pit exit');
+  assert(store.heatRuntime.startedAt, 'session clock starts on first pit exit');
+  assert(store.pitLines[1].karts[0] === 14, 'next assigned kart moves to exit after launch');
+
+  const second = demoStore.launchKart(store, 14, 1);
+  assert(second.success, 'second kart should launch from pit exit');
+  assert(store.onTrack.length === 2, 'both karts should be on track');
+}
+
+function testSessionHeatClockAfterPromoteOnTrack() {
+  const wsId = 'verify-promote-clock';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.heatSettings = { type: 'time', duration: 10 };
+  store.nextHeatSettings = { type: 'time', duration: 10 };
+  store.heatRuntime.startedAt = Date.now() - 600000;
+  store.currentHeat = [{ kart_number: 7, driver_name: 'A', lap_count: 3, lap_times: ['45.000'] }];
+  store.nextHeat = [{ kart_number: 7, driver_name: 'B', lap_count: 0, lap_times: [] }];
+  store.onTrack = [{ kart_number: 7, launchedAt: Date.now(), lastLapAt: Date.now() }];
+  store.pitLines[1].karts = [7];
+
+  demoStore.finishHeat(store, { keepOnTrack: true });
+  assert(store.heatRuntime.startedAt, 'promoted session heat should start clock when kart already on track');
+  assert(store.currentHeat[0].driver_name === 'B', 'next driver should be active after promote');
+}
+
 function testDayPlanCapacity() {
   const { calculateDayPlan } = require('../trackProfile');
   const plan = calculateDayPlan({
@@ -1002,6 +1147,8 @@ async function main() {
   await run('sprint last lap phase', () => testSprintLastLapPhase());
   await run('timed last lap phase', () => testTimedLastLapPhase());
   await run('timed auto finish after cooldown laps', () => testTimedAutoFinishAfterCooldownLaps());
+  await run('daily 6-kart cooldown with next on track', () => testDailySixKartCooldownWithNextOnTrack());
+  await run('cooldown completes from phase timer', () => testCooldownCompletesFromPhaseTimer());
   await run('formation laps before race clock', () => testFormationLapsBeforeRaceClock());
   await run('le mans grid deploy', () => testLeMansGridDeploy());
   await run('auto finish export metadata', () => testAutoFinishExportMetadata());
@@ -1014,6 +1161,9 @@ async function main() {
   await run('endurance rules parsing', () => testEnduranceRulesParsing());
   await run('endurance 1h two driver changes simulation', () => testEnduranceOneHourTwoDriverChangesSimulation());
   await run('session heat auto promote without export', () => testSessionHeatAutoPromoteWithoutExport());
+  await run('pit reorder puts assigned karts at exit', () => testPitReorderAfterAssignment());
+  await run('sequential pit launch advances exit queue', () => testSequentialPitLaunch());
+  await run('session heat clock after promote on track', () => testSessionHeatClockAfterPromoteOnTrack());
   await run('day plan capacity', () => testDayPlanCapacity());
 
   const failed = results.filter((r) => !r.ok);

@@ -1793,8 +1793,23 @@ html:has(.admin-no-scroll) body {
   color: #047857;
 }
 
-.track-planner-modal .admin-modal-footer {
+.track-planner-modal .admin-modal-footer,
+.track-planner-footer {
   background: #fff;
+  flex-wrap: wrap;
+  justify-content: stretch;
+  gap: 10px;
+}
+
+.track-planner-footer .track-planner-apply,
+.track-planner-footer .track-planner-cancel {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.track-planner-footer .track-planner-cancel {
+  background: #64748b;
+  color: #fff;
 }
 
 .admin-setup-overlay {

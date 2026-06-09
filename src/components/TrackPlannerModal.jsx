@@ -97,10 +97,12 @@ export default function TrackPlannerModal({
           </div>
         </div>
 
-        <footer className="admin-modal-footer">
-          <button type="button" className="btn-muted" onClick={onClose}>{t('modal_cancel')}</button>
-          <button type="button" className="btn-preview" onClick={onApplySessionDuration}>
+        <footer className="admin-modal-footer track-planner-footer">
+          <button type="button" className="btn-preview track-planner-apply" onClick={onApplySessionDuration}>
             {t('admin_apply_session_duration')}
+          </button>
+          <button type="button" className="btn-muted track-planner-cancel" onClick={onClose}>
+            {t('modal_cancel')}
           </button>
         </footer>
       </div>
