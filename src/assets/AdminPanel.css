@@ -1545,6 +1545,7 @@ html:has(.admin-no-scroll) body {
 .admin-modal-light input[type='text'],
 .admin-modal-light input[type='password'],
 .admin-modal-light input[type='number'],
+.admin-modal-light input[type='time'],
 .admin-modal-light select,
 .admin-modal-light textarea {
   color: #1e293b;
@@ -1619,11 +1620,26 @@ html:has(.admin-no-scroll) body {
   width: min(540px, 100%);
   padding: 0;
   overflow: hidden;
+  background: #fff;
+  color: #1e293b;
 }
 
 .track-planner-modal .track-planner-panel-modal {
   padding: 16px 24px;
   border: none;
+  background: #fff;
+}
+
+.track-planner-modal.admin-modal-light .planner-field span {
+  color: #334155;
+  font-weight: 600;
+}
+
+.track-planner-modal.admin-modal-light .planner-field input,
+.track-planner-modal.admin-modal-light input[type='time'] {
+  color: #1e293b;
+  background: #fff;
+  border: 1px solid #cbd5e0;
 }
 
 .track-planner-modal .planner-stats-modal {
@@ -1640,23 +1656,40 @@ html:has(.admin-no-scroll) body {
   text-align: center;
   padding: 10px 8px;
   border-radius: 10px;
-  background: rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(37, 99, 235, 0.15);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
 }
 
 .planner-stat-card strong {
   font-size: 1.25rem;
-  color: var(--navy);
+  color: #1e40af;
 }
 
 .planner-stat-card span {
   font-size: 0.68rem;
-  color: #64748b;
+  color: #475569;
   line-height: 1.25;
 }
 
+.track-planner-modal .planner-stat-card {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.track-planner-modal .planner-stat-card strong {
+  color: #1e40af;
+}
+
+.track-planner-modal .planner-stat-card span {
+  color: #475569;
+}
+
 .planner-stat-revenue strong {
-  color: #059669;
+  color: #047857;
+}
+
+.track-planner-modal .admin-modal-footer {
+  background: #fff;
 }
 
 .admin-setup-overlay {
