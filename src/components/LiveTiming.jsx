@@ -18,7 +18,7 @@ import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useLiveTheme } from '../hooks/useLiveTheme.js';
 import { normalizeTimingColumns, normalizeTimingColumnOrder } from '../utils/liveTimingColumns.js';
 import { formatHeatClock, getHeatClockClassName } from '../utils/adminHelpers.js';
-import { useLiveWideLayout } from '../hooks/useLiveWideLayout.js';
+import { useLiveLayoutTier } from '../hooks/useLiveWideLayout.js';
 
 const HEAT_LABEL_KEYS = { time: 'heat_time', endurance: 'heat_endurance', sprint: 'heat_sprint' };
 
@@ -121,7 +121,9 @@ const LiveTiming = () => {
       : ['kart_number', 'driver_name', 'lap_count'],
   );
 
-  const isWide = useLiveWideLayout();
+  const layoutTier = useLiveLayoutTier();
+  const isWide = layoutTier === 'wide' || layoutTier === 'ultra';
+  const layoutClass = layoutTier === 'ultra' ? ' is-wide is-ultra' : (isWide ? ' is-wide' : '');
   const [statsOpen, setStatsOpen] = useState(false);
 
   useEffect(() => {
@@ -135,7 +137,7 @@ const LiveTiming = () => {
 
   return (
     <div className={`live-timing theme-${theme}`}>
-      <header className={`live-timing-header${isWide ? ' is-wide' : ''}`}>
+      <header className={`live-timing-header${layoutClass}`}>
         <div className="live-header-row live-header-row-main">
           <h1>{t(titleKey)}</h1>
           <div className="live-header-badges">
@@ -193,7 +195,7 @@ const LiveTiming = () => {
               isNextHeat={hasPreparedHeat}
             />
           ) : (
-            <div className={`live-timing-layout${isWide ? ' is-wide' : ''}`}>
+            <div className={`live-timing-layout${layoutClass}`}>
               <div className="live-timing-primary">
                 <div className="live-timing-table-wrap">
                   <LiveTimingTable

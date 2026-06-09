@@ -703,6 +703,87 @@ function testEndurancePitsAndPenalty() {
   assert(row.unserved_penalty_sec < 60, 'penalty should serve while in pits');
 }
 
+function testFixedTimingColumnPrefix() {
+  const {
+    normalizeTimingColumnOrder,
+    moveColumnOrder,
+    FIXED_TIMING_COLUMN_IDS,
+  } = require('../src/utils/liveTimingColumns.js');
+  const order = normalizeTimingColumnOrder(['gap', 'best_lap', 'pos', 'kart_driver', 'last_lap']);
+  assert(order[0] === 'pos' && order[1] === 'kart' && order[2] === 'driver', 'fixed prefix pos/kart/driver');
+  assert(!order.includes('kart_driver'), 'kart_driver should migrate to kart+driver');
+  const blocked = moveColumnOrder(order, 'pos', -1);
+  assert(blocked[0] === 'pos', 'position column stays fixed');
+  const movedGap = moveColumnOrder(order, 'gap', -1);
+  assert(movedGap.indexOf('gap') >= FIXED_TIMING_COLUMN_IDS.length, 'only columns after fixed prefix move');
+}
+
+function testEnduranceRulesParsing() {
+  const { parseEnduranceRules } = require('../enduranceRules');
+  const rules = parseEnduranceRules('min_driver_changes=2\nviolation_penalty_sec=90');
+  assert(rules.minDriverChanges === 2, 'parses min driver changes');
+  assert(rules.violationPenaltySec === 90, 'parses penalty seconds');
+  const rulesHe = parseEnduranceRules('חובה 2 החלפות נהג');
+  assert(rulesHe.minDriverChanges === 2, 'parses Hebrew driver-change rule');
+}
+
+function testEnduranceOneHourTwoDriverChangesSimulation() {
+  const enduranceRulesMod = require('../enduranceRules');
+  const wsId = 'verify027';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  const hourMs = 60 * 60 * 1000;
+  store.heatSettings = {
+    type: 'endurance',
+    duration: 60,
+    enduranceRules: 'min_driver_changes=2\nviolation_penalty_sec=120',
+  };
+  store.heatRuntime.startedAt = Date.now() - hourMs * 0.9;
+  store.currentHeat = [
+    {
+      kart_number: 5,
+      driver_name: 'Team Alpha',
+      team_name: 'Team Alpha',
+      team_drivers: [{ name: 'A1' }, { name: 'A2' }, { name: 'A3' }],
+      active_driver: 'A3',
+      driver_swap_count: 2,
+      lap_count: 42,
+      lap_times: [],
+      pit_visits: 2,
+      stints: [{ driver_name: 'A1' }, { driver_name: 'A2' }],
+      penalties: [],
+    },
+    {
+      kart_number: 6,
+      driver_name: 'Team Beta',
+      team_name: 'Team Beta',
+      team_drivers: [{ name: 'B1' }, { name: 'B2' }, { name: 'B3' }],
+      active_driver: 'B1',
+      driver_swap_count: 0,
+      lap_count: 40,
+      lap_times: [],
+      pit_visits: 0,
+      stints: [{ driver_name: 'B1' }],
+      penalties: [],
+    },
+  ];
+  store.onTrack = [
+    { kart_number: 5, launchedAt: Date.now() - hourMs, lastLapAt: Date.now() - 50000 },
+    { kart_number: 6, launchedAt: Date.now() - hourMs, lastLapAt: Date.now() - 52000 },
+  ];
+
+  enduranceRulesMod.tickEnduranceRules(store);
+
+  const compliant = store.currentHeat.find((r) => Number(r.kart_number) === 5);
+  const violator = store.currentHeat.find((r) => Number(r.kart_number) === 6);
+  assert(!enduranceRulesMod.hasAutoPenalty(compliant, 'min_driver_changes'), 'compliant team avoids penalty');
+  assert(enduranceRulesMod.hasAutoPenalty(violator, 'min_driver_changes'), 'team without swaps gets penalty');
+  assert(violator.unserved_penalty_sec === 120, 'penalty seconds from rules');
+
+  demoStore.finishHeat(store, { keepOnTrack: false });
+  assert(store.currentHeat.length === 0, 'one-hour endurance heat can finish after rule check');
+}
+
 async function main() {
   const results = [];
   const run = async (name, fn) => {
@@ -742,6 +823,9 @@ async function main() {
   await run('daily heat number', () => testDailyHeatNumber());
   await run('top lap stats', () => testTopLapStats());
   await run('endurance pits stints penalties', () => testEndurancePitsAndPenalty());
+  await run('fixed timing column prefix', () => testFixedTimingColumnPrefix());
+  await run('endurance rules parsing', () => testEnduranceRulesParsing());
+  await run('endurance 1h two driver changes simulation', () => testEnduranceOneHourTwoDriverChangesSimulation());
 
   const failed = results.filter((r) => !r.ok);
   console.log('\n=== HAKAFAST timing verification ===\n');

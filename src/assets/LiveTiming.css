@@ -989,6 +989,11 @@
   align-items: stretch;
 }
 
+.live-timing-layout.is-wide.is-ultra {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  gap: 0.65rem;
+}
+
 .live-timing-primary {
   display: flex;
   flex-direction: column;
@@ -1302,5 +1307,33 @@
   .live-mode-tabs button {
     padding: 0.35rem 0.5rem;
     font-size: 0.72rem;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .live-assignments-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  }
+}
+
+@media (min-width: 1600px) {
+  .live-timing-dense th,
+  .live-timing-dense td {
+    padding: clamp(0.18rem, 0.4vh, 0.32rem) clamp(0.25rem, 0.55vw, 0.45rem);
+  }
+
+  .live-assignments-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+    gap: 1rem;
+  }
+
+  .live-assign-card-compact {
+    padding: 0.55rem 0.75rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .live-timing-layout.is-wide .live-lap-stats-panel {
+    max-height: none;
   }
 }

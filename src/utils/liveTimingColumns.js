@@ -31,10 +31,14 @@ export const TIMING_COLUMN_GROUPS = [
   },
 ];
 
+/** First three columns are always fixed: position, kart, driver/team name. */
+export const FIXED_TIMING_COLUMN_IDS = ['pos', 'kart', 'driver'];
+
 export const LAYOUT_TIMING_COLUMNS = [
-  { id: 'pos', labelKey: 'pos', group: 'layout', alwaysOn: true },
+  { id: 'pos', labelKey: 'pos', group: 'layout', alwaysOn: true, fixed: true },
+  { id: 'kart', labelKey: 'kart', group: 'layout', alwaysOn: true, fixed: true },
+  { id: 'driver', labelKey: 'driver', group: 'layout', alwaysOn: true, fixed: true },
   { id: 'team', labelKey: 'team', group: 'layout', enduranceOnly: true },
-  { id: 'kart_driver', labelKey: 'admin_col_kart_driver', group: 'layout', alwaysOn: true },
   { id: 'laps_fixed', labelKey: 'laps', group: 'layout', enduranceOnly: true },
 ];
 
@@ -64,10 +68,30 @@ export const ALL_TIMING_COLUMNS = [
 export const DEFAULT_TIMING_COLUMN_ORDER = ALL_TIMING_COLUMNS.map((col) => col.id);
 
 const LAP_COLUMN_IDS = new Set(LAP_TIMING_COLUMNS.map((col) => col.id));
-const ALL_COLUMN_IDS = new Set(ALL_TIMING_COLUMNS.map((col) => col.id));
+const ALL_COLUMN_IDS = new Set([
+  ...ALL_TIMING_COLUMNS.map((col) => col.id),
+  'kart_driver',
+]);
 const LAYOUT_ALWAYS_ON = new Set(
   LAYOUT_TIMING_COLUMNS.filter((col) => col.alwaysOn).map((col) => col.id),
 );
+
+export function isFixedTimingColumn(columnId) {
+  return FIXED_TIMING_COLUMN_IDS.includes(columnId);
+}
+
+function migrateColumnOrderIds(raw) {
+  const migrated = [];
+  (Array.isArray(raw) ? raw : []).forEach((id) => {
+    if (id === 'kart_driver') {
+      if (!migrated.includes('kart')) migrated.push('kart');
+      if (!migrated.includes('driver')) migrated.push('driver');
+    } else if (ALL_COLUMN_IDS.has(id) && !migrated.includes(id)) {
+      migrated.push(id);
+    }
+  });
+  return migrated;
+}
 
 export function normalizeTimingColumns(raw) {
   const base = { ...DEFAULT_TIMING_COLUMNS };
@@ -79,16 +103,12 @@ export function normalizeTimingColumns(raw) {
 }
 
 export function normalizeTimingColumnOrder(raw) {
-  const order = Array.isArray(raw) ? raw.filter((id) => ALL_COLUMN_IDS.has(id)) : [];
-  if (!order.includes('pos')) order.unshift('pos');
-  if (!order.includes('kart_driver')) {
-    const posIdx = order.indexOf('pos');
-    order.splice(posIdx + 1, 0, 'kart_driver');
-  }
+  const order = migrateColumnOrderIds(raw);
+  const reorderable = order.filter((id) => !isFixedTimingColumn(id) && ALL_COLUMN_IDS.has(id));
   DEFAULT_TIMING_COLUMN_ORDER.forEach((id) => {
-    if (!order.includes(id)) order.push(id);
+    if (!isFixedTimingColumn(id) && !reorderable.includes(id)) reorderable.push(id);
   });
-  return order;
+  return [...FIXED_TIMING_COLUMN_IDS, ...reorderable];
 }
 
 function isColumnVisible(col, timingColumns, isEndurance) {
@@ -109,6 +129,11 @@ export function getOrderedTimingColumns(timingColumns, columnOrder, isEndurance 
     .filter(Boolean);
 }
 
+export function getReorderableTimingColumns(timingColumns, columnOrder, isEndurance = false) {
+  return getOrderedTimingColumns(timingColumns, columnOrder, isEndurance)
+    .filter((col) => !isFixedTimingColumn(col.id));
+}
+
 /** @deprecated use getOrderedTimingColumns */
 export function getOrderedOptionalColumns(timingColumns, columnOrder, isEndurance = false) {
   return getOrderedTimingColumns(timingColumns, columnOrder, isEndurance)
@@ -116,11 +141,13 @@ export function getOrderedOptionalColumns(timingColumns, columnOrder, isEnduranc
 }
 
 export function moveColumnOrder(order, columnId, direction) {
+  if (isFixedTimingColumn(columnId)) return normalizeTimingColumnOrder(order);
   const next = [...normalizeTimingColumnOrder(order)];
   const idx = next.indexOf(columnId);
   if (idx < 0) return next;
+  const fixedLen = FIXED_TIMING_COLUMN_IDS.length;
   const target = idx + direction;
-  if (target < 0 || target >= next.length) return next;
+  if (target < fixedLen || target >= next.length) return next;
   [next[idx], next[target]] = [next[target], next[idx]];
   return next;
 }

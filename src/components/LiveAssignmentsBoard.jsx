@@ -37,7 +37,7 @@ export default function LiveAssignmentsBoard({
         </div>
       </div>
 
-      <div className="live-assignments-grid live-assignments-grid-2col">
+      <div className="live-assignments-grid">
         {rows.map((row, index) => {
           const flash = rowFlashClass ? rowFlashClass(row, index) : '';
           const name = driverLabel(row, heatType, t);

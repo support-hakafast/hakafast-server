@@ -77,8 +77,8 @@ html:has(.admin-no-scroll) body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 50%) minmax(280px, 1fr) 260px;
-  gap: 12px;
+  grid-template-columns: minmax(0, 50%) minmax(280px, 1fr) minmax(220px, 280px);
+  gap: clamp(8px, 1vw, 14px);
   overflow: hidden;
 }
 
@@ -923,11 +923,11 @@ html:has(.admin-no-scroll) body {
 
 .kart-pool {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(68px, 5vw, 96px), 1fr));
+  gap: clamp(8px, 1vw, 12px);
   min-height: 80px;
   background: #edf2f7;
-  padding: 10px;
+  padding: clamp(8px, 1vw, 12px);
   border-radius: 8px;
   align-content: start;
 }
@@ -938,8 +938,8 @@ html:has(.admin-no-scroll) body {
 
 .kart-shape {
   position: relative;
-  width: 76px;
-  height: 48px;
+  width: clamp(68px, 5vw, 92px);
+  height: clamp(42px, 3.2vw, 56px);
   cursor: grab;
   user-select: none;
   color: var(--navy);
@@ -1429,6 +1429,40 @@ html:has(.admin-no-scroll) body {
   font-size: 0.72rem;
   opacity: 0.75;
   line-height: 1.35;
+}
+
+.endurance-rules-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.endurance-rules-field textarea {
+  width: 100%;
+  min-height: 5.5rem;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+@media (min-width: 1600px) {
+  .admin-workspace {
+    grid-template-columns: minmax(0, 42%) minmax(320px, 1fr) minmax(260px, 320px);
+  }
+
+  .pit-lanes-board {
+    grid-template-columns: repeat(auto-fill, minmax(clamp(150px, 12vw, 220px), 1fr));
+  }
+
+  .on-track-num {
+    width: clamp(2.2rem, 2.5vw, 2.8rem);
+    height: clamp(2.2rem, 2.5vw, 2.8rem);
+    font-size: clamp(0.85rem, 1vw, 1rem);
+  }
 }
 
 @media (max-width: 1200px) {

@@ -34,7 +34,7 @@ import {
   DEFAULT_TIMING_COLUMN_ORDER,
   normalizeTimingColumns,
   normalizeTimingColumnOrder,
-  getOrderedTimingColumns,
+  getReorderableTimingColumns,
   moveColumnOrder,
 } from '../utils/liveTimingColumns.js';
 import { apiFetch } from '../utils/apiClient.js';
@@ -92,6 +92,7 @@ const AdminPanel = () => {
   const [exportPdf, setExportPdf] = useState(false);
   const [timingColumns, setTimingColumns] = useState({ ...DEFAULT_TIMING_COLUMNS });
   const [timingColumnOrder, setTimingColumnOrder] = useState([...DEFAULT_TIMING_COLUMN_ORDER]);
+  const [enduranceRules, setEnduranceRules] = useState('');
   const [enduranceTeams, setEnduranceTeams] = useState([]);
 
   const [drName, setDrName] = useState('');
@@ -179,6 +180,7 @@ const AdminPanel = () => {
       if (typeof s?.exportPdf === 'boolean') setExportPdf(s.exportPdf);
       if (s?.timingColumns) setTimingColumns(normalizeTimingColumns(s.timingColumns));
       if (s?.timingColumnOrder) setTimingColumnOrder(normalizeTimingColumnOrder(s.timingColumnOrder));
+      if (typeof s?.enduranceRules === 'string') setEnduranceRules(s.enduranceRules);
       if (s?.heatClock) setHeatClock(s.heatClock);
       if (s?.onTrack) {
         setOnTrack(s.onTrack);
@@ -229,11 +231,12 @@ const AdminPanel = () => {
           exportPdf,
           timingColumns,
           timingColumnOrder,
+          enduranceRules: heatType === 'endurance' ? enduranceRules : '',
         }),
       }, trackSlug).catch(() => {});
     }, 600);
     return () => clearTimeout(timer);
-  }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, formationLaps, startMode, exportCsv, exportPdf, timingColumns, timingColumnOrder, trackSlug]);
+  }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, formationLaps, startMode, exportCsv, exportPdf, timingColumns, timingColumnOrder, enduranceRules, trackSlug]);
 
   useEffect(() => {
     if (!usesIsolatedWorkspace(trackSlug)) return undefined;
@@ -249,8 +252,8 @@ const AdminPanel = () => {
     return () => clearTimeout(timer);
   }, [allKarts, trackSlug]);
 
-  const orderedActiveColumns = useMemo(
-    () => getOrderedTimingColumns(timingColumns, timingColumnOrder, heatType === 'endurance'),
+  const reorderableColumns = useMemo(
+    () => getReorderableTimingColumns(timingColumns, timingColumnOrder, heatType === 'endurance'),
     [timingColumns, timingColumnOrder, heatType],
   );
 
@@ -1373,6 +1376,16 @@ const AdminPanel = () => {
                 </button>
               </div>
               <p className="endurance-hint">{t('admin_endurance_hint')}</p>
+              <label className="endurance-rules-field">
+                <span className="field-label">{t('admin_endurance_rules')}</span>
+                <textarea
+                  rows={4}
+                  value={enduranceRules}
+                  onChange={(e) => setEnduranceRules(e.target.value)}
+                  placeholder={t('admin_endurance_rules_placeholder')}
+                />
+                <span className="endurance-hint">{t('admin_endurance_rules_hint')}</span>
+              </label>
             </div>
           )}
 
@@ -1399,11 +1412,12 @@ const AdminPanel = () => {
                 </div>
               </div>
             ))}
-            {orderedActiveColumns.length > 0 && (
+            {reorderableColumns.length > 0 && (
               <div className="timing-column-order">
                 <span className="field-label">{t('admin_timing_column_order')}</span>
+                <p className="timing-columns-intro">{t('admin_timing_column_order_fixed')}</p>
                 <ul className="timing-order-list">
-                  {orderedActiveColumns.map((col, idx) => (
+                  {reorderableColumns.map((col, idx) => (
                     <li key={col.id} className="timing-order-row">
                       <span>{t(col.labelKey)}</span>
                       <span className="timing-order-actions">
@@ -1419,7 +1433,7 @@ const AdminPanel = () => {
                         <button
                           type="button"
                           className="timing-order-btn"
-                          disabled={idx === orderedActiveColumns.length - 1}
+                          disabled={idx === reorderableColumns.length - 1}
                           onClick={() => moveTimingColumn(col.id, 1)}
                           aria-label={t('admin_move_column_down')}
                         >

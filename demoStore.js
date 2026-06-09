@@ -10,6 +10,7 @@ const {
 } = require('./lapStats');
 const persistentStore = require('./persistentStore');
 const installConfig = require('./installConfig');
+const enduranceRules = require('./enduranceRules');
 
 const stores = new Map();
 const persistTimers = new Map();
@@ -54,6 +55,7 @@ function createStore(trackSlug = 'kart-demo') {
       startMode: 'grid',
       exportCsv: true,
       exportPdf: false,
+      enduranceRules: '',
       timingColumns: { laps: true, second_best: false, avg_lap: false, level: false, gap: true },
     },
     heatRuntime: { startedAt: null, avgLapSec: DEFAULT_AVG_LAP_SEC },
@@ -842,6 +844,7 @@ function pushHeatHistory(store, resultsOverride = null) {
 
 function autoFinishHeatSession(store) {
   const savedStartedAt = store.heatRuntime.startedAt;
+  enduranceRules.tickEnduranceRules(store, { final: true });
   applyAutoLevelUpgrades(store);
   if (store.currentHeat.length > 0) {
     pushHeatHistory(store);
@@ -1546,6 +1549,7 @@ function getTimingData(store) {
   checkAutoFinish(store);
   tickHeatSimulation(store);
   tickPenaltyService(store);
+  enduranceRules.tickEnduranceRules(store);
   const order = getTimingSortFn(store);
   const sessionFastestSec = getSessionFastestLapSec(store);
   const endurance = isEnduranceMode(store);
@@ -1753,6 +1757,7 @@ function finishHeat(store, options = {}) {
       returnKartsNotInNextHeat(store);
     }
   } else {
+    enduranceRules.tickEnduranceRules(store, { final: true });
     store.currentHeat = [];
     store.onTrack = [];
     store.heatFrozen = false;
@@ -1848,8 +1853,12 @@ function setActiveDriver(store, kartNumber, driverName) {
   }
   const onTrack = store.onTrack.some((k) => Number(k.kart_number) === Number(kartNumber));
   if (onTrack) return { success: false, error: 'driver_change_in_pits_only' };
+  if (row.active_driver && row.active_driver !== driverName) {
+    row.driver_swap_count = (row.driver_swap_count || 0) + 1;
+  }
   row.active_driver = driverName;
   row.transponder_id = match?.transponder_id || row.transponder_id || null;
+  enduranceRules.tickEnduranceRules(store);
   return { success: true, active_driver: row.active_driver, transponder_id: row.transponder_id };
 }
 
@@ -1868,6 +1877,7 @@ function getSessionState(store) {
   const { autoFinishRequested } = checkAutoFinish(store);
   tickHeatSimulation(store);
   tickPenaltyService(store);
+  enduranceRules.tickEnduranceRules(store);
   maybeDrainFinishedHeat(store);
   const heatClock = getHeatClock(store);
   const state = {

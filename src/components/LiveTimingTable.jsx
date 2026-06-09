@@ -80,16 +80,18 @@ function renderLayoutHeader(col, t, isEndurance) {
   if (col.id === 'pos') {
     return <th key={col.id} className="live-col-pos">{t('pos')}</th>;
   }
+  if (col.id === 'kart') {
+    return <th key={col.id} className="live-col-kart">{t('kart')}</th>;
+  }
+  if (col.id === 'driver') {
+    return (
+      <th key={col.id} className="live-col-driver">
+        {isEndurance ? t('live_col_stint_driver') : t('driver')}
+      </th>
+    );
+  }
   if (col.id === 'team') {
     return <th key={col.id} className="live-col-team">{t('team')}</th>;
-  }
-  if (col.id === 'kart_driver') {
-    return (
-      <React.Fragment key={col.id}>
-        <th className="live-col-kart">{t('kart')}</th>
-        <th className="live-col-driver">{isEndurance ? t('live_col_stint_driver') : t('driver')}</th>
-      </React.Fragment>
-    );
   }
   if (col.id === 'laps_fixed') {
     return <th key={col.id} className="live-col-laps-fixed">{t('laps')}</th>;
@@ -100,6 +102,23 @@ function renderLayoutHeader(col, t, isEndurance) {
 function renderLayoutCell(col, row, index, t, isEndurance) {
   if (col.id === 'pos') {
     return <td key={col.id} className="live-pos live-col-pos">{index + 1}</td>;
+  }
+  if (col.id === 'kart') {
+    return (
+      <td key={col.id} className="live-kart-cell live-col-kart">
+        <span className="live-assign-kart-num">{row.kart_number}</span>
+      </td>
+    );
+  }
+  if (col.id === 'driver') {
+    const driverLabel = isEndurance
+      ? (row.active_driver || row.current_stint?.driver_name || row.driver_name || t('anonymous'))
+      : (row.driver_name || t('anonymous'));
+    return (
+      <td key={col.id} className="live-driver-name live-col-driver">
+        <span className="live-timing-driver-name">{driverLabel}</span>
+      </td>
+    );
   }
   if (col.id === 'team') {
     return (
@@ -115,21 +134,6 @@ function renderLayoutCell(col, row, index, t, isEndurance) {
           {t('live_driver_time_short')}
         </span>
       </td>
-    );
-  }
-  if (col.id === 'kart_driver') {
-    const driverLabel = isEndurance
-      ? (row.active_driver || row.current_stint?.driver_name || row.driver_name || t('anonymous'))
-      : (row.driver_name || t('anonymous'));
-    return (
-      <React.Fragment key={col.id}>
-        <td className="live-kart-cell live-col-kart">
-          <span className="live-assign-kart-num">{row.kart_number}</span>
-        </td>
-        <td className="live-driver-name live-col-driver">
-          <span className="live-timing-driver-name">{driverLabel}</span>
-        </td>
-      </React.Fragment>
     );
   }
   if (col.id === 'laps_fixed') {
