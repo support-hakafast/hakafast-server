@@ -601,6 +601,7 @@ function recordLapCrossing(store, ot, row, lapSec, options = {}) {
     ot.trackPosition = 0;
     ot.lap_count = row.lap_count || 0;
     ot.simulatedLaps = row.lap_count || 0;
+    checkAutoFinish(store);
     return;
   }
 
@@ -727,12 +728,19 @@ function allOnTrackAreForNextHeat(store) {
   });
 }
 
+function allCooldownLapsComplete(store) {
+  if (!store.onTrack.length) return true;
+  if (!store.heatCooldownPhase) return false;
+  return store.onTrack.every((ot) => ot.cooldownLapDone || !ot.cooldownLapPending);
+}
+
 function allOnTrackClearedOrReadyForNextHeatDrain(store) {
   if (store.onTrack.length === 0) return true;
-  if (!allOnTrackAreForNextHeat(store)) return false;
   if (store.heatCooldownPhase) {
-    return store.onTrack.every((ot) => ot.cooldownLapDone || !ot.cooldownLapPending);
+    return allCooldownLapsComplete(store);
   }
+  if (!store.nextHeat.length) return false;
+  if (!allOnTrackAreForNextHeat(store)) return false;
   return true;
 }
 
@@ -1165,8 +1173,9 @@ function resolveHeatRacePhase(store, ctx) {
   }
 
   if (isTimed) {
-    if (onTrackCount > 0 && (cooldownPhase || timeExpired)) return 'last_lap';
-    if (timeExpired && onTrackCount === 0) return 'checkered';
+    const cooldownDone = allCooldownLapsComplete(store);
+    if (onTrackCount > 0 && (cooldownPhase || timeExpired) && !cooldownDone) return 'last_lap';
+    if (timeExpired && (onTrackCount === 0 || cooldownDone)) return 'checkered';
     return 'normal';
   }
 
@@ -1656,10 +1665,10 @@ function getTimingSortFn(store) {
 }
 
 function getTimingData(store) {
-  checkAutoFinish(store);
   tickHeatSimulation(store);
   tickPenaltyService(store);
   enduranceRules.tickEnduranceRules(store);
+  checkAutoFinish(store);
   const order = getTimingSortFn(store);
   const sessionFastestSec = getSessionFastestLapSec(store);
   const endurance = isEnduranceMode(store);
@@ -2027,10 +2036,10 @@ function registerTeamTransponder(store, transponderId, kartNumber) {
 function getSessionState(store) {
   store.pitLines = sanitizePitLines(store.pitLines);
   scanTransponderExits(store);
-  const { autoFinishRequested } = checkAutoFinish(store);
   tickHeatSimulation(store);
   tickPenaltyService(store);
   enduranceRules.tickEnduranceRules(store);
+  const { autoFinishRequested } = checkAutoFinish(store);
   maybeDrainFinishedHeat(store);
   const heatClock = getHeatClock(store);
   const state = {

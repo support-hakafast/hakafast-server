@@ -397,7 +397,7 @@ function testTimedCooldownThenAutoFinish() {
   store.onTrack = [{
     kart_number: 1,
     launchedAt: startedAt,
-    lastLapAt: Date.now() - 45000,
+    lastLapAt: Date.now() - 10000,
     simulatedLaps: 2,
   }];
   store.pitLines[1].karts = [];
@@ -460,6 +460,43 @@ function testTimedLastLapPhase() {
 
   const clock = demoStore.getHeatClock(store);
   assert(clock.racePhase === 'last_lap', 'timed expiry with kart on track should show last lap phase');
+}
+
+function testTimedAutoFinishAfterCooldownLaps() {
+  const wsId = 'verify-timed-cooldown-done';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  const startedAt = Date.now() - 700000;
+  store.heatSettings = { type: 'time', duration: 10, exportCsv: true };
+  store.heatRuntime.startedAt = startedAt;
+  store.currentHeat = [{
+    kart_number: 1,
+    driver_name: 'A',
+    driver_level: 'Amateur',
+    lap_count: 12,
+    last_lap_time: '44.000',
+    best_lap_time: '43.500',
+    lap_times: Array(12).fill('44.000'),
+  }];
+  store.onTrack = [{
+    kart_number: 1,
+    launchedAt: startedAt,
+    lastLapAt: Date.now() - 10000,
+    simulatedLaps: 12,
+  }];
+
+  demoStore.getSessionState(store);
+  assert(store.heatCooldownPhase, 'timed expiry should enter cooldown phase');
+  assert(!store.heatFrozen, 'heat should stay active until cooldown laps complete');
+
+  store.onTrack[0].lastLapAt = Date.now() - 60000;
+  demoStore.getTimingData(store);
+  assert(store.onTrack[0].cooldownLapDone, 'simulation should complete cooldown lap');
+  assert(store.heatFrozen, 'classic heat should auto-finish after cooldown laps');
+  assert(store.autoFinishExportPending, 'export should be pending after auto finish');
+
+  const clock = demoStore.getHeatClock(store);
+  assert(clock.racePhase === 'checkered', 'race phase should move to checkered after cooldown');
 }
 
 function testFormationLapsBeforeRaceClock() {
@@ -964,6 +1001,7 @@ async function main() {
   await run('sprint clock up + cooldown lap', () => testSprintClockAndCooldown());
   await run('sprint last lap phase', () => testSprintLastLapPhase());
   await run('timed last lap phase', () => testTimedLastLapPhase());
+  await run('timed auto finish after cooldown laps', () => testTimedAutoFinishAfterCooldownLaps());
   await run('formation laps before race clock', () => testFormationLapsBeforeRaceClock());
   await run('le mans grid deploy', () => testLeMansGridDeploy());
   await run('auto finish export metadata', () => testAutoFinishExportMetadata());
