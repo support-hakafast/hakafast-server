@@ -1,0 +1,58 @@
+.sales-page { min-height: 100vh; background: #f4f7fb; color: #111; direction: rtl; }
+.sales-nav { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: #fff; border-bottom: 1px solid #dbeafe; }
+.sales-nav-end { display: flex; gap: 1rem; align-items: center; }
+.sales-main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
+.sales-main h1 { color: #0d47a1; margin-bottom: 0.5rem; }
+.sales-lead { color: #444; margin-bottom: 1.5rem; }
+.sales-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+.sales-form-grid label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.9rem; }
+.sales-form-grid input, .sales-form-grid select { padding: 0.55rem 0.65rem; border: 1px solid #ccc; border-radius: 6px; }
+.sales-checkbox { grid-column: 1 / -1; flex-direction: row !important; align-items: center; gap: 0.5rem !important; }
+.sales-quote-box { background: #fff; border: 1px solid #dbeafe; border-radius: 10px; padding: 1.25rem 1.5rem; }
+.sales-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+.sales-table td { padding: 0.5rem 0; border-bottom: 1px solid #eee; }
+.sales-table td:last-child { text-align: left; direction: ltr; font-weight: 600; color: #0d47a1; }
+.sales-total td { font-size: 1.1rem; border-top: 2px solid #0d47a1; }
+.sales-note { font-size: 0.85rem; color: #666; margin: 0.35rem 0; }
+.sales-contact { margin-top: 1rem; font-weight: 600; }
+.install-steps { list-style: none; padding: 0; margin: 0 0 2rem; }
+.install-step { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 0.75rem; }
+.install-step-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+.install-step-num { background: #0d47a1; color: #fff; width: 1.75rem; height: 1.75rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+.install-step-time { margin-right: auto; color: #1565c0; font-size: 0.85rem; white-space: nowrap; }
+.sales-total-time { font-weight: 600; color: #1565c0; margin-bottom: 1.5rem; }
+
+.live-desk-body { margin: 0; overflow: hidden; background: #0a1628; }
+.live-desk-page { min-height: 100vh; display: flex; flex-direction: column; background: #0a1628; color: #fff; direction: rtl; }
+.live-desk-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: #111d33; border-bottom: 1px solid #2a3f5f; }
+.live-desk-body-inner { flex: 1; overflow: auto; padding: 0.75rem; }
+.live-desk-table { width: 100%; }
+
+.live-assign-driver-rows { list-style: none; margin: 0.35rem 0 0; padding: 0; text-align: right; }
+.live-assign-driver-rows li { display: flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; padding: 0.15rem 0; }
+.live-assign-driver-rows li.is-starter { font-weight: 800; color: #7dd3fc; }
+.live-assign-starter-badge { font-size: 0.65rem; background: #0369a1; color: #fff; padding: 0.1rem 0.35rem; border-radius: 4px; }
+.live-assign-team-title { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.15rem; }
+.live-assign-names-block { flex: 1; min-width: 0; }
+
+.endurance-tools-modal { max-width: 640px; width: 95vw; }
+.endurance-admin-panel-modal { padding: 0 0 1rem; }
+
+.admin-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 12000;
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.admin-modal {
+  background: #1e293b; color: #f1f5f9; border-radius: 12px; max-height: 90vh; overflow: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4); width: 100%;
+}
+.admin-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #334155; }
+.admin-modal-header h2 { margin: 0; font-size: 1.1rem; }
+.admin-modal-close { background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
+
+.endurance-starter-panel { margin: 0.75rem 0 1rem; padding: 0.75rem; background: rgba(15,23,42,0.5); border-radius: 8px; border: 1px solid #334155; }
+.endurance-starter-team { margin-bottom: 0.65rem; }
+.endurance-starter-team strong { display: block; margin-bottom: 0.35rem; }
+.endurance-starter-option { display: flex; align-items: center; gap: 0.4rem; margin: 0.2rem 0; font-size: 0.9rem; }
+
+@media (max-width: 700px) { .sales-form-grid { grid-template-columns: 1fr; } }

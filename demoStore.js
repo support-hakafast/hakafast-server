@@ -1458,6 +1458,9 @@ function returnKart(store, kartNumber, laneId, options = {}) {
       if (ot.launchedAt) {
         row.last_stint_duration_sec = Math.round((now - ot.launchedAt) / 1000);
       }
+      if (applyPendingDriverChange(row)) {
+        enduranceRules.tickEnduranceRules(store);
+      }
     }
   }
 
@@ -1509,7 +1512,8 @@ function getAssignments(store) {
         kart_number: r.kart_number,
         driver_name: r.driver_name,
         team_name: r.team_name || null,
-        team_drivers: r.team_drivers || null,
+        team_drivers: normalizeTeamDrivers(r.team_drivers)?.map((d) => d.name) || null,
+        active_driver: r.active_driver || null,
         driver_level: r.driver_level,
         lap_count: 0,
         status: resolveAssignmentStatus(store, r, { isNextHeat: true }),
@@ -1522,7 +1526,8 @@ function getAssignments(store) {
         kart_number: r.kart_number,
         driver_name: r.driver_name,
         team_name: r.team_name || null,
-        team_drivers: r.team_drivers || null,
+        team_drivers: normalizeTeamDrivers(r.team_drivers)?.map((d) => d.name) || null,
+        active_driver: r.active_driver || null,
         driver_level: r.driver_level,
         lap_count: r.lap_count || 0,
         status: resolveAssignmentStatus(store, r, { isNextHeat: false }),
@@ -1573,18 +1578,9 @@ function getTimingData(store) {
   const sessionFastestSec = getSessionFastestLapSec(store);
   const endurance = isEnduranceMode(store);
 
-  const onTrackRows = store.currentHeat
-    .filter((r) => store.onTrack.some((k) => Number(k.kart_number) === Number(r.kart_number)))
+  return store.currentHeat
     .slice()
-    .sort(order);
-
-  const pitRows = endurance
-    ? store.currentHeat
-      .filter((r) => r.pit_entered_at && !store.onTrack.some((k) => Number(k.kart_number) === Number(r.kart_number)))
-      .slice()
-    : [];
-
-  return [...onTrackRows, ...pitRows]
+    .sort(order)
     .map((r) => {
       const ot = store.onTrack.find((k) => Number(k.kart_number) === Number(r.kart_number));
       const enriched = withResolvedLevel(store, r);
@@ -1595,11 +1591,13 @@ function getTimingData(store) {
       const base = {
         ...enriched,
         team_name: r.team_name || null,
-        team_drivers: normalizeTeamDrivers(r.team_drivers)?.map((d) => d.name) || r.team_drivers || null,
+        active_driver: r.active_driver || null,
+        team_drivers: normalizeTeamDrivers(r.team_drivers)?.map((d) => d.name) || null,
         track_position: ot?.trackPosition ?? 0,
         is_session_fastest: isSessionFastest,
         lap_times: r.lap_times || [],
         unserved_penalty_sec: r.unserved_penalty_sec || 0,
+        in_pits: Boolean(r.pit_entered_at && !ot),
       };
       if (endurance) {
         return { ...base, ...enrichEnduranceTiming(store, r, ot) };
@@ -1862,7 +1860,21 @@ function addPenalty(store, kartNumber, { seconds, reason } = {}) {
   return { success: true, unserved_penalty_sec: row.unserved_penalty_sec };
 }
 
-function setActiveDriver(store, kartNumber, driverName) {
+function applyPendingDriverChange(row) {
+  if (!row?.pending_active_driver) return false;
+  const next = row.pending_active_driver;
+  if (row.active_driver && row.active_driver !== next) {
+    row.driver_swap_count = (row.driver_swap_count || 0) + 1;
+  }
+  row.active_driver = next;
+  const drivers = normalizeTeamDrivers(row.team_drivers) || [];
+  const match = drivers.find((d) => d.name === next);
+  if (match?.transponder_id) row.transponder_id = match.transponder_id;
+  delete row.pending_active_driver;
+  return true;
+}
+
+function setActiveDriver(store, kartNumber, driverName, options = {}) {
   const row = store.currentHeat.find((r) => Number(r.kart_number) === Number(kartNumber));
   if (!row) return { success: false, error: 'not_in_heat' };
   const drivers = normalizeTeamDrivers(row.team_drivers) || [];
@@ -1871,12 +1883,19 @@ function setActiveDriver(store, kartNumber, driverName) {
     return { success: false, error: 'driver_not_on_team' };
   }
   const onTrack = store.onTrack.some((k) => Number(k.kart_number) === Number(kartNumber));
-  if (onTrack) return { success: false, error: 'driver_change_in_pits_only' };
+  if (onTrack && !options.forceInPits) {
+    row.pending_active_driver = driverName;
+    return { success: true, pending: true, pending_active_driver: driverName };
+  }
   if (row.active_driver && row.active_driver !== driverName) {
     row.driver_swap_count = (row.driver_swap_count || 0) + 1;
   }
   row.active_driver = driverName;
   row.transponder_id = match?.transponder_id || row.transponder_id || null;
+  delete row.pending_active_driver;
+  if (row.pit_entered_at && !onTrack) {
+    startStint(row, driverName);
+  }
   enduranceRules.tickEnduranceRules(store);
   return { success: true, active_driver: row.active_driver, transponder_id: row.transponder_id };
 }

@@ -14,25 +14,26 @@ function lapToSeconds(lap) {
   return Number.isNaN(value) ? Infinity : value;
 }
 
-function gapToLeader(row, ahead, heatType) {
+function gapToLeader(row, ref, heatType) {
   if (!row) return '--.---';
-  if (!ahead) return '—';
   if (heatType === 'time') {
-    const aheadBest = lapToSeconds(ahead.best_lap_time);
+    if (!ref || Number(row.kart_number) === Number(ref.kart_number)) return '—';
+    const leaderBest = lapToSeconds(ref.best_lap_time);
     const rowBest = lapToSeconds(row.best_lap_time);
-    if (aheadBest === Infinity || rowBest === Infinity) return '--.---';
-    const gap = rowBest - aheadBest;
+    if (leaderBest === Infinity || rowBest === Infinity) return '--.---';
+    const gap = rowBest - leaderBest;
     if (gap <= 0) return '—';
     return `+${gap.toFixed(3)}`;
   }
-  const aheadLaps = ahead.lap_count || 0;
+  if (!ref) return '—';
+  const aheadLaps = ref.lap_count || 0;
   const rowLaps = row.lap_count || 0;
   const lapDiff = aheadLaps - rowLaps;
   if (lapDiff >= 1) return lapDiff === 1 ? '+1 Lap' : `+${lapDiff} Laps`;
   if (lapDiff < 0) return '—';
-  const trackGap = (ahead.track_position || 0) - (row.track_position || 0);
+  const trackGap = (ref.track_position || 0) - (row.track_position || 0);
   if (trackGap <= 0.001) return '—';
-  const refLap = lapToSeconds(ahead.last_lap_time);
+  const refLap = lapToSeconds(ref.last_lap_time);
   const estSec = trackGap * (refLap !== Infinity ? refLap : 45);
   return `+${estSec.toFixed(3)}`;
 }
@@ -131,11 +132,23 @@ function testTimingDataSortAndFields(store) {
 }
 
 function testGapColumnTimeMode() {
-  const ahead = buildRow(1, 'Leader', '41.200', '40.500');
+  const leader = buildRow(1, 'Leader', '41.200', '40.500');
   const chaser = buildRow(2, 'Chaser', '42.800', '42.100');
-  const gap = gapToLeader(chaser, ahead, 'time');
-  assert(gap === '+1.600', `gap should be +1.600 (got ${gap})`);
+  const gap = gapToLeader(chaser, leader, 'time');
+  assert(gap === '+1.600', `gap should be +1.600 to leader (got ${gap})`);
   assert(gapToLeader(chaser, null, 'time') === '—', 'P1 gap should be dash');
+  assert(gapToLeader(leader, leader, 'time') === '—', 'leader gap to self should be dash');
+}
+
+function testTimeModeGapUsesLeaderNotAhead() {
+  const leader = buildRow(1, 'P1', '41.000', '41.200');
+  const second = buildRow(2, 'P2', '42.000', '42.100');
+  const third = buildRow(3, 'P3', '43.500', '43.800');
+  const leaderGap = gapToLeader(third, leader, 'time');
+  const aheadGap = gapToLeader(third, second, 'time');
+  assert(leaderGap === '+2.500', `P3 gap to leader should be +2.500 (got ${leaderGap})`);
+  assert(aheadGap === '+1.500', 'sanity: gap to P2 alone would be +1.500');
+  assert(leaderGap !== aheadGap, 'time mode must use leader, not car ahead');
 }
 
 function testSprintGapUsesTrackPosition() {
@@ -843,6 +856,7 @@ async function main() {
   };
 
   await run('gap column (time mode)', testGapColumnTimeMode);
+  await run('time mode gap to leader', testTimeModeGapUsesLeaderNotAhead);
   await run('sprint gap uses track position', testSprintGapUsesTrackPosition);
   await run('sprint gap to car ahead', testSprintGapToCarAheadNotLeader);
 

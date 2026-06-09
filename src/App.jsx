@@ -5,6 +5,9 @@ import { DialogProvider } from './i18n/DialogContext.jsx';
 import HomePage from './components/HomePage.jsx';
 import AdminPanel from './components/AdminPanel.jsx';
 import LiveTiming from './components/LiveTiming.jsx';
+import LiveDeskPage from './components/LiveDeskPage.jsx';
+import TrackQuotePage from './components/TrackQuotePage.jsx';
+import InstallGuidePage from './components/InstallGuidePage.jsx';
 import SetupWizard from './components/SetupWizard.jsx';
 import Reception from './components/Reception.jsx';
 import ResultsPage from './components/ResultsPage.jsx';
@@ -61,6 +64,9 @@ function App() {
               <Route path="/results/:heatId" element={<ResultsPage />} />
               <Route path="/live-timing" element={<LiveTiming />} />
               <Route path="/live-timing/:track" element={<LiveTiming />} />
+              <Route path="/live-desk/:track" element={<LiveDeskPage />} />
+              <Route path="/quote" element={<TrackQuotePage />} />
+              <Route path="/install-guide" element={<InstallGuidePage />} />
             </Routes>
           </LocalInstallGuard>
         </Router>

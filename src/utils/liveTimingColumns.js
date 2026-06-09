@@ -38,8 +38,6 @@ export const LAYOUT_TIMING_COLUMNS = [
   { id: 'pos', labelKey: 'pos', group: 'layout', alwaysOn: true, fixed: true },
   { id: 'kart', labelKey: 'kart', group: 'layout', alwaysOn: true, fixed: true },
   { id: 'driver', labelKey: 'driver', group: 'layout', alwaysOn: true, fixed: true },
-  { id: 'team', labelKey: 'team', group: 'layout', enduranceOnly: true },
-  { id: 'laps_fixed', labelKey: 'laps', group: 'layout', enduranceOnly: true },
 ];
 
 export const LAP_TIMING_COLUMNS = [
@@ -48,7 +46,7 @@ export const LAP_TIMING_COLUMNS = [
 ];
 
 export const OPTIONAL_TIMING_COLUMNS = [
-  { id: 'laps', labelKey: 'laps', group: 'session' },
+  { id: 'laps', labelKey: 'laps', group: 'session', alwaysOn: true },
   { id: 'second_best', labelKey: 'live_col_second_best', group: 'session' },
   { id: 'avg_lap', labelKey: 'live_col_avg_lap', group: 'session' },
   { id: 'level', labelKey: 'live_col_level', group: 'session' },
@@ -65,12 +63,21 @@ export const ALL_TIMING_COLUMNS = [
   ...OPTIONAL_TIMING_COLUMNS,
 ];
 
-export const DEFAULT_TIMING_COLUMN_ORDER = ALL_TIMING_COLUMNS.map((col) => col.id);
+/** Default order: fixed cols, then laps (always on), then lap times, then optional. */
+export const DEFAULT_TIMING_COLUMN_ORDER = [
+  ...FIXED_TIMING_COLUMN_IDS,
+  'laps',
+  'best_lap',
+  'last_lap',
+  ...OPTIONAL_TIMING_COLUMNS.filter((c) => c.id !== 'laps').map((c) => c.id),
+];
 
 const LAP_COLUMN_IDS = new Set(LAP_TIMING_COLUMNS.map((col) => col.id));
 const ALL_COLUMN_IDS = new Set([
   ...ALL_TIMING_COLUMNS.map((col) => col.id),
   'kart_driver',
+  'laps_fixed',
+  'team',
 ]);
 const LAYOUT_ALWAYS_ON = new Set(
   LAYOUT_TIMING_COLUMNS.filter((col) => col.alwaysOn).map((col) => col.id),
@@ -86,6 +93,10 @@ function migrateColumnOrderIds(raw) {
     if (id === 'kart_driver') {
       if (!migrated.includes('kart')) migrated.push('kart');
       if (!migrated.includes('driver')) migrated.push('driver');
+    } else if (id === 'laps_fixed') {
+      if (!migrated.includes('laps')) migrated.push('laps');
+    } else if (id === 'team') {
+      /* merged into rotating driver cell for endurance */
     } else if (ALL_COLUMN_IDS.has(id) && !migrated.includes(id)) {
       migrated.push(id);
     }
@@ -96,9 +107,14 @@ function migrateColumnOrderIds(raw) {
 export function normalizeTimingColumns(raw) {
   const base = { ...DEFAULT_TIMING_COLUMNS };
   if (!raw || typeof raw !== 'object') return base;
-  OPTIONAL_TIMING_COLUMNS.forEach(({ id }) => {
-    if (typeof raw[id] === 'boolean') base[id] = raw[id];
+  OPTIONAL_TIMING_COLUMNS.forEach(({ id, alwaysOn }) => {
+    if (alwaysOn) {
+      base[id] = true;
+    } else if (typeof raw[id] === 'boolean') {
+      base[id] = raw[id];
+    }
   });
+  base.laps = true;
   return base;
 }
 
@@ -115,6 +131,7 @@ function isColumnVisible(col, timingColumns, isEndurance) {
   if (col.enduranceOnly && !isEndurance) return false;
   if (col.alwaysOn || LAYOUT_ALWAYS_ON.has(col.id)) return true;
   if (LAP_COLUMN_IDS.has(col.id)) return true;
+  if (col.id === 'laps') return timingColumns?.laps !== false;
   return Boolean(timingColumns?.[col.id]);
 }
 
@@ -182,19 +199,23 @@ function trackGapSeconds(row, ahead, lapToSec) {
   return estSec;
 }
 
-/** Gap to the car directly ahead in classification (P1 shows —). */
+/** Gap to session leader by best lap (time / best-lap mode only). P1 shows —. */
+export function gapToLeaderBestLap(row, leader, lapToSecondsFn = lapToSeconds) {
+  if (!row) return '--.---';
+  if (!leader || Number(row.kart_number) === Number(leader.kart_number)) return '—';
+
+  const leaderBest = lapToSecondsFn(leader.best_lap_time);
+  const rowBest = lapToSecondsFn(row.best_lap_time);
+  if (leaderBest === Infinity || rowBest === Infinity) return '--.---';
+  const gap = rowBest - leaderBest;
+  if (gap <= 0) return '—';
+  return `+${gap.toFixed(3)}`;
+}
+
+/** Gap to the car directly ahead in classification (sprint / endurance). P1 shows —. */
 export function gapToCarAhead(row, ahead, heatType, lapToSecondsFn = lapToSeconds) {
   if (!row) return '--.---';
   if (!ahead) return '—';
-
-  if (heatType === 'time') {
-    const aheadBest = lapToSecondsFn(ahead.best_lap_time);
-    const rowBest = lapToSecondsFn(row.best_lap_time);
-    if (aheadBest === Infinity || rowBest === Infinity) return '--.---';
-    const gap = rowBest - aheadBest;
-    if (gap <= 0) return '—';
-    return `+${gap.toFixed(3)}`;
-  }
 
   const aheadLaps = ahead.lap_count || 0;
   const rowLaps = row.lap_count || 0;
@@ -215,11 +236,24 @@ export function gapToCarAhead(row, ahead, heatType, lapToSecondsFn = lapToSecond
   const estSec = trackGapSeconds(row, ahead, lapToSecondsFn);
   if (estSec != null) return `+${estSec.toFixed(3)}`;
 
+  const aheadLast = lapToSecondsFn(ahead.last_lap_time);
+  const rowLast = lapToSecondsFn(row.last_lap_time);
+  if (aheadLast !== Infinity && rowLast !== Infinity && rowLast > aheadLast + 0.001) {
+    return `+${(rowLast - aheadLast).toFixed(3)}`;
+  }
+
   return '—';
 }
 
-/** @deprecated use gapToCarAhead — kept for tests */
+/** Time mode = gap to leader; sprint/endurance = gap to car ahead. */
+export function computeTimingGap(row, { leader, ahead }, heatType, lapToSecondsFn = lapToSeconds) {
+  if (heatType === 'time') return gapToLeaderBestLap(row, leader, lapToSecondsFn);
+  return gapToCarAhead(row, ahead, heatType, lapToSecondsFn);
+}
+
+/** @deprecated use computeTimingGap or gapToLeaderBestLap */
 export function gapToLeader(row, leader, heatType, lapToSecondsFn) {
+  if (heatType === 'time') return gapToLeaderBestLap(row, leader, lapToSecondsFn);
   return gapToCarAhead(row, leader, heatType, lapToSecondsFn);
 }
 

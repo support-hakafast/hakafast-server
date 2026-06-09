@@ -7,7 +7,8 @@ import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
 import AdminSetupModal from './AdminSetupModal.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
-import LivePreviewFloat from './LivePreviewFloat.jsx';
+import EnduranceToolsModal from './EnduranceToolsModal.jsx';
+import '../assets/SalesPages.css';
 import KartCard from './KartCard.jsx';
 import { isStrongPassword } from '../utils/password.js';
 import {
@@ -74,7 +75,6 @@ const AdminPanel = () => {
 
   const [showSetup, setShowSetup] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
 
   const [allKarts, setAllKarts] = useState({});
@@ -130,6 +130,8 @@ const AdminPanel = () => {
   const [penaltySec, setPenaltySec] = useState('60');
   const [driverChangeKart, setDriverChangeKart] = useState('');
   const [driverChangeName, setDriverChangeName] = useState('');
+  const [showEnduranceModal, setShowEnduranceModal] = useState(false);
+  const [teamStarters, setTeamStarters] = useState({});
   const [nextHeatReadiness, setNextHeatReadiness] = useState(null);
   const autoFinishHandledRef = useRef(false);
   const pitsLocalEditUntilRef = useRef(0);
@@ -329,6 +331,16 @@ const AdminPanel = () => {
     () => enduranceTeams.find((team) => String(team.kart_number) === String(driverChangeKart)),
     [enduranceTeams, driverChangeKart],
   );
+
+  const enduranceQueueTeams = useMemo(() => {
+    if (heatType !== 'endurance') return [];
+    return groupQueueByTeam(driverQueue);
+  }, [driverQueue, heatType]);
+
+  const openLiveDeskWindow = useCallback(() => {
+    const url = `${window.location.origin}/live-desk/${trackSlug}?heatType=${encodeURIComponent(heatType)}`;
+    window.open(url, 'hakafast-live-desk', 'width=960,height=720,menubar=no,toolbar=no,location=no,status=no');
+  }, [trackSlug, heatType]);
 
   const moveTimingColumn = (columnId, direction) => {
     setTimingColumnOrder((prev) => moveColumnOrder(prev, columnId, direction));
@@ -792,13 +804,18 @@ const AdminPanel = () => {
     if (!complete) { showAlert(t('admin_alert_not_enough_karts')); return; }
 
     const assignments = isEndurance
-      ? teams.map((team, i) => ({
-        kart: kartSlots[i].kart,
-        lane: kartSlots[i].lane,
-        teamName: team.teamName,
-        teamDrivers: team.drivers.map((d) => d.name),
-        driver: team.drivers[0],
-      }))
+      ? teams.map((team, i) => {
+        const starterName = teamStarters[team.teamName] || team.drivers[0]?.name;
+        const starterDriver = team.drivers.find((d) => d.name === starterName) || team.drivers[0];
+        return {
+          kart: kartSlots[i].kart,
+          lane: kartSlots[i].lane,
+          teamName: team.teamName,
+          teamDrivers: team.drivers.map((d) => d.name),
+          driver: starterDriver,
+          activeDriver: starterName,
+        };
+      })
       : kartSlots.map((slot, i) => ({
         kart: slot.kart,
         lane: slot.lane,
@@ -821,6 +838,7 @@ const AdminPanel = () => {
         registered: Boolean(assign.driver.saved),
         driver_level: assign.driver.saved ? (assign.driver.level || 'Amateur') : undefined,
         assignment_order: i + 1,
+        active_driver: isEndurance ? assign.activeDriver : undefined,
       };
     });
 
@@ -1079,7 +1097,11 @@ const AdminPanel = () => {
       }, trackSlug);
       const data = await res.json();
       if (data.success) {
-        showAlert(t('admin_driver_change_done'), { variant: 'success' });
+        if (data.pending) {
+          showAlert(t('admin_driver_change_pending'), { variant: 'success' });
+        } else {
+          showAlert(t('admin_driver_change_done'), { variant: 'success' });
+        }
       } else if (data.error === 'driver_change_in_pits_only') {
         showAlert(t('admin_driver_change_pits_only'));
       } else {
@@ -1117,7 +1139,26 @@ const AdminPanel = () => {
           onFinishHeat={finishHeat}
         />
       )}
-      {showPreview && <LivePreviewFloat onClose={() => setShowPreview(false)} heatType={heatType} trackSlug={trackSlug} />}
+      {showEnduranceModal && (
+        <EnduranceToolsModal
+          onClose={() => setShowEnduranceModal(false)}
+          t={t}
+          enduranceTeams={enduranceTeams}
+          penaltyKart={penaltyKart}
+          setPenaltyKart={setPenaltyKart}
+          penaltySec={penaltySec}
+          setPenaltySec={setPenaltySec}
+          onAddPenalty={addEndurancePenalty}
+          driverChangeKart={driverChangeKart}
+          setDriverChangeKart={setDriverChangeKart}
+          driverChangeName={driverChangeName}
+          setDriverChangeName={setDriverChangeName}
+          selectedEnduranceTeam={selectedEnduranceTeam}
+          onDriverChange={changeEnduranceDriver}
+          enduranceRules={enduranceRules}
+          setEnduranceRules={setEnduranceRules}
+        />
+      )}
 
       <header className="admin-header">
         <HakafastLogo to="/" className="admin-header-logo" />
@@ -1281,6 +1322,28 @@ const AdminPanel = () => {
             )}
             <p className="level-hint">{t('admin_level_from_laps_hint')}</p>
             <h3 className="queue-heading">{t('admin_queue_title')}</h3>
+            {heatType === 'endurance' && enduranceQueueTeams.length > 0 && (
+              <div className="endurance-starter-panel">
+                <span className="field-label">{t('admin_starter_drivers')}</span>
+                <p className="timing-columns-intro">{t('admin_starter_drivers_hint')}</p>
+                {enduranceQueueTeams.map((team) => (
+                  <div key={team.teamName} className="endurance-starter-team">
+                    <strong>{team.teamName}</strong>
+                    {team.drivers.map((d) => (
+                      <label key={`${team.teamName}-${d.name}`} className="endurance-starter-option">
+                        <input
+                          type="radio"
+                          name={`starter-${team.teamName}`}
+                          checked={(teamStarters[team.teamName] || team.drivers[0]?.name) === d.name}
+                          onChange={() => setTeamStarters((prev) => ({ ...prev, [team.teamName]: d.name }))}
+                        />
+                        {d.name}
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
             <ul className="queue-list queue-list-tall">
               {driverQueue.length === 0 ? (
                 <li className="queue-empty">{t('admin_queue_empty')}</li>
@@ -1301,9 +1364,14 @@ const AdminPanel = () => {
         </section>
 
         <aside className="admin-sidebar">
-          <button type="button" className="btn-preview" onClick={() => setShowPreview((v) => !v)}>
-            {showPreview ? t('admin_preview_close') : t('admin_preview')}
+          <button type="button" className="btn-preview" onClick={openLiveDeskWindow}>
+            {t('admin_open_live_desk')}
           </button>
+          {heatType === 'endurance' && (
+            <button type="button" className="btn-muted btn-endurance-tools" onClick={() => setShowEnduranceModal(true)}>
+              {t('admin_open_endurance_tools')}
+            </button>
+          )}
 
           <div className="heat-clock-bar">
             <span className="field-label">{t('admin_heat_timer')}</span>
@@ -1457,72 +1525,6 @@ const AdminPanel = () => {
             </div>
           )}
 
-          {heatType === 'endurance' && (
-            <div className="endurance-admin-panel">
-              <span className="field-label">{t('admin_endurance_tools')}</span>
-              <div className="endurance-tool-row">
-                <input
-                  type="number"
-                  value={penaltyKart}
-                  onChange={(e) => setPenaltyKart(e.target.value)}
-                  placeholder={t('kart')}
-                />
-                <input
-                  type="number"
-                  min="1"
-                  value={penaltySec}
-                  onChange={(e) => setPenaltySec(e.target.value)}
-                  placeholder={t('admin_penalty_seconds')}
-                />
-                <button type="button" className="btn-muted" onClick={addEndurancePenalty}>
-                  {t('admin_add_penalty')}
-                </button>
-              </div>
-              <div className="endurance-tool-row">
-                <select
-                  value={driverChangeKart}
-                  onChange={(e) => {
-                    setDriverChangeKart(e.target.value);
-                    const team = enduranceTeams.find((item) => String(item.kart_number) === e.target.value);
-                    if (team?.active_driver) setDriverChangeName(team.active_driver);
-                    else if (team?.team_drivers?.[0]) setDriverChangeName(team.team_drivers[0]);
-                  }}
-                >
-                  <option value="">{t('admin_driver_change_pick_kart')}</option>
-                  {enduranceTeams.map((team) => (
-                    <option key={team.kart_number} value={team.kart_number}>
-                      #{team.kart_number} {team.team_name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={driverChangeName}
-                  onChange={(e) => setDriverChangeName(e.target.value)}
-                  disabled={!selectedEnduranceTeam}
-                >
-                  <option value="">{t('admin_driver_change_pick_driver')}</option>
-                  {(selectedEnduranceTeam?.team_drivers || []).map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-                <button type="button" className="btn-muted" onClick={changeEnduranceDriver}>
-                  {t('admin_driver_change')}
-                </button>
-              </div>
-              <p className="endurance-hint">{t('admin_endurance_hint')}</p>
-              <label className="endurance-rules-field">
-                <span className="field-label">{t('admin_endurance_rules')}</span>
-                <textarea
-                  rows={4}
-                  value={enduranceRules}
-                  onChange={(e) => setEnduranceRules(e.target.value)}
-                  placeholder={t('admin_endurance_rules_placeholder')}
-                />
-                <span className="endurance-hint">{t('admin_endurance_rules_hint')}</span>
-              </label>
-            </div>
-          )}
-
           <div className="timing-columns-bar">
             <span className="field-label">{t('admin_timing_columns')}</span>
             <p className="timing-columns-intro">{t('admin_timing_columns_hint')}</p>
@@ -1533,7 +1535,7 @@ const AdminPanel = () => {
                   <span className="timing-group-hint">{t(group.descriptionKey)}</span>
                 </div>
                 <div className="timing-columns-chips">
-                  {OPTIONAL_TIMING_COLUMNS.filter((col) => col.group === group.id).map((col) => (
+                  {OPTIONAL_TIMING_COLUMNS.filter((col) => col.group === group.id && !col.alwaysOn).map((col) => (
                     <button
                       key={col.id}
                       type="button"
