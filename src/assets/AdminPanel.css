@@ -16,11 +16,12 @@ html:has(.admin-no-scroll) body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 12px 16px;
+  padding: clamp(8px, 2vw, 16px);
   background-color: var(--dark-bg);
   font-family: system-ui, sans-serif;
   color: var(--navy);
   box-sizing: border-box;
+  min-width: 0;
 }
 
 .admin-header {
@@ -28,18 +29,72 @@ html:has(.admin-no-scroll) body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--navy);
   color: white;
-  padding: 10px 16px;
+  padding: clamp(8px, 2vw, 10px) clamp(10px, 3vw, 16px);
   border-radius: 12px;
   margin-bottom: 10px;
 }
 
-.admin-header h1 {
+.admin-header-brand {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 2vw, 12px);
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-header h1,
+.admin-header-brand h1 {
   margin: 0;
-  font-size: clamp(1rem, 2.5vw, 1.4rem);
-  flex: 1;
+  font-size: clamp(0.9rem, 2.8vw, 1.4rem);
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.admin-header .hf-logo-link {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.admin-header .hf-lang-switch.admin-header-lang {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.admin-header .hf-lang-switch.admin-header-lang .hf-lang-btn {
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+
+.admin-header .hf-lang-switch.admin-header-lang .hf-lang-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.admin-header .hf-lang-switch.admin-header-lang .hf-lang-btn.is-active {
+  background: var(--turquoise);
+  color: var(--navy);
 }
 
 .demo-workspace-badge {
@@ -76,6 +131,7 @@ html:has(.admin-no-scroll) body {
 .admin-workspace {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 50%) minmax(280px, 1fr) minmax(220px, 280px);
   gap: clamp(8px, 1vw, 14px);
@@ -84,6 +140,7 @@ html:has(.admin-no-scroll) body {
 
 .admin-pits-column {
   min-height: 0;
+  min-width: 0;
   max-width: 100%;
   display: flex;
   flex-direction: column;
@@ -92,6 +149,8 @@ html:has(.admin-no-scroll) body {
 
 .admin-drivers-column {
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -187,6 +246,8 @@ html:has(.admin-no-scroll) body {
 
 .admin-sidebar {
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1774,8 +1835,113 @@ html:has(.admin-no-scroll) body {
 }
 
 @media (max-width: 520px) {
+  .admin-dashboard.admin-no-scroll {
+    padding: 8px;
+  }
+
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .admin-header-brand {
+    flex: none;
+    width: 100%;
+  }
+
+  .admin-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    align-items: stretch;
+  }
+
+  .admin-header-logo.hf-logo-img {
+    height: 36px;
+    width: auto;
+    max-width: min(120px, 34vw);
+    object-fit: contain;
+  }
+
+  .admin-header-brand h1 {
+    font-size: clamp(0.82rem, 4.2vw, 1rem);
+  }
+
+  .demo-workspace-badge {
+    font-size: 0.65rem;
+    padding: 0.3rem 0.5rem;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-header .hf-lang-switch.admin-header-lang {
+    flex: 1 1 auto;
+    justify-content: stretch;
+    width: auto;
+    min-width: 0;
+  }
+
+  .admin-header .hf-lang-switch.admin-header-lang .hf-lang-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.35rem 0.35rem;
+    font-size: 0.68rem;
+  }
+
+  .admin-next-heat-banner {
+    margin: 0 0 8px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .admin-sidebar {
+    flex-direction: column;
+  }
+
+  .admin-sidebar .btn-preview,
+  .admin-sidebar .heat-type-bar,
+  .admin-sidebar-actions .btn-sidebar-tool {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-sidebar-actions {
+    width: 100%;
+  }
+
+  .duration-presets {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .duration-chip {
+    min-width: 0;
+    padding-inline: 4px;
+  }
+
+  .planner-row {
+    grid-template-columns: 1fr;
+  }
+
   .track-planner-modal .planner-stats-modal {
     grid-template-columns: 1fr;
+  }
+
+  .driver-column,
+  .inventory-pits-panel,
+  .heat-type-bar,
+  .heat-clock-bar {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .input-group input {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -1804,7 +1970,7 @@ html:has(.admin-no-scroll) body {
 
 @media (max-width: 1200px) {
   .admin-workspace {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto auto;
     overflow-y: auto;
   }
@@ -1814,12 +1980,13 @@ html:has(.admin-no-scroll) body {
     flex-direction: row;
     flex-wrap: wrap;
     overflow-y: visible;
+    min-width: 0;
   }
 
   .admin-sidebar .btn-preview,
   .admin-sidebar .heat-type-bar {
-    flex: 1;
-    min-width: 200px;
+    flex: 1 1 200px;
+    min-width: 0;
   }
 }
 
@@ -1837,5 +2004,12 @@ html:has(.admin-no-scroll) body {
 
   .inventory-pits-panel {
     grid-template-columns: 1fr;
+  }
+
+  .admin-pits-column,
+  .admin-drivers-column,
+  .admin-sidebar {
+    min-width: 0;
+    max-width: 100%;
   }
 }

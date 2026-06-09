@@ -9,8 +9,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-width: 280px;
-  min-height: 200px;
+  min-width: 240px;
+  min-height: 140px;
+  max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  max-height: calc(100vh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
 }
 
 .live-preview-header {
@@ -23,6 +26,18 @@
   cursor: grab;
   touch-action: none;
   user-select: none;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.live-preview-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: clamp(0.78rem, 2.5vw, 0.95rem);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .live-preview-header:active {
@@ -32,7 +47,8 @@
 .live-preview-tabs {
   display: flex;
   gap: 0.25rem;
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .live-preview-tabs button {
@@ -41,10 +57,15 @@
   color: #fff;
   padding: 0.35rem 0.55rem;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: clamp(0.65rem, 2.2vw, 0.78rem);
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
+  min-width: 0;
+  flex: 1 1 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .live-preview-tabs button.active {
@@ -59,6 +80,12 @@
   font-size: 1.4rem;
   cursor: pointer;
   line-height: 1;
+  flex-shrink: 0;
+  min-width: 2rem;
+  min-height: 2rem;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
 }
 
 .live-preview-body {
@@ -77,7 +104,8 @@
 .live-preview-float .live-content-panel {
   flex: 1;
   min-height: 0;
-  overflow-x: hidden;
+  min-width: 0;
+  overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -170,4 +198,114 @@
   cursor: nwse-resize;
   background: linear-gradient(135deg, transparent 50%, #40e0d0 50%);
   border-bottom-right-radius: 8px;
+  touch-action: none;
+}
+
+/* Tablet portrait + large phones */
+@media (max-width: 768px) {
+  .live-preview-float {
+    border-width: 2px;
+    border-radius: 10px;
+  }
+
+  .live-preview-float--compact .live-preview-header {
+    padding: 0.5rem 0.55rem;
+    gap: 6px;
+  }
+
+  .live-preview-float--compact .live-preview-title {
+    flex: 1 1 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .live-preview-float--compact .live-preview-tabs {
+    flex: 1 1 100%;
+    order: 3;
+  }
+
+  .live-preview-float--compact .live-preview-close {
+    order: 2;
+    margin-inline-start: auto;
+  }
+
+  .live-preview-float--compact .live-preview-body {
+    padding: 0.35rem;
+  }
+
+  .live-preview-float--compact .live-display .live-timing-table {
+    font-size: 0.82rem;
+    min-width: max(100%, 300px);
+  }
+
+  .live-preview-float--compact .live-display .live-timing-table th,
+  .live-preview-float--compact .live-display .live-timing-table td {
+    padding: 0.28rem 0.25rem;
+  }
+
+  .live-preview-float--compact .live-display .live-assign-kart-num,
+  .live-preview-float--compact .live-display .live-kart-cell .live-assign-kart-num {
+    min-width: 2.1rem;
+    min-height: 2.1rem;
+    font-size: 1.1rem;
+  }
+
+  .live-preview-float--compact .live-display .live-timing-driver-name,
+  .live-preview-float--compact .live-display .live-assign-name {
+    font-size: 0.95rem;
+  }
+
+  .live-preview-float--compact .live-display .live-assign-card {
+    padding: 0.5rem 0.55rem;
+  }
+
+  .live-preview-resize {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Small phones (portrait) */
+@media (max-width: 520px) {
+  .live-preview-float {
+    min-width: 0;
+  }
+
+  .live-preview-float--compact .live-display .live-timing-table {
+    font-size: 0.75rem;
+    min-width: max(100%, 280px);
+  }
+
+  .live-preview-float--compact .live-display .live-timing-driver-name,
+  .live-preview-float--compact .live-display .live-assign-name {
+    font-size: 0.88rem;
+  }
+
+  .live-preview-float--compact .live-preview-heat {
+    font-size: 0.68rem;
+    margin-top: 0.35rem;
+  }
+
+  .live-preview-empty {
+    padding: 1rem 0.5rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .live-preview-float .live-preview-header {
+    padding: 0.35rem 0.5rem;
+  }
+
+  .live-preview-float .live-preview-title {
+    font-size: 0.72rem;
+  }
+
+  .live-preview-float .live-preview-body {
+    padding: 0.25rem;
+  }
+
+  .live-preview-float .live-display .live-timing-table {
+    font-size: 0.72rem;
+  }
 }

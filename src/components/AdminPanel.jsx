@@ -1204,14 +1204,18 @@ const AdminPanel = () => {
       )}
 
       <header className="admin-header">
-        <HakafastLogo to="/" className="admin-header-logo" />
-        <h1>{t('admin_main_title')}</h1>
-        {isolated && (
-          <span className="demo-workspace-badge" title={getWorkspaceLabel(trackSlug)}>
-            {t('demo_workspace_badge', { id: getWorkspaceLabel(trackSlug) })}
-          </span>
-        )}
-        <LanguageSwitcher />
+        <div className="admin-header-brand">
+          <HakafastLogo to="/" className="admin-header-logo" />
+          <h1>{t('admin_main_title')}</h1>
+        </div>
+        <div className="admin-header-actions">
+          {isolated && (
+            <span className="demo-workspace-badge" title={getWorkspaceLabel(trackSlug)}>
+              {t('demo_workspace_badge', { id: getWorkspaceLabel(trackSlug) })}
+            </span>
+          )}
+          <LanguageSwitcher className="admin-header-lang" />
+        </div>
       </header>
 
       {nextHeatReadiness?.total > 0 && (

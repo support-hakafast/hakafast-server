@@ -6,7 +6,7 @@ import { apiFetch } from '../utils/apiClient.js';
 import { resolveTrackId } from '../utils/workspace.js';
 import { useLiveTimingSocket } from '../hooks/useLiveTimingSocket.js';
 import { useRowFlash } from '../hooks/useRowFlash.js';
-import { useDraggableResizable } from '../hooks/useDraggableResizable.js';
+import { useDraggableResizable, getPreviewWindowDefaults } from '../hooks/useDraggableResizable.js';
 import LiveTimingTable from './LiveTimingTable.jsx';
 import LiveAssignmentsBoard from './LiveAssignmentsBoard.jsx';
 import { normalizeTimingColumns, normalizeTimingColumnOrder } from '../utils/liveTimingColumns.js';
@@ -16,13 +16,19 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
   const [mode, setMode] = React.useState('assignments');
   const trackId = resolveTrackId(trackSlug);
 
-  const defaultTop = typeof window !== 'undefined' ? Math.max(80, window.innerHeight - 420) : 200;
-  const { rect, onDragStart, onResizeStart } = useDraggableResizable('hf_preview_window', {
-    left: 20,
-    top: defaultTop,
-    width: 420,
-    height: 340,
-  });
+  const [compact, setCompact] = React.useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 768,
+  );
+
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const sync = () => setCompact(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const { rect, onDragStart, onResizeStart } = useDraggableResizable('hf_preview_window', getPreviewWindowDefaults());
 
   const fetchFallback = useCallback(async () => {
     const res = await apiFetch(`/live-timing-data/${trackId}?mode=${mode}`, {}, trackSlug);
@@ -70,11 +76,11 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
 
   return (
     <div
-      className="live-preview-float"
+      className={`live-preview-float${compact ? ' live-preview-float--compact' : ''}`}
       style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
     >
       <div className="live-preview-header" onPointerDown={onDragStart}>
-        <strong>{t('admin_preview_title')}</strong>
+        <strong className="live-preview-title">{t('admin_preview_title')}</strong>
         <div className="live-preview-tabs" onPointerDown={(e) => e.stopPropagation()}>
           <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => setMode('assignments')}>
             {t('live_mode_assignments')}
