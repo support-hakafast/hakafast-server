@@ -70,7 +70,7 @@ const HomePage = () => {
             <a href="#features">{t('nav_features')}</a>
             <a href="#live-tracks">{t('nav_live')}</a>
             <Link to="/quote">{t('nav_quote')}</Link>
-            <Link to="/install-guide">{t('nav_install_guide')}</Link>
+            <Link to="/admin/kart-demo">{t('nav_demo')}</Link>
             <a href="#about">{t('nav_about')}</a>
             <a href="#contact">{t('nav_contact')}</a>
           </nav>
