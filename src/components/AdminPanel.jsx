@@ -8,6 +8,7 @@ import HakafastLogo from './HakafastLogo.jsx';
 import AdminSetupModal from './AdminSetupModal.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
+import TrackPlannerModal from './TrackPlannerModal.jsx';
 import '../assets/SalesPages.css';
 import KartCard from './KartCard.jsx';
 import { isStrongPassword } from '../utils/password.js';
@@ -131,6 +132,7 @@ const AdminPanel = () => {
   const [driverChangeKart, setDriverChangeKart] = useState('');
   const [driverChangeName, setDriverChangeName] = useState('');
   const [showEnduranceModal, setShowEnduranceModal] = useState(false);
+  const [showTrackPlannerModal, setShowTrackPlannerModal] = useState(false);
   const [teamStarters, setTeamStarters] = useState({});
   const [nextHeatReadiness, setNextHeatReadiness] = useState(null);
   const autoFinishHandledRef = useRef(false);
@@ -339,7 +341,7 @@ const AdminPanel = () => {
 
   const openLiveDeskWindow = useCallback(() => {
     const url = `${window.location.origin}/live-desk/${trackSlug}?heatType=${encodeURIComponent(heatType)}`;
-    window.open(url, 'hakafast-live-desk', 'width=960,height=720,menubar=no,toolbar=no,location=no,status=no');
+    window.open(url, 'hakafast-live-desk', 'width=1200,height=820,menubar=no,toolbar=no,location=no,status=no');
   }, [trackSlug, heatType]);
 
   const moveTimingColumn = (columnId, direction) => {
@@ -1139,6 +1141,30 @@ const AdminPanel = () => {
           onFinishHeat={finishHeat}
         />
       )}
+      {showTrackPlannerModal && (
+        <TrackPlannerModal
+          onClose={() => setShowTrackPlannerModal(false)}
+          t={t}
+          trackDisplayName={trackDisplayName}
+          setTrackDisplayName={setTrackDisplayName}
+          openingTime={openingTime}
+          setOpeningTime={setOpeningTime}
+          closingTime={closingTime}
+          setClosingTime={setClosingTime}
+          sessionDurationPlan={sessionDurationPlan}
+          setSessionDurationPlan={setSessionDurationPlan}
+          turnoverMin={turnoverMin}
+          setTurnoverMin={setTurnoverMin}
+          competitiveBlockMin={competitiveBlockMin}
+          setCompetitiveBlockMin={setCompetitiveBlockMin}
+          pricePerSession={pricePerSession}
+          setPricePerSession={setPricePerSession}
+          competitiveHeatsPlanned={competitiveHeatsPlanned}
+          setCompetitiveHeatsPlanned={setCompetitiveHeatsPlanned}
+          dayPlan={dayPlan}
+          onApplySessionDuration={() => setHeatDuration(String(sessionDurationPlan))}
+        />
+      )}
       {showEnduranceModal && (
         <EnduranceToolsModal
           onClose={() => setShowEnduranceModal(false)}
@@ -1364,14 +1390,19 @@ const AdminPanel = () => {
         </section>
 
         <aside className="admin-sidebar">
-          <button type="button" className="btn-preview" onClick={openLiveDeskWindow}>
-            {t('admin_open_live_desk')}
-          </button>
-          {heatType === 'endurance' && (
-            <button type="button" className="btn-muted btn-endurance-tools" onClick={() => setShowEnduranceModal(true)}>
-              {t('admin_open_endurance_tools')}
+          <div className="admin-sidebar-actions">
+            <button type="button" className="btn-preview" onClick={openLiveDeskWindow}>
+              {t('admin_open_live_desk')}
             </button>
-          )}
+            <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => setShowTrackPlannerModal(true)}>
+              {t('admin_track_planner')}
+            </button>
+            {heatType === 'endurance' && (
+              <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => setShowEnduranceModal(true)}>
+                {t('admin_open_endurance_tools')}
+              </button>
+            )}
+          </div>
 
           <div className="heat-clock-bar">
             <span className="field-label">{t('admin_heat_timer')}</span>
@@ -1385,67 +1416,6 @@ const AdminPanel = () => {
             {heatNumber ? (
               <span className="admin-heat-number">{t('live_heat_number', { n: heatNumber })}</span>
             ) : null}
-          </div>
-
-          <div className="track-planner-panel">
-            <span className="field-label">{t('admin_track_planner')}</span>
-            <p className="timing-columns-intro">{t('admin_track_planner_hint')}</p>
-            <label className="planner-field">
-              <span>{t('admin_track_display_name')}</span>
-              <input type="text" value={trackDisplayName} onChange={(e) => setTrackDisplayName(e.target.value)} />
-            </label>
-            <div className="planner-row">
-              <label className="planner-field">
-                <span>{t('admin_opening_time')}</span>
-                <input type="time" value={openingTime} onChange={(e) => setOpeningTime(e.target.value)} />
-              </label>
-              <label className="planner-field">
-                <span>{t('admin_closing_time')}</span>
-                <input type="time" value={closingTime} onChange={(e) => setClosingTime(e.target.value)} />
-              </label>
-            </div>
-            <div className="planner-row">
-              <label className="planner-field">
-                <span>{t('admin_session_duration_plan')}</span>
-                <input type="number" min="1" value={sessionDurationPlan} onChange={(e) => setSessionDurationPlan(e.target.value)} />
-              </label>
-              <label className="planner-field">
-                <span>{t('admin_turnover_min')}</span>
-                <input type="number" min="0" value={turnoverMin} onChange={(e) => setTurnoverMin(e.target.value)} />
-              </label>
-            </div>
-            <div className="planner-row">
-              <label className="planner-field">
-                <span>{t('admin_competitive_block_min')}</span>
-                <input type="number" min="1" value={competitiveBlockMin} onChange={(e) => setCompetitiveBlockMin(e.target.value)} />
-              </label>
-              <label className="planner-field">
-                <span>{t('admin_price_per_session')}</span>
-                <input type="number" min="0" value={pricePerSession} onChange={(e) => setPricePerSession(e.target.value)} />
-              </label>
-            </div>
-            <label className="planner-field">
-              <span>{t('admin_competitive_heats_planned')}</span>
-              <input
-                type="number"
-                min="0"
-                max="20"
-                value={competitiveHeatsPlanned}
-                onChange={(e) => setCompetitiveHeatsPlanned(e.target.value)}
-              />
-            </label>
-            <div className="planner-stats">
-              <div><strong>{dayPlan.maxSessionHeats}</strong> {t('admin_plan_max_heats')}</div>
-              <div><strong>{dayPlan.maxSessionHeatsAfterCompetitive}</strong> {t('admin_plan_after_competitive')}</div>
-              <div><strong>{dayPlan.estimatedRevenueAfterCompetitive}</strong> {t('admin_plan_revenue')}</div>
-            </div>
-            <button
-              type="button"
-              className="btn-muted planner-apply-btn"
-              onClick={() => setHeatDuration(String(sessionDurationPlan))}
-            >
-              {t('admin_apply_session_duration')}
-            </button>
           </div>
 
           <div className="heat-type-bar">

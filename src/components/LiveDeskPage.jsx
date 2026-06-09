@@ -80,11 +80,19 @@ export default function LiveDeskPage() {
     return t('heat_time');
   }, [effectiveHeatType, t]);
 
+  const closeWindow = () => {
+    window.close();
+  };
+
   return (
     <div className="live-desk-page">
       <header className="live-desk-header">
-        <strong>{t('admin_preview_title')}</strong>
-        <div className="live-preview-tabs">
+        <div className="live-desk-header-start">
+          <strong className="live-desk-title">{t('admin_preview_title')}</strong>
+          <span className="live-desk-track">{trackSlug}</span>
+          <span className="live-desk-heat-badge">{heatLabel}</span>
+        </div>
+        <div className="live-preview-tabs live-desk-tabs">
           <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => setMode('assignments')}>
             {t('live_mode_assignments')}
           </button>
@@ -92,10 +100,16 @@ export default function LiveDeskPage() {
             {t('live_mode_timing')}
           </button>
         </div>
+        <button type="button" className="live-desk-close" onClick={closeWindow} title={t('live_desk_close')}>
+          ×
+        </button>
       </header>
       <main className="live-desk-body-inner live-display theme-dark">
         {rows.length === 0 ? (
-          <p className="live-preview-empty">{t('live_waiting')}</p>
+          <div className="live-desk-empty">
+            <span className="live-desk-empty-icon" aria-hidden>⏱</span>
+            <p>{t('live_waiting')}</p>
+          </div>
         ) : mode === 'assignments' ? (
           <LiveAssignmentsBoard
             t={t}
@@ -116,7 +130,6 @@ export default function LiveDeskPage() {
             tableClassName="live-timing-table live-timing-dense live-desk-table"
           />
         )}
-        <p className="live-preview-heat">{heatLabel}</p>
       </main>
     </div>
   );

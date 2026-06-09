@@ -24,8 +24,92 @@
 
 .live-desk-body { margin: 0; overflow: hidden; background: #0a1628; }
 .live-desk-page { min-height: 100vh; display: flex; flex-direction: column; background: #0a1628; color: #fff; direction: rtl; }
-.live-desk-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: #111d33; border-bottom: 1px solid #2a3f5f; }
+.live-desk-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 0.65rem 1rem;
+  background: linear-gradient(180deg, #152238 0%, #111d33 100%);
+  border-bottom: 1px solid #2a3f5f;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+.live-desk-header-start {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.live-desk-title { font-size: 1rem; color: #f8fafc; }
+.live-desk-track {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #334155;
+}
+.live-desk-heat-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #7dd3fc;
+  background: rgba(3, 105, 161, 0.25);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+.live-desk-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+.live-desk-tabs button {
+  padding: 0.4rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.live-desk-tabs button.active {
+  background: #0ea5e9;
+  color: #fff;
+}
+.live-desk-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #475569;
+  background: rgba(15, 23, 42, 0.5);
+  color: #e2e8f0;
+  border-radius: 8px;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.live-desk-close:hover {
+  background: #334155;
+  border-color: #64748b;
+}
 .live-desk-body-inner { flex: 1; overflow: auto; padding: 0.75rem; }
+.live-desk-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  color: #64748b;
+  gap: 0.75rem;
+}
+.live-desk-empty-icon { font-size: 2.5rem; opacity: 0.5; }
+.live-desk-empty p { margin: 0; font-size: 1rem; }
 .live-desk-table { width: 100%; }
 
 .live-assign-driver-rows { list-style: none; margin: 0.35rem 0 0; padding: 0; text-align: right; }

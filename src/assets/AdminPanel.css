@@ -1490,6 +1490,163 @@ html:has(.admin-no-scroll) body {
   width: 100%;
 }
 
+.admin-sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-sidebar-tool {
+  width: 100%;
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-modal-header-light {
+  background: linear-gradient(135deg, #f0f7ff 0%, #fff 100%);
+  margin: -24px -24px 0;
+  padding: 20px 24px 16px;
+  border-radius: 14px 14px 0 0;
+  border-bottom: 1px solid #dbeafe;
+}
+
+.admin-modal-header-light h2 {
+  margin: 0 0 4px;
+  color: var(--navy);
+  font-size: 1.15rem;
+}
+
+.admin-modal-subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.admin-modal-close {
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--navy);
+  flex-shrink: 0;
+}
+
+.admin-modal-close:hover {
+  background: #e2e8f0;
+}
+
+.admin-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.track-planner-modal {
+  width: min(540px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+.track-planner-modal .admin-modal-header-light,
+.admin-setup-modal .admin-modal-header-light {
+  margin: 0;
+}
+
+.track-planner-modal .track-planner-panel-modal {
+  padding: 16px 24px;
+  border: none;
+}
+
+.track-planner-modal .planner-stats-modal {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: transparent;
+  padding: 0;
+}
+
+.planner-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.planner-stat-card strong {
+  font-size: 1.25rem;
+  color: var(--navy);
+}
+
+.planner-stat-card span {
+  font-size: 0.68rem;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+.planner-stat-revenue strong {
+  color: #059669;
+}
+
+.admin-setup-overlay {
+  z-index: 6000;
+}
+
+.admin-setup-modal {
+  width: min(480px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-setup-header {
+  text-align: center;
+  flex-direction: column;
+  align-items: center;
+}
+
+.admin-setup-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.admin-setup-body {
+  padding: 16px 24px;
+}
+
+.admin-setup-submit {
+  width: 100%;
+}
+
+.admin-setup-security-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 520px) {
+  .track-planner-modal .planner-stats-modal {
+    grid-template-columns: 1fr;
+  }
+}
+
 .heat-mode-hint {
   margin: 0;
   font-size: 0.72rem;
