@@ -54,6 +54,7 @@
   --live-row-alt: rgba(255, 255, 255, 0.03);
   --live-row-hover: rgba(64, 224, 208, 0.08);
   --live-th-bg: rgba(64, 224, 208, 0.15);
+  --live-driver-color: #fff;
 }
 
 .live-timing.theme-dark .live-display .live-timing-table,
@@ -713,11 +714,11 @@
 .live-timing-driver-name {
   display: block;
   font-size: clamp(1.45rem, 4.5vw, 2.15rem);
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1.15;
   letter-spacing: 0.015em;
   word-break: break-word;
-  color: var(--hf-navy, #000080);
+  color: var(--live-driver-color, var(--hf-navy, #000080));
 }
 
 .live-kart-cell {
@@ -1053,9 +1054,9 @@
 }
 
 .live-timing-dense .live-timing-driver-name {
-  font-size: clamp(0.88rem, 2.1vh, 1.15rem);
+  font-size: clamp(0.72rem, 1.65vh, 0.92rem);
   font-weight: 900;
-  line-height: 1.12;
+  line-height: 1;
 }
 
 .live-timing-dense .live-pos {

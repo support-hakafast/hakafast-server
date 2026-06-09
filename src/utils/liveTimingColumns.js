@@ -205,6 +205,19 @@ export function isPersonalBestLap(row) {
   return last !== Infinity && best !== Infinity && last === best;
 }
 
+/** True when this row holds the single fastest best lap in the current heat. */
+export function isHeatFastestBestLap(row, rows, lapToSecondsFn = lapToSeconds) {
+  if (!row?.best_lap_time || !rows?.length) return false;
+  const rowSec = lapToSecondsFn(row.best_lap_time);
+  if (rowSec === Infinity) return false;
+  let minSec = Infinity;
+  for (const r of rows) {
+    const sec = lapToSecondsFn(r.best_lap_time);
+    if (sec !== Infinity && sec < minSec) minSec = sec;
+  }
+  return rowSec === minSec;
+}
+
 function formatLapGap(count) {
   if (count === 1) return '+1 Lap';
   return `+${count} Laps`;

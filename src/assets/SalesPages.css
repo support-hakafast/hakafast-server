@@ -149,6 +149,11 @@
   padding: 0.75rem;
   -webkit-overflow-scrolling: touch;
 }
+
+.live-desk-body-inner .live-timing-driver-name {
+  color: #fff;
+  font-weight: 900;
+}
 .live-desk-empty {
   display: flex;
   flex-direction: column;

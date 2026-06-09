@@ -3,6 +3,7 @@ import {
   getOrderedTimingColumns,
   formatLapCell,
   computeTimingGap,
+  isHeatFastestBestLap,
   isPersonalBestLap,
   lapToSeconds,
 } from '../utils/liveTimingColumns.js';
@@ -19,11 +20,12 @@ function EnduranceDriverCell({ row, t }) {
   );
 }
 
-function renderLapCell(col, row) {
+function renderLapCell(col, row, rows) {
   const pbCrossing = isPersonalBestLap(row);
   if (col.id === 'best_lap') {
+    const heatFastest = isHeatFastestBestLap(row, rows);
     return (
-      <td key={col.id} className={`live-col-lap${row.best_lap_time ? ' live-best-pb' : ''}`}>
+      <td key={col.id} className={`live-col-lap${heatFastest ? ' live-best-pb' : ''}`}>
         {formatLapCell(row.best_lap_time)}
       </td>
     );
@@ -148,9 +150,9 @@ function renderColumnHeader(col, t, heatType) {
   );
 }
 
-function renderColumnCell(col, row, gapRefs, heatType, t) {
+function renderColumnCell(col, row, gapRefs, heatType, t, rows) {
   if (col.id === 'best_lap' || col.id === 'last_lap') {
-    return renderLapCell(col, row);
+    return renderLapCell(col, row, rows);
   }
   return renderOptionalCell(col, row, gapRefs, heatType, t);
 }
@@ -195,7 +197,7 @@ export default function LiveTimingTable({
                 if (col.group === 'layout') {
                   return renderLayoutCell(col, row, index, t, isEndurance);
                 }
-                return renderColumnCell(col, row, gapRefs, heatType, t);
+                return renderColumnCell(col, row, gapRefs, heatType, t, rows);
               })}
             </tr>
           );
