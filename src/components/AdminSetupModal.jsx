@@ -46,7 +46,7 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
 
   return (
     <div className="admin-modal-overlay admin-setup-overlay" role="dialog" aria-modal="true">
-      <div className="admin-modal admin-modal-wide admin-setup-modal">
+      <div className="admin-modal admin-modal-wide admin-modal-light admin-setup-modal">
         <header className="admin-modal-header admin-modal-header-light admin-setup-header">
           <div>
             <span className="admin-setup-icon" aria-hidden>🏁</span>

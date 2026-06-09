@@ -9,6 +9,7 @@ import AdminSetupModal from './AdminSetupModal.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
+import LivePreviewFloat from './LivePreviewFloat.jsx';
 import '../assets/SalesPages.css';
 import KartCard from './KartCard.jsx';
 import { isStrongPassword } from '../utils/password.js';
@@ -133,6 +134,7 @@ const AdminPanel = () => {
   const [driverChangeName, setDriverChangeName] = useState('');
   const [showEnduranceModal, setShowEnduranceModal] = useState(false);
   const [showTrackPlannerModal, setShowTrackPlannerModal] = useState(false);
+  const [showLivePreview, setShowLivePreview] = useState(false);
   const [teamStarters, setTeamStarters] = useState({});
   const [nextHeatReadiness, setNextHeatReadiness] = useState(null);
   const autoFinishHandledRef = useRef(false);
@@ -338,11 +340,6 @@ const AdminPanel = () => {
     if (heatType !== 'endurance') return [];
     return groupQueueByTeam(driverQueue);
   }, [driverQueue, heatType]);
-
-  const openLiveDeskWindow = useCallback(() => {
-    const url = `${window.location.origin}/live-desk/${trackSlug}?heatType=${encodeURIComponent(heatType)}`;
-    window.open(url, 'hakafast-live-desk', 'width=1200,height=820,menubar=no,toolbar=no,location=no,status=no');
-  }, [trackSlug, heatType]);
 
   const moveTimingColumn = (columnId, direction) => {
     setTimingColumnOrder((prev) => moveColumnOrder(prev, columnId, direction));
@@ -801,7 +798,8 @@ const AdminPanel = () => {
       ? !heatClock.cooldownPhase && !heatClock.draining
       : Boolean(heatClock.startedAt && heatClock.running && !heatClock.cooldownPhase);
     const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount, {
-      onTrackKarts: sessionActive ? onTrack.map((k) => k.kart_number) : [],
+      onTrackKarts: sessionActive ? onTrack : [],
+      pendingOnTrackSlots: sessionActive,
     });
     if (!complete) { showAlert(t('admin_alert_not_enough_karts')); return; }
 
@@ -831,7 +829,8 @@ const AdminPanel = () => {
         ? assign.teamDrivers.join(' · ')
         : assign.driver.name;
       return {
-        kart_number: assign.kart,
+        kart_number: slot.pendingFromTrack ? null : slot.kart,
+        kart_pending: Boolean(slot.pendingFromTrack),
         driver_name: driverLabel,
         team_name: assign.teamName,
         team_drivers: assign.teamDrivers,
@@ -872,7 +871,9 @@ const AdminPanel = () => {
         return;
       }
 
-      const heatKarts = new Set(assignments.map((a) => Number(a.kart)));
+      const heatKarts = new Set(
+        kartSlots.filter((s) => s.kart != null).map((s) => Number(s.kart)),
+      );
       setAssignedHeatKarts(heatKarts);
       if (typeof data.heatNumber === 'number') setHeatNumber(data.heatNumber);
       if (data.prepared) {
@@ -1141,6 +1142,13 @@ const AdminPanel = () => {
           onFinishHeat={finishHeat}
         />
       )}
+      {showLivePreview && (
+        <LivePreviewFloat
+          trackSlug={trackSlug}
+          heatType={heatType}
+          onClose={() => setShowLivePreview(false)}
+        />
+      )}
       {showTrackPlannerModal && (
         <TrackPlannerModal
           onClose={() => setShowTrackPlannerModal(false)}
@@ -1391,8 +1399,12 @@ const AdminPanel = () => {
 
         <aside className="admin-sidebar">
           <div className="admin-sidebar-actions">
-            <button type="button" className="btn-preview" onClick={openLiveDeskWindow}>
-              {t('admin_open_live_desk')}
+            <button
+              type="button"
+              className="btn-preview"
+              onClick={() => setShowLivePreview((open) => !open)}
+            >
+              {showLivePreview ? t('admin_preview_close') : t('admin_preview')}
             </button>
             <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => setShowTrackPlannerModal(true)}>
               {t('admin_track_planner')}

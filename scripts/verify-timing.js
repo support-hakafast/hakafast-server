@@ -330,8 +330,8 @@ function testCooldownReturnsNonNextHeatKarts() {
     { kart_number: 1, driver_name: 'A2', driver_level: 'Amateur', lap_count: 0, lap_times: [] },
   ];
   store.onTrack = [
-    { kart_number: 1, launchedAt: startedAt, lastLapAt: Date.now() - 45000, simulatedLaps: 2 },
-    { kart_number: 2, launchedAt: startedAt, lastLapAt: Date.now() - 45000, simulatedLaps: 2, originLaneId: 1 },
+    { kart_number: 1, launchedAt: startedAt, lastLapAt: Date.now() - 5000, simulatedLaps: 2 },
+    { kart_number: 2, launchedAt: startedAt, lastLapAt: Date.now() - 5000, simulatedLaps: 2, originLaneId: 1 },
   ];
   store.pitLines[1].karts = [];
 
@@ -643,6 +643,87 @@ async function testOnTrackKartPool() {
   assert(fromTrack === 3, `expected 3 on-track karts, got ${fromTrack}`);
 }
 
+async function testPitLaneAssignmentDemo() {
+  const { pickKartsForAssignment } = await import('../src/utils/adminHelpers.js');
+  const lines = {
+    1: { active: true, karts: [2, 7, 4, 9] },
+    2: { active: true, karts: [1, 3, 5, 10] },
+  };
+  const laneKeys = ['1', '2'];
+
+  const heat1 = pickKartsForAssignment(JSON.parse(JSON.stringify(lines)), laneKeys, 6);
+  assert(heat1.complete, 'heat1 should assign 6 drivers');
+  const h1karts = heat1.assigned.map((a) => a.kart).sort((a, b) => a - b);
+  assert(
+    JSON.stringify(h1karts) === JSON.stringify([1, 2, 3, 4, 5, 7]),
+    `heat1 expected [1,2,3,4,5,7], got [${h1karts}]`,
+  );
+
+  const linesAfter = {
+    1: { active: true, karts: [9] },
+    2: { active: true, karts: [10] },
+  };
+  const onTrack = [1, 2, 3, 4, 5, 7].map((k) => ({
+    kart_number: k,
+    cooldownLapPending: k <= 2,
+    lastLapAt: k * 1000,
+  }));
+  const heat2 = pickKartsForAssignment(JSON.parse(JSON.stringify(linesAfter)), laneKeys, 4, {
+    onTrackKarts: onTrack,
+    pendingOnTrackSlots: true,
+  });
+  assert(heat2.complete, 'heat2 should assign 4 drivers');
+  assert(heat2.assigned[0].kart === 9 && heat2.assigned[1].kart === 10, 'first two karts from pit lanes');
+  assert(
+    heat2.assigned.filter((a) => a.pendingFromTrack).length === 2,
+    'remaining two drivers await pit entry order',
+  );
+
+  const wsId = 'verify-pit-demo';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.pitLines = {
+    1: { active: true, karts: [9] },
+    2: { active: true, karts: [10] },
+  };
+  store.currentHeat = [1, 2, 3, 4, 5, 7].map((k) => ({
+    kart_number: k,
+    driver_name: `D${k}`,
+    lap_count: 1,
+    lap_times: ['45.000'],
+  }));
+  store.onTrack = [1, 2, 3, 4, 5, 7].map((k) => ({
+    kart_number: k,
+    originLaneId: k % 2 === 0 ? 2 : 1,
+    launchedAt: Date.now() - 60000,
+    lastLapAt: Date.now() - k * 5000,
+  }));
+  store.heatRuntime.startedAt = Date.now() - 60000;
+  store.heatSettings = { type: 'time', duration: 10, exportCsv: true, exportPdf: false };
+
+  demoStore.assignHeatBatch(store, [
+    { kart_number: 9, driver_name: 'N1', assignment_order: 1 },
+    { kart_number: 10, driver_name: 'N2', assignment_order: 2 },
+    { kart_number: null, driver_name: 'N3', assignment_order: 3, kart_pending: true },
+    { kart_number: null, driver_name: 'N4', assignment_order: 4, kart_pending: true },
+  ], { type: 'time', duration: 10 });
+
+  assert(store.nextHeat.length === 4, 'next heat should be prepared');
+  demoStore.returnKart(store, 1, 1);
+  demoStore.returnKart(store, 2, 2);
+  const assignedFromTrack = store.nextHeat.filter((r) => !r.kart_pending);
+  assert(assignedFromTrack.some((r) => Number(r.kart_number) === 1), 'first pit entry assigns kart 1');
+  assert(assignedFromTrack.some((r) => Number(r.kart_number) === 2), 'second pit entry assigns kart 2');
+  assert(
+    store.pitLines[1].karts[0] === 1 || store.pitLines[2].karts[0] === 2,
+    'returned next-heat karts should move to pit exit',
+  );
+
+  demoStore.returnKart(store, 3, 1);
+  assert(!store.nextHeat.some((r) => Number(r.kart_number) === 3), 'extra karts queue for later heats');
+  assert(store.pitLines[1].karts.includes(3), 'non-selected kart waits in pit lane');
+}
+
 function testAvgLapFromLapTimes() {
   const avg = demoStore.computeAvgLapFromTimes(['46.000', '44.000', '45.000']);
   assert(avg === '45.000', `avg should be mean of laps (got ${avg})`);
@@ -867,6 +948,7 @@ async function main() {
   await run('session fastest flag', () => testSessionFastestFlag(store));
   await run('simulation catch-up laps', testSimulationCatchUp);
   await run('next-heat uses on-track karts', testOnTrackKartPool);
+  await run('pit lane demo assignment flow', testPitLaneAssignmentDemo);
   await run('retire does not stop heat clock', () => testRetireDoesNotStopClock());
   await run('next-heat kart stays on track after finish', () => testHeatDrainBlocksNextLaunch());
   await run('finish returns non-next karts to pits', () => testReturnNonNextHeatKartsOnFinish());

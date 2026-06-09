@@ -54,7 +54,7 @@ export default function AdvancedSettingsModal({
 
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
-      <div className="admin-modal admin-modal-wide" onClick={(e) => e.stopPropagation()}>
+      <div className="admin-modal admin-modal-wide admin-modal-light admin-advanced-modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="modal-close" onClick={onClose}>×</button>
         <h2>{t('admin_advanced_settings')}</h2>
 

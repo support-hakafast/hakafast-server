@@ -143,10 +143,48 @@ export function groupQueueByTeam(queue) {
   return teams;
 }
 
+/** Sort on-track karts by expected pit entry order (cooldown first, then earliest last crossing). */
+export function orderOnTrackKartsForPitEntry(onTrackList = []) {
+  const entries = onTrackList.map((item) => {
+    if (item != null && typeof item === 'object') {
+      return {
+        kart: Number(item.kart_number ?? item.kart),
+        cooldownLapPending: Boolean(item.cooldownLapPending),
+        lastLapAt: Number(item.lastLapAt) || 0,
+        launchedAt: Number(item.launchedAt) || 0,
+      };
+    }
+    return {
+      kart: Number(item),
+      cooldownLapPending: false,
+      lastLapAt: 0,
+      launchedAt: 0,
+    };
+  }).filter((e) => !Number.isNaN(e.kart) && e.kart > 0);
+
+  return entries.sort((a, b) => {
+    if (a.cooldownLapPending !== b.cooldownLapPending) {
+      return a.cooldownLapPending ? -1 : 1;
+    }
+    const aTime = a.lastLapAt || a.launchedAt;
+    const bTime = b.lastLapAt || b.launchedAt;
+    if (aTime !== bTime) return aTime - bTime;
+    return a.kart - b.kart;
+  }).map((e) => e.kart);
+}
+
+function countPitKartsInLines(workingLines, laneKeys) {
+  return laneKeys.reduce((sum, key) => sum + (workingLines[key]?.karts?.length || 0), 0);
+}
+
 export function pickKartsForAssignment(workingLines, laneKeys, driverCount, options = {}) {
-  const onTrackKarts = (options.onTrackKarts || [])
-    .map((k) => Number(k))
-    .filter((n) => !Number.isNaN(n) && n > 0);
+  const usePendingTrackSlots = Boolean(options.pendingOnTrackSlots);
+  const onTrackOrdered = orderOnTrackKartsForPitEntry(options.onTrackKarts || []);
+  const pitKartTotal = countPitKartsInLines(workingLines, laneKeys);
+
+  if (pitKartTotal + onTrackOrdered.length < driverCount) {
+    return { assigned: [], complete: false };
+  }
 
   const used = new Set();
   const assigned = [];
@@ -170,14 +208,27 @@ export function pickKartsForAssignment(workingLines, laneKeys, driverCount, opti
     }
 
     if (!found) {
-      const trackKart = onTrackKarts.find((n) => !used.has(n));
-      if (trackKart != null) {
-        found = { kart: trackKart, lane: null, depth: -1, source: 'on_track' };
+      if (usePendingTrackSlots) {
+        const pendingAlready = assigned.filter((a) => a.pendingFromTrack).length;
+        if (pendingAlready < onTrackOrdered.length) {
+          found = {
+            kart: null,
+            lane: null,
+            depth: -1,
+            source: 'on_track_pending',
+            pendingFromTrack: true,
+          };
+        }
+      } else {
+        const trackKart = onTrackOrdered.find((n) => !used.has(n));
+        if (trackKart != null) {
+          found = { kart: trackKart, lane: null, depth: -1, source: 'on_track' };
+        }
       }
     }
 
     if (!found) return { assigned, complete: false };
-    used.add(found.kart);
+    if (found.kart != null) used.add(found.kart);
     assigned.push({ ...found, driverIndex: i });
   }
   return { assigned, complete: true };

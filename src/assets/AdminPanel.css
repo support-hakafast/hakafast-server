@@ -1340,11 +1340,16 @@ html:has(.admin-no-scroll) body {
   padding: 3px;
   cursor: pointer;
   transition: background 0.2s;
-  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .hf-toggle.is-on {
   background: var(--turquoise);
+  justify-content: flex-end;
 }
 
 .hf-toggle-knob {
@@ -1354,15 +1359,7 @@ html:has(.admin-no-scroll) body {
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s;
-}
-
-.hf-toggle.is-on .hf-toggle-knob {
-  transform: translateX(22px);
-}
-
-[dir="rtl"] .hf-toggle.is-on .hf-toggle-knob {
-  transform: translateX(-22px);
+  flex-shrink: 0;
 }
 
 .panel-divider {
@@ -1510,7 +1507,7 @@ html:has(.admin-no-scroll) body {
 
 .admin-modal-header-light {
   background: linear-gradient(135deg, #f0f7ff 0%, #fff 100%);
-  margin: -24px -24px 0;
+  margin: 0;
   padding: 20px 24px 16px;
   border-radius: 14px 14px 0 0;
   border-bottom: 1px solid #dbeafe;
@@ -1525,8 +1522,71 @@ html:has(.admin-no-scroll) body {
 .admin-modal-subtitle {
   margin: 0;
   font-size: 0.82rem;
-  color: #64748b;
+  color: #475569;
   line-height: 1.4;
+}
+
+/* Light modals — explicit contrast, isolated from dark endurance theme */
+.admin-modal-light {
+  background: #fff;
+  color: #1e293b;
+}
+
+.admin-modal-light .field-label,
+.admin-modal-light .planner-field span {
+  color: #334155;
+}
+
+.admin-modal-light .planner-field span {
+  font-weight: 600;
+}
+
+.admin-modal-light .planner-field input,
+.admin-modal-light input[type='text'],
+.admin-modal-light input[type='password'],
+.admin-modal-light input[type='number'],
+.admin-modal-light select,
+.admin-modal-light textarea {
+  color: #1e293b;
+  background: #fff;
+  border: 1px solid #cbd5e0;
+}
+
+.admin-modal-light input::placeholder,
+.admin-modal-light textarea::placeholder {
+  color: #64748b;
+}
+
+.admin-modal-light .password-hint,
+.admin-modal-light .level-hint {
+  color: #475569;
+}
+
+.admin-modal-light .security-toggle-row {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.admin-modal-light .security-toggle-row .field-label {
+  color: #1e293b;
+}
+
+.admin-modal-light .admin-modal-footer {
+  background: #fff;
+}
+
+.admin-modal-light h2,
+.admin-modal-light h3 {
+  color: var(--navy);
+}
+
+.admin-advanced-modal {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.admin-advanced-modal .panel-divider {
+  border-top-color: #e2e8f0;
 }
 
 .admin-modal-close {
@@ -1559,11 +1619,6 @@ html:has(.admin-no-scroll) body {
   width: min(540px, 100%);
   padding: 0;
   overflow: hidden;
-}
-
-.track-planner-modal .admin-modal-header-light,
-.admin-setup-modal .admin-modal-header-light {
-  margin: 0;
 }
 
 .track-planner-modal .track-planner-panel-modal {
@@ -1614,6 +1669,10 @@ html:has(.admin-no-scroll) body {
   overflow: hidden;
 }
 
+.admin-setup-modal .admin-setup-body {
+  padding: 16px 24px;
+}
+
 .admin-setup-header {
   text-align: center;
   flex-direction: column;
@@ -1624,10 +1683,6 @@ html:has(.admin-no-scroll) body {
   font-size: 2rem;
   display: block;
   margin-bottom: 8px;
-}
-
-.admin-setup-body {
-  padding: 16px 24px;
 }
 
 .admin-setup-submit {

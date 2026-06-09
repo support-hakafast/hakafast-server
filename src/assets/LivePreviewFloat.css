@@ -64,8 +64,41 @@
 .live-preview-body {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
   padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.live-preview-float .live-preview-body.live-display {
+  background: #0a0a12;
+}
+
+.live-preview-float .live-content-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.live-preview-float .live-display .live-timing-driver-name,
+.live-preview-float .live-display .live-assign-name {
+  color: #f8fafc;
+}
+
+.live-preview-float .live-assign-driver-rows li {
+  color: #e2e8f0;
+}
+
+.live-preview-float .live-assign-driver-rows li.is-starter {
+  color: #7dd3fc;
+}
+
+.live-preview-float .live-preview-heat {
+  flex-shrink: 0;
+  color: #94a3b8;
+  opacity: 1;
 }
 
 /* Compact sizing — same components as public live timing */
@@ -118,14 +151,13 @@
 
 .live-preview-empty {
   text-align: center;
-  opacity: 0.7;
+  color: #94a3b8;
   padding: 1.5rem;
 }
 
 .live-preview-heat {
   text-align: center;
   font-size: 0.75rem;
-  opacity: 0.65;
   margin: 0.5rem 0 0;
 }
 

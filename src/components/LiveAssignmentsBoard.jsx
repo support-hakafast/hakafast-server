@@ -3,6 +3,7 @@ import { formatDriverName, formatTeamDriversList } from '../utils/teamDrivers.js
 
 const STATUS_KEYS = {
   waiting_on_track: 'live_assign_waiting_on_track',
+  awaiting_track_kart: 'live_assign_awaiting_track_kart',
   ready_to_launch: 'live_assign_ready_launch',
   in_pits_queue: 'live_assign_in_pits_queue',
   at_pit_exit: 'live_assign_at_exit',

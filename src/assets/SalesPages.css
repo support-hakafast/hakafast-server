@@ -98,7 +98,14 @@
   background: #334155;
   border-color: #64748b;
 }
-.live-desk-body-inner { flex: 1; overflow: auto; padding: 0.75rem; }
+.live-desk-body-inner {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0.75rem;
+  -webkit-overflow-scrolling: touch;
+}
 .live-desk-empty {
   display: flex;
   flex-direction: column;
@@ -122,17 +129,58 @@
 .endurance-tools-modal { max-width: 640px; width: 95vw; }
 .endurance-admin-panel-modal { padding: 0 0 1rem; }
 
-.admin-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 12000;
-  display: flex; align-items: center; justify-content: center; padding: 1rem;
+.endurance-tools-modal.admin-modal {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-radius: 12px;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  width: 100%;
 }
-.admin-modal {
-  background: #1e293b; color: #f1f5f9; border-radius: 12px; max-height: 90vh; overflow: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.4); width: 100%;
+.endurance-tools-modal .admin-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #334155;
 }
-.admin-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #334155; }
-.admin-modal-header h2 { margin: 0; font-size: 1.1rem; }
-.admin-modal-close { background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
+.endurance-tools-modal .admin-modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #f8fafc;
+}
+.endurance-tools-modal .admin-modal-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+}
+.endurance-tools-modal .field-label {
+  color: #e2e8f0;
+}
+.endurance-tools-modal .endurance-hint {
+  color: #94a3b8;
+  opacity: 1;
+}
+.endurance-tools-modal input,
+.endurance-tools-modal select,
+.endurance-tools-modal textarea {
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid #475569;
+}
+.endurance-tools-modal input::placeholder,
+.endurance-tools-modal textarea::placeholder {
+  color: #64748b;
+}
+.endurance-tools-modal .btn-muted {
+  color: #fff;
+}
 
 .endurance-starter-panel { margin: 0.75rem 0 1rem; padding: 0.75rem; background: rgba(15,23,42,0.5); border-radius: 8px; border: 1px solid #334155; }
 .endurance-starter-team { margin-bottom: 0.65rem; }

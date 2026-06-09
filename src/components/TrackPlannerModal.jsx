@@ -25,7 +25,7 @@ export default function TrackPlannerModal({
   return (
     <div className="admin-modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
       <div
-        className="admin-modal admin-modal-wide track-planner-modal"
+        className="admin-modal admin-modal-wide admin-modal-light track-planner-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="admin-modal-header admin-modal-header-light">

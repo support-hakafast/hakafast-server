@@ -668,6 +668,16 @@ function tickHeatSimulation(store) {
         recordFormationCrossing(store, ot, row, lapSec, { at: lapAt });
         if ((ot.formationLapsDone || 0) === prevDone) break;
       }
+    } else if (store.heatCooldownPhase) {
+      if (ot.cooldownLapPending && !ot.cooldownLapDone) {
+        const sinceLast = (now - (ot.lastLapAt || ot.launchedAt)) / 1000;
+        if (sinceLast >= avgLap) {
+          const lapSec = simulatedLapSecForCrossing(store, ot, row, avgLap);
+          const prevAt = ot.lastLapAt || ot.launchedAt;
+          const lapAt = Math.min(now, prevAt + lapSec * 1000);
+          recordLapCrossing(store, ot, row, lapSec, { at: lapAt });
+        }
+      }
     } else {
     const completedLaps = Math.floor((now - ot.launchedAt) / 1000 / avgLap);
     while ((row.lap_count || 0) < completedLaps) {
@@ -687,7 +697,15 @@ function getHeatDriverCount(store) {
 }
 
 function getNextHeatKartNumbers(store) {
-  return new Set(store.nextHeat.map((r) => Number(r.kart_number)));
+  return new Set(
+    store.nextHeat
+      .filter((r) => r.kart_number != null && !Number.isNaN(Number(r.kart_number)))
+      .map((r) => Number(r.kart_number)),
+  );
+}
+
+function countPendingNextHeatKarts(store) {
+  return store.nextHeat.filter((r) => r.kart_pending && (r.kart_number == null || Number.isNaN(Number(r.kart_number)))).length;
 }
 
 function isKartReservedForNextHeat(store, kartNumber) {
@@ -697,7 +715,16 @@ function isKartReservedForNextHeat(store, kartNumber) {
 function allOnTrackAreForNextHeat(store) {
   if (!store.onTrack.length || !store.nextHeat.length) return false;
   const nextSet = getNextHeatKartNumbers(store);
-  return store.onTrack.every((ot) => nextSet.has(Number(ot.kart_number)));
+  const pendingCount = countPendingNextHeatKarts(store);
+
+  return store.onTrack.every((ot) => {
+    const n = Number(ot.kart_number);
+    if (nextSet.has(n)) return true;
+    if (pendingCount > 0 && store.currentHeat.some((r) => Number(r.kart_number) === n)) {
+      return true;
+    }
+    return false;
+  });
 }
 
 function allOnTrackClearedOrReadyForNextHeatDrain(store) {
@@ -731,6 +758,32 @@ function maybeDrainFinishedHeat(store) {
   }
 }
 
+function moveKartToPitExit(store, kartNumber, laneId) {
+  const n = Number(kartNumber);
+  const lid = String(laneId);
+  const lane = store.pitLines?.[lid];
+  if (!lane) return;
+  lane.karts = (lane.karts || []).filter((k) => Number(k) !== n);
+  lane.karts.unshift(n);
+}
+
+function tryAssignReturnedKartToNextHeat(store, kartNumber, laneId) {
+  if (!store.nextHeat.length) return false;
+  const n = Number(kartNumber);
+  const inCurrent = store.currentHeat.some((r) => Number(r.kart_number) === n);
+  if (!inCurrent || isKartReservedForNextHeat(store, n)) return false;
+
+  const pendingRow = store.nextHeat.find(
+    (r) => r.kart_pending && (r.kart_number == null || Number.isNaN(Number(r.kart_number))),
+  );
+  if (!pendingRow) return false;
+
+  pendingRow.kart_number = n;
+  pendingRow.kart_pending = false;
+  moveKartToPitExit(store, n, laneId);
+  return true;
+}
+
 function returnKartsNotInNextHeat(store) {
   if (!store.nextHeat.length) {
     return {
@@ -740,6 +793,7 @@ function returnKartsNotInNextHeat(store) {
   }
 
   const nextSet = getNextHeatKartNumbers(store);
+  const pendingCount = countPendingNextHeatKarts(store);
   const snapshot = [...store.onTrack];
   const kept = [];
   const returned = [];
@@ -750,6 +804,14 @@ function returnKartsNotInNextHeat(store) {
       kept.push(n);
       return;
     }
+
+    const inCurrentHeat = store.currentHeat.some((r) => Number(r.kart_number) === n);
+    if (pendingCount > 0 && inCurrentHeat && store.heatCooldownPhase
+      && ot.cooldownLapPending && !ot.cooldownLapDone) {
+      kept.push(n);
+      return;
+    }
+
     const result = returnKart(store, n, ot.originLaneId ?? ot.laneId ?? 1, {
       skipNextHeatGuard: true,
       skipDrain: true,
@@ -807,7 +869,9 @@ function syncHeatCooldownPhase(store) {
   if (isTimedHeat(store) && isHeatTimeExpired(store)) {
     store.heatCooldownPhase = true;
     store.onTrack.forEach((ot) => { ot.cooldownLapPending = true; });
-    if (store.nextHeat.length > 0) returnKartsNotInNextHeat(store);
+    if (store.nextHeat.length > 0 && countPendingNextHeatKarts(store) === 0) {
+      returnKartsNotInNextHeat(store);
+    }
     return;
   }
 
@@ -820,7 +884,9 @@ function syncHeatCooldownPhase(store) {
         ot.cooldownLapPending = true;
       }
     });
-    if (store.nextHeat.length > 0) returnKartsNotInNextHeat(store);
+    if (store.nextHeat.length > 0 && countPendingNextHeatKarts(store) === 0) {
+      returnKartsNotInNextHeat(store);
+    }
   }
 }
 
@@ -934,6 +1000,9 @@ function canLaunchNextHeatKart(store, kartNumber) {
 }
 
 function resolveAssignmentStatus(store, row, { isNextHeat = false } = {}) {
+  if (row.kart_pending && (row.kart_number == null || Number.isNaN(Number(row.kart_number)))) {
+    return 'awaiting_track_kart';
+  }
   const n = Number(row.kart_number);
   const onTrack = store.onTrack.some((k) => Number(k.kart_number) === n);
   if (onTrack && isNextHeat) return 'waiting_on_track';
@@ -952,6 +1021,10 @@ function getNextHeatReadiness(store) {
   let atPitExit = 0;
   let readyToLaunch = 0;
   store.nextHeat.forEach((row) => {
+    if (row.kart_pending && (row.kart_number == null || Number.isNaN(Number(row.kart_number)))) {
+      waitingOnTrack += 1;
+      return;
+    }
     const n = Number(row.kart_number);
     if (onTrackNums.has(n)) {
       waitingOnTrack += 1;
@@ -1419,13 +1492,18 @@ function deployAllGridKarts(store) {
 
 function returnKart(store, kartNumber, laneId, options = {}) {
   const n = Number(kartNumber);
+  const otEntry = store.onTrack.find((k) => Number(k.kart_number) === n);
   if (
     !options.skipNextHeatGuard
     && store.nextHeat.length > 0
     && isKartReservedForNextHeat(store, n)
-    && (store.heatFrozen || store.heatCooldownPhase)
   ) {
-    return { success: false, error: 'keep_for_next_heat' };
+    if (store.heatFrozen && !store.heatCooldownPhase) {
+      return { success: false, error: 'keep_for_next_heat' };
+    }
+    if (store.heatCooldownPhase && otEntry?.cooldownLapPending && !otEntry?.cooldownLapDone) {
+      return { success: false, error: 'keep_for_next_heat' };
+    }
   }
 
   const idx = store.onTrack.findIndex((k) => Number(k.kart_number) === n);
@@ -1435,14 +1513,22 @@ function returnKart(store, kartNumber, laneId, options = {}) {
   store.onTrack.splice(idx, 1);
   const targetLane = laneId ?? ot.originLaneId ?? ot.laneId;
   const lid = String(targetLane);
+  const assignedPending = tryAssignReturnedKartToNextHeat(store, n, targetLane);
+  const reservedForNext = isKartReservedForNextHeat(store, n) || assignedPending;
+
   if (store.pitLines[lid]) {
-    const n = Number(kartNumber);
     const alreadyThere = store.pitLines[lid].karts.some((k) => Number(k) === n);
     const inOtherLane = Object.entries(store.pitLines).some(([id, lane]) => (
       id !== lid && (lane.karts || []).some((k) => Number(k) === n)
     ));
     if (!alreadyThere && !inOtherLane) {
-      store.pitLines[lid].karts.push(n);
+      if (reservedForNext) {
+        moveKartToPitExit(store, n, lid);
+      } else {
+        store.pitLines[lid].karts.push(n);
+      }
+    } else if (reservedForNext) {
+      moveKartToPitExit(store, n, lid);
     }
   }
 
@@ -1617,6 +1703,7 @@ function buildHeatRow(body, index, endurance = false) {
   const row = {
     track_id: 1,
     kart_number: body.kart_number,
+    kart_pending: Boolean(body.kart_pending || body.pending_from_track),
     driver_name: body.driver_name,
     team_name: body.team_name || null,
     team_drivers: teamDrivers,

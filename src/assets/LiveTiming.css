@@ -44,7 +44,8 @@
 
 /* —— Dark display (default page theme + admin float) —— */
 .live-timing.theme-dark .live-display,
-.live-preview-float .live-display {
+.live-preview-float .live-display,
+.live-display.theme-dark {
   background: #0a0a12;
   color: #fff;
   --live-surface: transparent;
@@ -56,35 +57,49 @@
 }
 
 .live-timing.theme-dark .live-display .live-timing-table,
-.live-preview-float .live-display .live-timing-table {
+.live-preview-float .live-display .live-timing-table,
+.live-display.theme-dark .live-timing-table {
   box-shadow: none;
 }
 
 .live-timing.theme-dark .live-display .live-timing-table th,
-.live-preview-float .live-display .live-timing-table th {
+.live-preview-float .live-display .live-timing-table th,
+.live-display.theme-dark .live-timing-table th {
   color: var(--hf-turquoise, #40e0d0);
   font-weight: 900;
   letter-spacing: 0.04em;
 }
 
 .live-timing.theme-dark .live-display .live-timing-table td,
-.live-preview-float .live-display .live-timing-table td {
+.live-preview-float .live-display .live-timing-table td,
+.live-display.theme-dark .live-timing-table td {
   color: #f1f5f9;
 }
 
 .live-timing.theme-dark .live-display .live-pos,
-.live-preview-float .live-display .live-pos {
+.live-preview-float .live-display .live-pos,
+.live-display.theme-dark .live-pos {
   color: var(--hf-turquoise, #40e0d0);
 }
 
 .live-timing.theme-dark .live-display .live-timing-driver-name,
-.live-preview-float .live-display .live-timing-driver-name {
+.live-preview-float .live-display .live-timing-driver-name,
+.live-display.theme-dark .live-timing-driver-name {
   color: #f8fafc;
 }
 
 .live-timing.theme-dark .live-display .live-assign-name,
-.live-preview-float .live-display .live-assign-name {
+.live-preview-float .live-display .live-assign-name,
+.live-display.theme-dark .live-assign-name {
   color: #f8fafc;
+}
+
+.live-display.theme-dark .live-assign-driver-rows li {
+  color: #e2e8f0;
+}
+
+.live-display.theme-dark .live-assign-driver-rows li.is-starter {
+  color: #7dd3fc;
 }
 
 .live-timing.theme-dark .live-display .live-assign-card,

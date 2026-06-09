@@ -2,6 +2,7 @@ import React from 'react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { formatDriverName } from '../utils/teamDrivers.js';
 import '../assets/AdminPanel.css';
+import '../assets/SalesPages.css';
 
 export default function EnduranceToolsModal({
   onClose,
