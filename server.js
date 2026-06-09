@@ -167,7 +167,14 @@ app.use((req, res, next) => {
 });
 
 if (hasBuild) {
-  app.use(express.static(distPath, { index: false }));
+  app.use(express.static(distPath, {
+    index: false,
+    setHeaders(res, filePath) {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  }));
 }
 
 app.use('/public', express.static(path.join(__dirname, 'public')));
@@ -316,7 +323,15 @@ function sendSpaIndex(res) {
 <p>האתר עדיין לא נבנה. הרץ <code>npm run build</code> ואז <code>npm start</code>.</p>
 </body></html>`);
   }
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   return res.sendFile(indexPath);
+}
+
+function isStaticAssetRequest(reqPath) {
+  if (reqPath.startsWith('/assets/') || reqPath.startsWith('/src/')) return true;
+  return /\.(js|mjs|css|map|png|jpe?g|gif|svg|ico|woff2?|ttf|webp|json)$/i.test(reqPath);
 }
 
 // API routes
@@ -1217,6 +1232,11 @@ app.get('/', (req, res) => sendSpaIndex(res));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/') || req.path.startsWith('/live-timing-data/') || req.path === '/assign-driver') {
     return res.status(404).json({ error: 'Not found' });
+  }
+  if (isStaticAssetRequest(req.path)) {
+    return res.status(404).type('text/plain').send(
+      'Asset not found. Run npm run build, then restart the server (npm start).',
+    );
   }
   return sendSpaIndex(res);
 });

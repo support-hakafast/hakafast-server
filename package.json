@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
+    "dev:api": "node server.js",
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server.js",
