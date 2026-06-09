@@ -51,8 +51,8 @@ export default function SetupWizard() {
 
   const submitSetup = async () => {
     setError('');
-    if (!trackName.trim() || !kartNumbers.trim()) {
-      setError(t('setup_error_required'));
+    if (!trackName.trim()) {
+      setError(t('setup_error_track_required'));
       return;
     }
     if (adminPassword && !isStrongPassword(adminPassword)) {
@@ -128,6 +128,7 @@ export default function SetupWizard() {
         {step === 2 && (
           <>
             <label className="setup-label">{t('setup_karts')}</label>
+            <p className="setup-muted setup-optional-hint">{t('setup_karts_optional_hint')}</p>
             <textarea
               className="setup-input setup-textarea"
               value={kartNumbers}

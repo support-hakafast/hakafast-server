@@ -784,6 +784,53 @@ function testEnduranceOneHourTwoDriverChangesSimulation() {
   assert(store.currentHeat.length === 0, 'one-hour endurance heat can finish after rule check');
 }
 
+function testSessionHeatAutoPromoteWithoutExport() {
+  const wsId = 'verify028';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.heatSettings = { type: 'time', duration: 10, exportCsv: false, exportPdf: false };
+  store.nextHeatSettings = { type: 'time', duration: 10, exportCsv: false, exportPdf: false };
+  store.heatRuntime.startedAt = Date.now() - 700000;
+  store.currentHeat = [{
+    kart_number: 1,
+    driver_name: 'A',
+    driver_level: 'Amateur',
+    lap_count: 3,
+    best_lap_time: '44.000',
+    lap_times: ['45.000', '44.500', '44.000'],
+  }];
+  store.nextHeat = [{
+    kart_number: 2,
+    driver_name: 'B',
+    driver_level: 'Amateur',
+    lap_count: 0,
+    lap_times: [],
+  }];
+  store.onTrack = [];
+
+  demoStore.getSessionState(store);
+  assert(!store.autoFinishExportPending, 'session heats without export should not block on export');
+  assert(!store.heatFrozen, 'next session heat should promote immediately');
+  assert(store.currentHeat.length === 1, 'next heat promoted');
+  assert(Number(store.currentHeat[0].kart_number) === 2, 'next drivers active');
+  assert(store.nextHeat.length === 0, 'queue cleared');
+}
+
+function testDayPlanCapacity() {
+  const { calculateDayPlan } = require('../trackProfile');
+  const plan = calculateDayPlan({
+    openingTime: '10:00',
+    closingTime: '22:00',
+    sessionDurationMin: 10,
+    turnoverMin: 5,
+    pricePerSession: 100,
+    competitiveBlockMin: 45,
+  }, { competitiveHeats: 2 });
+  assert(plan.maxSessionHeats === 48, `expected 48 session heats, got ${plan.maxSessionHeats}`);
+  assert(plan.maxSessionHeatsAfterCompetitive === 41, `expected 41 after competitive, got ${plan.maxSessionHeatsAfterCompetitive}`);
+  assert(plan.estimatedRevenueAfterCompetitive === 4100, 'revenue estimate');
+}
+
 async function main() {
   const results = [];
   const run = async (name, fn) => {
@@ -826,6 +873,8 @@ async function main() {
   await run('fixed timing column prefix', () => testFixedTimingColumnPrefix());
   await run('endurance rules parsing', () => testEnduranceRulesParsing());
   await run('endurance 1h two driver changes simulation', () => testEnduranceOneHourTwoDriverChangesSimulation());
+  await run('session heat auto promote without export', () => testSessionHeatAutoPromoteWithoutExport());
+  await run('day plan capacity', () => testDayPlanCapacity());
 
   const failed = results.filter((r) => !r.ok);
   console.log('\n=== HAKAFAST timing verification ===\n');

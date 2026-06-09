@@ -6,6 +6,7 @@ const session = require('express-session');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const demoStore = require('./demoStore');
+const trackProfile = require('./trackProfile');
 const installConfig = require('./installConfig');
 const fileExport = require('./fileExport');
 const rentixWebhook = require('./rentixWebhook');
@@ -181,12 +182,38 @@ async function migrateDB() {
     await pool.query(`ALTER TABLE drivers ADD COLUMN IF NOT EXISTS email VARCHAR(100);`);
     await pool.query(`ALTER TABLE current_heat ADD COLUMN IF NOT EXISTS lap_count INT DEFAULT 0;`);
     await pool.query(`CREATE TABLE IF NOT EXISTS heat_history (id SERIAL PRIMARY KEY, track_id INT, heat_type VARCHAR(50), results JSONB, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS track_profiles (track_slug VARCHAR(64) PRIMARY KEY, profile JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
     console.log('Migrations successful.');
   } catch (err) {
     console.error('Migration error:', err.message);
   }
 }
 migrateDB();
+
+async function loadTrackProfileFromDb(trackSlug) {
+  if (!process.env.DATABASE_URL || !trackSlug) return null;
+  try {
+    const result = await pool.query('SELECT profile FROM track_profiles WHERE track_slug = $1', [trackSlug]);
+    if (!result.rows.length) return null;
+    return trackProfile.normalizeTrackProfile(result.rows[0].profile, trackSlug);
+  } catch {
+    return null;
+  }
+}
+
+async function saveTrackProfileToDb(trackSlug, profile) {
+  if (!process.env.DATABASE_URL || !trackSlug) return;
+  try {
+    await pool.query(
+      `INSERT INTO track_profiles (track_slug, profile, updated_at)
+       VALUES ($1, $2, CURRENT_TIMESTAMP)
+       ON CONFLICT (track_slug) DO UPDATE SET profile = EXCLUDED.profile, updated_at = CURRENT_TIMESTAMP`,
+      [trackSlug, profile],
+    );
+  } catch (err) {
+    console.error('track_profiles save error:', err.message);
+  }
+}
 
 let pitLines = [{ id: 1, name: 'טור ימין', active: true, karts: [] }, { id: 2, name: 'טור שמאל', active: true, karts: [] }];
 let heatSettings = {
@@ -581,7 +608,7 @@ app.get('/api/install/config', (req, res) => {
 
 app.post('/api/install/setup', (req, res) => {
   const { trackSlug, trackName, kartNumbers, adminPassword } = req.body || {};
-  if (!trackSlug || !kartNumbers) {
+  if (!trackSlug) {
     return res.json({ success: false, error: 'missing_fields' });
   }
   if (!demoStore.validateTrackSlug(trackSlug)) {
@@ -601,9 +628,13 @@ app.post('/api/install/setup', (req, res) => {
   });
   const store = demoStore.resolveFromParts(trackSlug, workspaceId);
   if (store) {
-    store.trackSetup = { onboarded: true, kartNumbers: String(kartNumbers).trim() };
+    store.trackSetup = { onboarded: true, kartNumbers: String(kartNumbers || '').trim() };
+    store.trackProfile = trackProfile.normalizeTrackProfile({
+      trackDisplayName: trackName || trackSlug,
+    }, trackSlug);
     if (adminPassword) store.levelSettings.editPassword = adminPassword;
     demoStore.persistStore(store);
+    saveTrackProfileToDb(trackSlug, store.trackProfile);
   }
   const port = Number(process.env.PORT) || 5000;
   return res.json({
@@ -720,6 +751,8 @@ app.get('/api/kiosk/capabilities', (req, res) => {
     admin: {
       session_state: 'GET /api/admin/session-state',
       heat_settings: 'GET /api/heat-settings',
+      track_config: 'GET /api/kiosk/track-config',
+      track_profile: 'GET /api/admin/track-profile',
       live_timing_ws: 'WebSocket /ws/live-timing',
     },
     deployment: {
@@ -752,6 +785,7 @@ app.post('/api/admin/heat-settings', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     demo.heatSettings = { ...demo.heatSettings, ...req.body };
+    demoStore.schedulePersist(demo);
     notifyWorkspace(req);
     return res.json({ success: true });
   }
@@ -770,12 +804,52 @@ app.get('/api/admin/level-settings', (req, res) => {
   });
 });
 
+app.get('/api/kiosk/track-config', async (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  if (!demo.trackProfile) {
+    const fromDb = await loadTrackProfileFromDb(demo.trackSlug);
+    if (fromDb) demo.trackProfile = fromDb;
+  }
+  return res.json({ success: true, ...demoStore.getKioskTrackConfig(demo) });
+});
+
+app.get('/api/admin/track-profile', async (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    if (!demo.trackProfile) {
+      const fromDb = await loadTrackProfileFromDb(demo.trackSlug);
+      if (fromDb) demo.trackProfile = fromDb;
+    }
+    const profile = demoStore.getTrackProfile(demo);
+    return res.json({
+      success: true,
+      profile,
+      dayPlan: trackProfile.calculateDayPlan(profile),
+    });
+  }
+  return res.json({ success: false, error: 'no_workspace' });
+});
+
+app.post('/api/admin/track-profile', async (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.updateTrackProfile(demo, req.body || {});
+  await saveTrackProfileToDb(demo.trackSlug, demo.trackProfile);
+  notifyWorkspace(req);
+  return res.json({
+    ...result,
+    dayPlan: trackProfile.calculateDayPlan(demo.trackProfile),
+  });
+});
+
 app.get('/api/admin/track-setup/:trackSlug', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     return res.json({
       onboarded: Boolean(demo.trackSetup?.onboarded),
       kartNumbers: demo.trackSetup?.kartNumbers || '',
+      trackProfile: demoStore.getTrackProfile(demo),
     });
   }
   const setup = trackSetups[req.params.trackSlug];
@@ -787,7 +861,7 @@ app.get('/api/admin/track-setup/:trackSlug', (req, res) => {
 
 app.post('/api/admin/track-setup', (req, res) => {
   const { trackSlug, kartNumbers, editPassword } = req.body;
-  if (!trackSlug || !kartNumbers) {
+  if (!trackSlug) {
     return res.json({ success: false, error: 'missing_fields' });
   }
   if (editPassword && !isStrongPassword(editPassword)) {
@@ -795,11 +869,16 @@ app.post('/api/admin/track-setup', (req, res) => {
   }
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
-    demo.trackSetup = { onboarded: true, kartNumbers };
+    demo.trackSetup = { onboarded: true, kartNumbers: String(kartNumbers || '').trim() };
+    if (!demo.trackProfile) {
+      demo.trackProfile = trackProfile.normalizeTrackProfile({}, trackSlug);
+    }
     if (editPassword) demo.levelSettings.editPassword = editPassword;
-    return res.json({ success: true, kartNumbers });
+    demoStore.persistStore(demo);
+    saveTrackProfileToDb(demo.trackSlug, demoStore.getTrackProfile(demo));
+    return res.json({ success: true, kartNumbers: demo.trackSetup.kartNumbers });
   }
-  trackSetups[trackSlug] = { onboarded: true, kartNumbers };
+  trackSetups[trackSlug] = { onboarded: true, kartNumbers: String(kartNumbers || '').trim() };
   if (editPassword) levelSettings.editPassword = editPassword;
   return res.json({ success: true, kartNumbers });
 });

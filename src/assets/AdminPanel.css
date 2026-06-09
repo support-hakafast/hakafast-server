@@ -1449,6 +1449,54 @@ html:has(.admin-no-scroll) body {
   border: 1px solid rgba(148, 163, 184, 0.45);
 }
 
+.track-planner-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.planner-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.planner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+}
+
+.planner-field input {
+  min-width: 0;
+}
+
+.planner-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.08);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.planner-apply-btn {
+  width: 100%;
+}
+
+.heat-mode-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  opacity: 0.8;
+  line-height: 1.35;
+}
+
 @media (min-width: 1600px) {
   .admin-workspace {
     grid-template-columns: minmax(0, 42%) minmax(320px, 1fr) minmax(260px, 320px);

@@ -11,6 +11,7 @@ const {
 const persistentStore = require('./persistentStore');
 const installConfig = require('./installConfig');
 const enduranceRules = require('./enduranceRules');
+const trackProfile = require('./trackProfile');
 
 const stores = new Map();
 const persistTimers = new Map();
@@ -67,6 +68,7 @@ function createStore(trackSlug = 'kart-demo') {
       pitExitPosition: 'bottom',
     },
     trackSetup: null,
+    trackProfile: null,
     driverQueue: [],
     currentHeat: [],
     drivers: [],
@@ -176,6 +178,7 @@ function exportSnapshot(store) {
     onTrack: store.onTrack,
     levelSettings: store.levelSettings,
     trackSetup: store.trackSetup,
+    trackProfile: store.trackProfile,
     driverQueue: store.driverQueue,
     currentHeat: store.currentHeat,
     nextHeat: store.nextHeat,
@@ -206,6 +209,7 @@ function applySnapshot(store, snapshot) {
   if (snapshot.onTrack) store.onTrack = snapshot.onTrack;
   if (snapshot.levelSettings) store.levelSettings = { ...store.levelSettings, ...snapshot.levelSettings };
   if (snapshot.trackSetup) store.trackSetup = snapshot.trackSetup;
+  if (snapshot.trackProfile) store.trackProfile = trackProfile.normalizeTrackProfile(snapshot.trackProfile, store.trackSlug);
   if (snapshot.driverQueue) store.driverQueue = snapshot.driverQueue;
   if (snapshot.currentHeat) store.currentHeat = snapshot.currentHeat;
   if (snapshot.nextHeat) store.nextHeat = snapshot.nextHeat;
@@ -855,7 +859,12 @@ function autoFinishHeatSession(store) {
   store.heatAutoFinishTriggered = true;
   store.autoFinishStartedAt = savedStartedAt;
   store.autoFinishHeatNumber = getCurrentHeatNumber(store);
-  store.autoFinishExportPending = true;
+  const hs = store.heatSettings || {};
+  const wantsExport = hs.exportCsv !== false || Boolean(hs.exportPdf);
+  store.autoFinishExportPending = wantsExport;
+  if (!wantsExport) {
+    maybeDrainFinishedHeat(store);
+  }
 }
 
 function isHeatClockExpired(store) {
@@ -1015,6 +1024,16 @@ function promoteNextHeat(store, options = {}) {
   store.heatCooldownPhase = false;
   resetFormationState(store);
   assignHeatNumber(store);
+  if (trackProfile.isSessionHeatType(store.heatSettings?.type)) {
+    store.onTrack.forEach((ot) => {
+      ot.trackPosition = 0;
+      ot.lap_count = 0;
+      ot.simulatedLaps = 0;
+      ot.cooldownLapPending = false;
+      ot.cooldownLapDone = false;
+    });
+  }
+  schedulePersist(store);
   return true;
 }
 
@@ -1862,6 +1881,34 @@ function setActiveDriver(store, kartNumber, driverName) {
   return { success: true, active_driver: row.active_driver, transponder_id: row.transponder_id };
 }
 
+function getTrackProfile(store) {
+  return trackProfile.normalizeTrackProfile(store.trackProfile, store.trackSlug);
+}
+
+function updateTrackProfile(store, patch = {}) {
+  store.trackProfile = trackProfile.normalizeTrackProfile(
+    { ...getTrackProfile(store), ...patch },
+    store.trackSlug,
+  );
+  schedulePersist(store);
+  return { success: true, profile: store.trackProfile };
+}
+
+function getKioskTrackConfig(store) {
+  const profile = getTrackProfile(store);
+  const plan = trackProfile.calculateDayPlan(profile);
+  return {
+    trackSlug: store.trackSlug,
+    profile,
+    dayPlan: plan,
+    heatSettings: store.heatSettings,
+    onboarded: Boolean(store.trackSetup?.onboarded),
+    kartNumbers: store.trackSetup?.kartNumbers || '',
+    sessionHeatType: 'time',
+    competitiveHeatTypes: ['sprint', 'endurance'],
+  };
+}
+
 function registerTeamTransponder(store, transponderId, kartNumber) {
   const tid = String(transponderId).trim();
   const kart = Number(kartNumber);
@@ -1901,6 +1948,8 @@ function getSessionState(store) {
     pitExitPosition: store.levelSettings?.pitExitPosition || 'bottom',
     heatNumber: getCurrentHeatNumber(store),
     dailyHeatCounter: store.dailyHeat?.counter || 0,
+    trackProfile: getTrackProfile(store),
+    dayPlan: trackProfile.calculateDayPlan(getTrackProfile(store)),
     enduranceTeams: store.currentHeat
       .filter((r) => Array.isArray(r.team_drivers) && r.team_drivers.length > 0)
       .map((r) => ({
@@ -2042,6 +2091,9 @@ module.exports = {
   addPenalty,
   setActiveDriver,
   registerTeamTransponder,
+  getTrackProfile,
+  updateTrackProfile,
+  getKioskTrackConfig,
   getCurrentHeatNumber,
   persistStore,
   schedulePersist,

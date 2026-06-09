@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>HAKAFAST — מדריך מסלול: תור נהגים, קבלה ו-Rentix</title>
+  <style>
+    body { font-family: Arial, "Segoe UI", Tahoma, sans-serif; font-size: 12pt; line-height: 1.6; margin: 2cm; direction: rtl; text-align: right; color: #1a1a1a; }
+    h1 { font-size: 22pt; color: #0d47a1; border-bottom: 2px solid #0d47a1; padding-bottom: 8px; page-break-after: avoid; }
+    h2 { font-size: 16pt; color: #1565c0; margin-top: 28px; page-break-after: avoid; }
+    h3 { font-size: 13pt; color: #1976d2; margin-top: 18px; page-break-after: avoid; }
+    p { margin: 8px 0; }
+    ul, ol { margin: 8px 0 8px 0; padding-right: 24px; }
+    li { margin: 4px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 11pt; }
+    th, td { border: 1px solid #bbb; padding: 8px 10px; text-align: right; vertical-align: top; }
+    th { background: #e3f2fd; font-weight: bold; }
+    .note { background: #fff8e1; border-right: 4px solid #ffc107; padding: 10px 14px; margin: 12px 0; }
+    .important { background: #ffebee; border-right: 4px solid #e53935; padding: 10px 14px; margin: 12px 0; }
+    .ok { background: #e8f5e9; border-right: 4px solid #43a047; padding: 10px 14px; margin: 12px 0; }
+    code { font-family: Consolas, monospace; background: #f5f5f5; padding: 1px 5px; font-size: 10pt; direction: ltr; unicode-bidi: embed; }
+    pre { background: #f5f5f5; padding: 12px; overflow-x: auto; direction: ltr; text-align: left; font-size: 10pt; }
+    .cover { text-align: center; margin-bottom: 40px; }
+    .cover h1 { border: none; font-size: 26pt; }
+    .meta { color: #666; font-size: 11pt; }
+    .flow { background: #fafafa; border: 1px solid #ddd; padding: 14px; font-family: Consolas, monospace; font-size: 10pt; direction: ltr; text-align: left; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>HAKAFAST — מדריך מסלול</h1>
+  <p><strong>תור נהגים · קבלה (Reception) · Rentix · התקנה ותפעול</strong></p>
+  <p class="meta">גרסת מסמך: יוני 2026 · פרויקט hakafast-server</p>
+</div>
+
+<h1>תוכן עניינים</h1>
+<ol>
+  <li>מה זה HAKAFAST?</li>
+  <li>ארכיטקטורה — מי עושה מה</li>
+  <li>תור נהגים — המושג המרכזי</li>
+  <li>קבלה (Reception) — מה זה ולמי</li>
+  <li>תור נהגים בפאנל הניהול (Admin)</li>
+  <li>Rentix — מה זה ולמה בכלל צריך</li>
+  <li>השוואה: Reception מול Admin מול Rentix</li>
+  <li>זרימת עבודה יומית — צעד אחר צעד</li>
+  <li>מתי כן צריך Rentix ומתי לא</li>
+  <li>התקנה במסלול (ישראל) — סקירה</li>
+  <li>חיבור TranX וטרנספונדרים</li>
+  <li>צ'קליסט יום פתיחה</li>
+  <li>שאלות נפוצות</li>
+</ol>
+
+<h1>1. מה זה HAKAFAST?</h1>
+<p>
+  HAKAFAST הוא מערכת <strong>ניהול מקצים וזמנים חיים</strong> למסלולי קארטינג.
+  היא מנהלת את מה שקורה <em>במסלול</em>: תור נהגים, שיבוץ לקארטים, יציאה מפיטס, הקפות, תוצאות, מעבר בין מקצים — ולא את מערכת הקופה או האתר.
+</p>
+<p>המערכת כוללת שלושה מסכים עיקריים:</p>
+<ul>
+  <li><strong>פאנל ניהול (Admin)</strong> — שליטה מלאה: תור, שיבוץ, פיטס, הגדרות מקצה, ייצוא תוצאות.</li>
+  <li><strong>זמנים חיים (Live Timing)</strong> — תצוגה למסך גדול / QR / טלוויזיה במסלול.</li>
+  <li><strong>קבלה (Reception)</strong> — מסך פשוט לרישום נהגים לתור (טאבלט בדלפק).</li>
+</ul>
+
+<h1>2. ארכיטקטורה — מי עושה מה</h1>
+
+<h3>2.1 מנוע המקצים (Live Race Engine)</h3>
+<p>
+  כל המידע החי — תור, מקצה נוכחי, קארטים בפיטס, הקפות — נשמר ב-<strong>workspace</strong> מקומי
+  (קובץ JSON תחת <code>%ProgramData%\HAKAFAST\workspaces\</code>).
+  זה המנוע שמנהל את היום-יום במסלול.
+</p>
+
+<h3>2.2 TranX / טרנספונדרים</h3>
+<p>
+  חומרת הזמנים (AMB TranX, לולאות מגנטיות, טרנספונדרים בקארטים) שולחת אירועים ישירות ל-HAKAFAST:
+  יציאה מפיטס, כניסה לפיטס, חציית קו סיום (הקפה).
+  <strong>Rentix לא מנהל זמנים</strong> — TranX → HAKAFAST.
+</p>
+
+<h3>2.3 PostgreSQL (ענן / גיבוי)</h3>
+<p>
+  בסיס הנתונים בענן משמש בעיקר לנתיב legacy ולגיבוי פרופיל מסלול (<code>track_profiles</code>).
+  הוא <strong>אינו</strong> מנוע המקצים החי. המקצה רץ מקומית על המחשב במסלול (KIOSK).
+</p>
+
+<h3>2.4 Rentix (אופציונלי)</h3>
+<p>
+  Rentix הוא מערכת CMS חיצונית ל<strong>הזמנות ותשלומים באינטרנט</strong>.
+  HAKAFAST מתחבר אליה רק אם המסלול כבר מוכר סessions דרך Rentix ורוצה שהזמנות שולמו ייכנסו אוטומטית לתור.
+</p>
+
+<div class="flow">┌──────────────┐     הזמנה שולמה      ┌─────────────┐
+│   Rentix     │ ─────────────────────► │  HAKAFAST   │
+│  (אופציונלי) │   webhook / sync       │ driverQueue │
+└──────────────┘                        └──────┬──────┘
+                                               │
+┌──────────────┐     שם + טלפון         ┌──────▼──────┐
+│  Reception   │ ─────────────────────► │   Admin     │
+│  (קבלה)      │                        │  שיבוץ+מקצה │
+└──────────────┘                        └──────┬──────┘
+                                               │
+┌──────────────┐     lap / pit            ┌──────▼──────┐
+│ TranX +      │ ─────────────────────► │ Live Timing │
+│ טרנספונדרים  │                        │  + תוצאות   │
+└──────────────┘                        └─────────────┘</div>
+
+<h1>3. תור נהגים — המושג המרכזי</h1>
+<p>
+  <strong>תור נהגים (driverQueue)</strong> הוא רשימה פשוטה של נהגים שממתינים למקצה הבא.
+  כל נהג בתור מכיל בדרך כלל:
+</p>
+<ul>
+  <li>שם</li>
+  <li>טלפון (אופציונלי)</li>
+  <li>רמה (Amateur / Master / Pro)</li>
+  <li>שם קבוצה (במקצי סיבולת — אופציונלי)</li>
+  <li>מקור הרישום (ידני, reception, rentix)</li>
+</ul>
+<p>
+  התור הוא <strong>אותו תור</strong> בכל המערכת — לא משנה אם הנהג נרשם בקבלה, בפאנל ניהול, או הגיע מ-Rentix.
+  מנהל המסלול לוחץ "שבץ קארטים" והמערכת לוקחת נהגים מהתור ומשבצת אותם לקארטים פנויים.
+</p>
+
+<h1>4. קבלה (Reception) — מה זה ולמי</h1>
+
+<h3>4.1 מה זה?</h3>
+<p>
+  מסך <strong>Reception</strong> הוא ממשק קל ונקי לרישום נהגים שמגיעים למסלול.
+  הוא מיועד לטאבלט או מחשב בדלפק הקבלה — לא למנהל המקצה.
+</p>
+<p>כתובת (דוגמה): <code>http://127.0.0.1:5000/reception/{track-slug}</code></p>
+
+<h3>4.2 מה אפשר לעשות בקבלה?</h3>
+<ul>
+  <li>לראות כמה נהגים בתור</li>
+  <li>לראות מספר המקצה הנוכחי ואם יש מקצה פעיל</li>
+  <li>להוסיף נהג: שם, טלפון, רמה</li>
+  <li>להסיר נהג מהתור (טעות / ביטול)</li>
+</ul>
+
+<h3>4.3 מה <em>אי אפשר</em> לעשות בקבלה?</h3>
+<ul>
+  <li>לשבץ קארטים</li>
+  <li>להתחיל / לעצור מקצה</li>
+  <li>לנהל פיטס</li>
+  <li>לקבל תשלום</li>
+  <li>לנהל הזמנות מהאינטרנט</li>
+  <li>לראות זמנים חיים מפורטים</li>
+</ul>
+
+<div class="ok">
+  <strong>בקיצור:</strong> Reception = "רישום שם לתור". זהו. כל השאר קורה ב-Admin.
+</div>
+
+<h3>4.4 API של הקבלה</h3>
+<table>
+  <tr><th>פעולה</th><th>Endpoint</th><th>תיאור</th></tr>
+  <tr><td>קריאת מצב</td><td><code>GET /api/reception/state</code></td><td>תור, מספר מקצה, האם מקצה פעיל</td></tr>
+  <tr><td>הוספת נהג</td><td><code>POST /api/reception/drivers</code></td><td>body: name, phone, driver_level</td></tr>
+  <tr><td>הסרת נהג</td><td><code>DELETE /api/reception/drivers/:index</code></td><td>לפי מיקום בתור</td></tr>
+</table>
+
+<h1>5. תור נהגים בפאנל הניהול (Admin)</h1>
+<p>
+  בפאנל הניהול יש את <strong>אותו תור</strong> — עם יכולות נוספות:
+</p>
+<ul>
+  <li>הוספה / עריכה / הסרה של נהגים</li>
+  <li><strong>שיבוץ אוטומטי</strong> — "שבץ קארטים" לוקח נהגים מהתור ומשייך לקארטים</li>
+  <li>ניהול פיטס, יציאה, הקפות, סיום מקצה</li>
+  <li>מעבר למקצה הבא</li>
+  <li>ייצוא CSV/PDF בסיום</li>
+</ul>
+<p>
+  Reception ו-Admin <strong>משתפים את אותו מערך</strong> <code>driverQueue</code> בזמן אמת.
+  נהג שנרשם בקבלה מופיע מיד בפאנל הניהול.
+</p>
+
+<h1>6. Rentix — מה זה ולמה בכלל צריך</h1>
+
+<h3>6.1 מה זה Rentix?</h3>
+<p>
+  Rentix (<code>cms.rentix.biz</code>) הוא מערכת חיצונית שמסלולים רבים בישראל משתמשים בה ל:
+</p>
+<ul>
+  <li>אתר הזמנות / חנות אונליין</li>
+  <li>תשלום מראש (כרטיס אשראי, PayPal וכו')</li>
+  <li>ניהול מלאי סessions ומחירים</li>
+  <li>CRM בסיסי ללקוחות</li>
+</ul>
+
+<h3>6.2 מה HAKAFAST עושה עם Rentix?</h3>
+<p>
+  HAKAFAST <strong>לא</strong> מחליף את Rentix. הוא רק מקבל ממנו <strong>שמות נהגים ששילמו</strong>
+  ומכניס אותם ל-<code>driverQueue</code> — בדיוק כמו שהקבלה מוסיפה שם ידנית.
+</p>
+
+<h3>6.3 איך הנתונים נכנסים?</h3>
+<p><strong>דרך 1 — Webhook (בזמן אמת):</strong></p>
+<ul>
+  <li>Rentix שולח POST ל-<code>/api/webhooks/rentix</code></li>
+  <li>HAKAFAST מפרסר את ההזמנה (שם, טלפון, רמה) ומוסיף לתור</li>
+</ul>
+<p><strong>דרך 2 — סנכרון ידני / מתוזמן:</strong></p>
+<ul>
+  <li>POST ל-<code>/api/webhooks/rentix/sync</code></li>
+  <li>HAKAFAST מושך הזמנות ששולמו מה-API של Rentix (24 שעות אחרונות)</li>
+</ul>
+
+<h3>6.4 שליחת תוצאות חזרה ל-Rentix (אופציונלי)</h3>
+<p>
+  בסיום מקצה, HAKAFAST יכול לשלוח תוצאות (מיקום, זמן הקפה, מספר הקפות) ל-URL שמוגדר ב-<code>resultsWebhookUrl</code>.
+  זה שימושי אם באתר Rentix רוצים להציג תוצאות ללקוח — אבל <strong>לא חובה</strong> לתפעול המסלול.
+</p>
+
+<h3>6.5 הגדרות Rentix (install.json / משתני סביבה)</h3>
+<table>
+  <tr><th>שדה</th><th>תיאור</th></tr>
+  <tr><td><code>publicKey</code> / <code>secretKey</code></td><td>מפתחות API מ-Rentix — לסנכרון הזמנות</td></tr>
+  <tr><td><code>webhookSecret</code></td><td>אימות webhook נכנס</td></tr>
+  <tr><td><code>resultsWebhookUrl</code></td><td>כתובת לשליחת תוצאות מקצה (אופצional)</td></tr>
+  <tr><td><code>rentId</code></td><td>מזהה מסלול ב-Rentix</td></tr>
+</table>
+<p>בדיקת סטטוס: <code>GET /api/webhooks/rentix/status</code></p>
+
+<div class="important">
+  <strong>חשוב:</strong> Rentix מנהל הזמנות ותשלומים. HAKAFAST מנהל מקצים וזמנים.
+  אין סיבה ש-Rentix "ינהל" את התור — הוא רק <em>מזין</em> שמות לתור אם כבר משתמשים בו לקופה/אתר.
+</div>
+
+<h1>7. השוואה: Reception מול Admin מול Rentix</h1>
+<table>
+  <tr>
+    <th></th>
+    <th>Reception (קבלה)</th>
+    <th>Admin (ניהול)</th>
+    <th>Rentix</th>
+  </tr>
+  <tr>
+    <td><strong>מטרה</strong></td>
+    <td>רישום walk-in לתור</td>
+    <td>ניהול מלא של המקצה</td>
+    <td>הזמנות ותשלום באינטרנט</td>
+  </tr>
+  <tr>
+    <td><strong>מי משתמש</strong></td>
+    <td>פקיד קבלה / טאבלט</td>
+    <td>מנהל מקצה / race director</td>
+    <td>לקוח באתר + משרד/back-office</td>
+  </tr>
+  <tr>
+    <td><strong>תשלום</strong></td>
+    <td>לא</td>
+    <td>לא</td>
+    <td>כן</td>
+  </tr>
+  <tr>
+    <td><strong>שיבוץ קארטים</strong></td>
+    <td>לא</td>
+    <td>כן</td>
+    <td>לא</td>
+  </tr>
+  <tr>
+    <td><strong>זמנים חיים</strong></td>
+    <td>לא</td>
+    <td>כן (+ מסך נפרד)</td>
+    <td>לא</td>
+  </tr>
+  <tr>
+    <td><strong>חובה?</strong></td>
+    <td>מומלץ לדלפק</td>
+    <td>חובה</td>
+    <td>רק אם כבר מוכרים דרך Rentix</td>
+  </tr>
+  <tr>
+    <td><strong>אותו תור?</strong></td>
+    <td>כן — driverQueue</td>
+    <td>כן — driverQueue</td>
+    <td>כן — נכנס ל-driverQueue</td>
+  </tr>
+</table>
+
+<h1>8. זרימת עבודה יומית — צעד אחר צעד</h1>
+
+<h3>8.1 מסלול בלי Rentix (הגיוני לרוב המסלולים)</h3>
+<ol>
+  <li>לקוח מגיע → משלם בקופה (מערכת קופה נפרדת / מזומן / POS)</li>
+  <li>פקיד קבלה פותח <strong>Reception</strong> → מוסיף שם + טלפון + רמה לתור</li>
+  <li>מנהל מקצה ב-<strong>Admin</strong> רואה את התור → לוחץ "שבץ קארטים"</li>
+  <li>נהגים עוברים לפיטס → יוצאים למסלול (TranX / לחיצה על טרנספונדר)</li>
+  <li>הקפות נרשמות אוטומטית → <strong>Live Timing</strong> מציג</li>
+  <li>סיום מקצה → ייצוא תוצאות → מקצה הבא</li>
+</ol>
+
+<h3>8.2 מסלול עם Rentix</h3>
+<ol>
+  <li>לקוח הזמין ושילם באתר Rentix</li>
+  <li>Rentix שולח webhook → השם נכנס אוטומטית ל-<code>driverQueue</code></li>
+  <li>לקוח walk-in שמשלם בקופה — עדיין נרשם ב-Reception (או Admin)</li>
+  <li>מנהל מקצה שובץ כרגיל — לא משנה מאיפה הגיע הנהג</li>
+  <li>אופציונלי: תוצאות חוזרות ל-Rentix לתצוגה באתר</li>
+</ol>
+
+<h1>9. מתי כן צריך Rentix ומתי לא</h1>
+
+<h3>9.1 לא צריך Rentix אם:</h3>
+<ul>
+  <li>כל התשלומים בקופה / POS / מזומן</li>
+  <li>אין אתר הזמנות Rentix</li>
+  <li>רוצים רק HAKAFAST + Reception + TranX</li>
+  <li>מסלול חדש שעדיין לא על Rentix</li>
+</ul>
+
+<h3>9.2 כן שווה לחבר Rentix אם:</h3>
+<ul>
+  <li>כבר מוכרים סessions דרך Rentix ורוצים שהשמות יגיעו אוטומטית לתור</li>
+  <li>רוצים להימנע מהקלדה כפולה (הזמנה באתר + רישום ידני ב-HAKAFAST)</li>
+  <li>רוצים להחזיר תוצאות מקצה לאתר הלקוח</li>
+</ul>
+
+<div class="note">
+  <strong>המלצה:</strong> התחילו ב-Reception + Admin בלבד. הוסיפו Rentix רק כשיש הזמנות אונליין פעילות
+  ואתם רוצים אוטומציה — לא כי HAKAFAST "דורש" את זה.
+</div>
+
+<h1>10. התקנה במסלול (ישראל) — סקירה</h1>
+
+<h3>10.1 חומרה ותוכנה</h3>
+<ol>
+  <li><strong>מחשב Windows</strong> במסלול (KIOSK) — מריץ HAKAFAST כ-service</li>
+  <li><strong>TranX 160</strong> (AMB) — מקבל אותות מלולאות מגנטיות</li>
+  <li><strong>טרנספונדרים</strong> בכל קארט — מזהה קארט ביציאה ובסיום הקפה</li>
+  <li><strong>לולאות</strong> — לפחות: pit-out (יציאה), finish (סיום הקפה); אופציונלי: pit-in</li>
+  <li><strong>רשת סגורה</strong> — המחשב, TranX, מסכי Admin/Live/Reception באותה LAN</li>
+</ol>
+
+<h3>10.2 התקנת HAKAFAST</h3>
+<ol>
+  <li>הרצת installer (MSI) או <code>npm run build && npm start</code> לפיתוח</li>
+  <li>Setup Wizard — שם מסלול, workspace, מספר קארטים (אופציונלי בהתחלה)</li>
+  <li>הגדרת שעות פתיחה / מחיר / משך סsession ב-<strong>Track Planner</strong> (Admin)</li>
+  <li>פתיחת Admin: <code>/admin/{track-slug}</code></li>
+  <li>פתיחת Reception על טאבלט: <code>/reception/{track-slug}</code></li>
+  <li>פתיחת Live Timing על TV: <code>/live-timing/{track-slug}</code></li>
+</ol>
+
+<h3>10.3 קבצים חשובים</h3>
+<table>
+  <tr><th>נתיב / קובץ</th><th>תפקיד</th></tr>
+  <tr><td><code>%ProgramData%\HAKAFAST\install.json</code></td><td>הגדרות התקנה, Rentix, track slug</td></tr>
+  <tr><td><code>%ProgramData%\HAKAFAST\workspaces\*.json</code></td><td>מצב חי — תור, מקצים, קארטים</td></tr>
+  <tr><td><code>ambTranx160.js</code></td><td>גשר TranX → HAKAFAST (פורט 5403)</td></tr>
+</table>
+
+<h1>11. חיבור TranX וטרנספונדרים</h1>
+<p>אירועים עיקריים:</p>
+<table>
+  <tr><th>אירוע</th><th>Endpoint</th><th>מתי</th></tr>
+  <tr><td>יציאה מפיטס</td><td><code>POST /api/transponder/pit-exit</code></td><td>קארט חוצה לולאת pit-out</td></tr>
+  <tr><td>כניסה לפיטס</td><td><code>POST /api/transponder/pit-entry</code></td><td>קארט חוזר לתור פיטס</td></tr>
+  <tr><td>הקפה</td><td><code>POST /api/transponder/lap</code></td><td>חציית קו סיום</td></tr>
+</table>
+<p>Headers נדרשים: <code>x-hf-track</code>, <code>x-hf-workspace</code></p>
+<p>
+  בפיתוח / בדיקה: אפשר לסמulate טרנספונדר בלחיצה על הנקודה הירוקה ליד הקארט ב-Admin
+  (אחרי שיבוץ וגרירה לאזור יציאה).
+</p>
+
+<h1>12. צ'קליסט יום פתיחה</h1>
+<ol>
+  <li>□ מחשב HAKAFAST + service רץ</li>
+  <li>□ TranX מחובר ומקבל אותות (verify: <code>npm run verify:amb</code>)</li>
+  <li>□ Admin פתוח — workspace נטען</li>
+  <li>□ Reception פתוח על טאבלט בקבלה</li>
+  <li>□ Live Timing על מסך גדול</li>
+  <li>□ תור נהגים ריק / מוכן</li>
+  <li>□ קארטים במחסן / פיטס — מצב תקין</li>
+  <li>□ (אופציונלי) Rentix sync / webhook פעיל — בדיקה ב-<code>/api/webhooks/rentix/status</code></li>
+  <li>□ הגדרות מקצה: סוג (זמן / הקפות / סיבולת), ייצוא CSV/PDF</li>
+</ol>
+
+<h1>13. שאלות נפוצות</h1>
+
+<h3>למה יש גם Reception וגם תור ב-Admin?</h3>
+<p>
+  אותו תור — שני ממשקים. Reception פשוט לפקיד שלא צריך לראות פיטס ומקצים.
+  Admin מלא למנהל המקצה.
+</p>
+
+<h3>האם "הזמנות" ב-Rentix זה אותו דבר כמו "תור" ב-HAKAFAST?</h3>
+<p>
+  <strong>לא.</strong> הזמנה ב-Rentix = עסקת מכירה (מי שילם, מתי, כמה).
+  תור ב-HAKAFAST = מי ממתין physically למקצה הבא. חיבור Rentix רק מעתיק שם מההזמנה לתור.
+</p>
+
+<h3>מה קורה אם אין Rentix בכלל?</h3>
+<p>
+  הכל עובד. Reception + Admin + TranX = מסלול מלא. Rentix הוא תוסף לאינטגרציה עם אתר קיים.
+</p>
+
+<h3>האם Reception מחליף קופה?</h3>
+<p>
+  <strong>לא.</strong> Reception לא גובה כסף. תשלום נשאר בקופה / POS / Rentix.
+</p>
+
+<h3>איך יודעים מאיזה מקור הגיע נהג?</h3>
+<p>
+  כל נהג בתור יכול לכלול שדה <code>source</code>: ידני, <code>reception</code>, או <code>rentix</code>
+  (במקרה של webhook מ-Rentix).
+</p>
+
+<hr />
+<p class="meta">
+  מסמך זה נוצר עבור פרויקט HAKAFAST (hakafast-server).
+  לפתיחה ב-Word: File → Open → בחר קובץ HTML או DOCX → Save As → Word Document (.docx).
+</p>
+
+</body>
+</html>

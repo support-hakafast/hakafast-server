@@ -13,10 +13,6 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
   const [enforceSecurity, setEnforceSecurity] = useState(false);
 
   const submit = async () => {
-    if (!karts.trim()) {
-      showAlert(t('admin_setup_karts_required'));
-      return;
-    }
     if (enforceSecurity) {
       if (!isStrongPassword(password)) {
         showAlert(t('admin_password_weak'));
@@ -59,8 +55,9 @@ export default function AdminSetupModal({ trackSlug, onComplete }) {
           type="text"
           value={karts}
           onChange={(e) => setKarts(e.target.value)}
-          placeholder={t('admin_kart_input_placeholder')}
+          placeholder={t('admin_setup_karts_optional_ph')}
         />
+        <p className="password-hint">{t('admin_setup_karts_optional_hint')}</p>
 
         <div className="security-toggle-row">
           <span className="field-label">{t('admin_setup_enforce_security')}</span>

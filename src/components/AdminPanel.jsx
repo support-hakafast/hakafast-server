@@ -37,6 +37,7 @@ import {
   getReorderableTimingColumns,
   moveColumnOrder,
 } from '../utils/liveTimingColumns.js';
+import { calculateDayPlan } from '../utils/trackProfileClient.js';
 import { apiFetch } from '../utils/apiClient.js';
 import {
   usesIsolatedWorkspace,
@@ -93,6 +94,14 @@ const AdminPanel = () => {
   const [timingColumns, setTimingColumns] = useState({ ...DEFAULT_TIMING_COLUMNS });
   const [timingColumnOrder, setTimingColumnOrder] = useState([...DEFAULT_TIMING_COLUMN_ORDER]);
   const [enduranceRules, setEnduranceRules] = useState('');
+  const [trackDisplayName, setTrackDisplayName] = useState('');
+  const [openingTime, setOpeningTime] = useState('10:00');
+  const [closingTime, setClosingTime] = useState('22:00');
+  const [sessionDurationPlan, setSessionDurationPlan] = useState(10);
+  const [competitiveBlockMin, setCompetitiveBlockMin] = useState(45);
+  const [turnoverMin, setTurnoverMin] = useState(5);
+  const [pricePerSession, setPricePerSession] = useState(0);
+  const [competitiveHeatsPlanned, setCompetitiveHeatsPlanned] = useState(0);
   const [enduranceTeams, setEnduranceTeams] = useState([]);
 
   const [drName, setDrName] = useState('');
@@ -170,6 +179,17 @@ const AdminPanel = () => {
       setLinesData(lines);
       setAllKarts((prev) => reconcileKartsFromLines(prev, lines, onTrack.map((k) => k.kart_number)));
     }).catch(() => {});
+    apiFetch('/api/admin/track-profile', {}, trackSlug).then((r) => r.json()).then((data) => {
+      if (!data?.profile) return;
+      const p = data.profile;
+      if (p.trackDisplayName) setTrackDisplayName(p.trackDisplayName);
+      if (p.openingTime) setOpeningTime(p.openingTime);
+      if (p.closingTime) setClosingTime(p.closingTime);
+      if (p.sessionDurationMin != null) setSessionDurationPlan(Number(p.sessionDurationMin) || 10);
+      if (p.competitiveBlockMin != null) setCompetitiveBlockMin(Number(p.competitiveBlockMin) || 45);
+      if (p.turnoverMin != null) setTurnoverMin(Number(p.turnoverMin) || 0);
+      if (p.pricePerSession != null) setPricePerSession(Number(p.pricePerSession) || 0);
+    }).catch(() => {});
     apiFetch('/api/heat-settings', {}, trackSlug).then((r) => r.json()).then((s) => {
       if (s?.type) setHeatType(s.type);
       if (s?.duration) setHeatDuration(s.duration);
@@ -237,6 +257,54 @@ const AdminPanel = () => {
     }, 600);
     return () => clearTimeout(timer);
   }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, formationLaps, startMode, exportCsv, exportPdf, timingColumns, timingColumnOrder, enduranceRules, trackSlug]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      apiFetch('/api/admin/track-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackDisplayName,
+          openingTime,
+          closingTime,
+          sessionDurationMin: Number(sessionDurationPlan) || 10,
+          competitiveBlockMin: Number(competitiveBlockMin) || 45,
+          turnoverMin: Number(turnoverMin) || 0,
+          pricePerSession: Number(pricePerSession) || 0,
+        }),
+      }, trackSlug).catch(() => {});
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [
+    trackDisplayName,
+    openingTime,
+    closingTime,
+    sessionDurationPlan,
+    competitiveBlockMin,
+    turnoverMin,
+    pricePerSession,
+    trackSlug,
+  ]);
+
+  const dayPlan = useMemo(
+    () => calculateDayPlan({
+      openingTime,
+      closingTime,
+      sessionDurationMin: sessionDurationPlan,
+      competitiveBlockMin,
+      turnoverMin,
+      pricePerSession,
+    }, { competitiveHeats: competitiveHeatsPlanned }),
+    [
+      openingTime,
+      closingTime,
+      sessionDurationPlan,
+      competitiveBlockMin,
+      turnoverMin,
+      pricePerSession,
+      competitiveHeatsPlanned,
+    ],
+  );
 
   useEffect(() => {
     if (!usesIsolatedWorkspace(trackSlug)) return undefined;
@@ -805,7 +873,9 @@ const AdminPanel = () => {
   const handleSetupComplete = ({ kartNumbers, hasPassword: pwSet }) => {
     setShowSetup(false);
     if (pwSet) setHasPassword(true);
-    parseKartNumbers(kartNumbers).forEach((n) => addKartEntity(n));
+    if (kartNumbers?.trim()) {
+      parseKartNumbers(kartNumbers).forEach((n) => addKartEntity(n));
+    }
   };
 
   const applySessionPayload = (data) => {
@@ -1249,6 +1319,67 @@ const AdminPanel = () => {
             ) : null}
           </div>
 
+          <div className="track-planner-panel">
+            <span className="field-label">{t('admin_track_planner')}</span>
+            <p className="timing-columns-intro">{t('admin_track_planner_hint')}</p>
+            <label className="planner-field">
+              <span>{t('admin_track_display_name')}</span>
+              <input type="text" value={trackDisplayName} onChange={(e) => setTrackDisplayName(e.target.value)} />
+            </label>
+            <div className="planner-row">
+              <label className="planner-field">
+                <span>{t('admin_opening_time')}</span>
+                <input type="time" value={openingTime} onChange={(e) => setOpeningTime(e.target.value)} />
+              </label>
+              <label className="planner-field">
+                <span>{t('admin_closing_time')}</span>
+                <input type="time" value={closingTime} onChange={(e) => setClosingTime(e.target.value)} />
+              </label>
+            </div>
+            <div className="planner-row">
+              <label className="planner-field">
+                <span>{t('admin_session_duration_plan')}</span>
+                <input type="number" min="1" value={sessionDurationPlan} onChange={(e) => setSessionDurationPlan(e.target.value)} />
+              </label>
+              <label className="planner-field">
+                <span>{t('admin_turnover_min')}</span>
+                <input type="number" min="0" value={turnoverMin} onChange={(e) => setTurnoverMin(e.target.value)} />
+              </label>
+            </div>
+            <div className="planner-row">
+              <label className="planner-field">
+                <span>{t('admin_competitive_block_min')}</span>
+                <input type="number" min="1" value={competitiveBlockMin} onChange={(e) => setCompetitiveBlockMin(e.target.value)} />
+              </label>
+              <label className="planner-field">
+                <span>{t('admin_price_per_session')}</span>
+                <input type="number" min="0" value={pricePerSession} onChange={(e) => setPricePerSession(e.target.value)} />
+              </label>
+            </div>
+            <label className="planner-field">
+              <span>{t('admin_competitive_heats_planned')}</span>
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={competitiveHeatsPlanned}
+                onChange={(e) => setCompetitiveHeatsPlanned(e.target.value)}
+              />
+            </label>
+            <div className="planner-stats">
+              <div><strong>{dayPlan.maxSessionHeats}</strong> {t('admin_plan_max_heats')}</div>
+              <div><strong>{dayPlan.maxSessionHeatsAfterCompetitive}</strong> {t('admin_plan_after_competitive')}</div>
+              <div><strong>{dayPlan.estimatedRevenueAfterCompetitive}</strong> {t('admin_plan_revenue')}</div>
+            </div>
+            <button
+              type="button"
+              className="btn-muted planner-apply-btn"
+              onClick={() => setHeatDuration(String(sessionDurationPlan))}
+            >
+              {t('admin_apply_session_duration')}
+            </button>
+          </div>
+
           <div className="heat-type-bar">
             <label className="field-label">{t('admin_heat_settings')}</label>
             <select value={heatType} onChange={(e) => setHeatType(e.target.value)}>
@@ -1256,6 +1387,9 @@ const AdminPanel = () => {
               <option value="endurance">{t('heat_endurance')}</option>
               <option value="sprint">{t('heat_sprint')}</option>
             </select>
+            <p className="heat-mode-hint">
+              {heatType === 'time' ? t('admin_heat_mode_session') : t('admin_heat_mode_competitive')}
+            </p>
             {heatType === 'time' && (
               <>
                 <span className="duration-unit-label">{t('admin_duration_unit')}</span>

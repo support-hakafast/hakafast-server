@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.*
+
+# Generated Word documents — local / sales only (not in repo)
+docs/docx/*
+!docs/docx/.gitkeep
