@@ -335,9 +335,11 @@ function sendSpaIndex(res) {
   if (!hasBuild) {
     return res.status(503).send(`<!DOCTYPE html>
 <html lang="he" dir="rtl"><head><meta charset="UTF-8"><title>HAKAFAST</title></head>
-<body style="font-family:system-ui,sans-serif;padding:2rem;text-align:center">
+<body style="font-family:system-ui,sans-serif;padding:2rem;text-align:center;max-width:520px;margin:2rem auto">
 <h1>HAKAFAST</h1>
-<p>האתר עדיין לא נבנה. הרץ <code>npm run build</code> ואז <code>npm start</code>.</p>
+<p>ה-build של הממשק לא הושלם. בדוק ב-Render את לוג ה-<strong>Build</strong> ואת ה-<strong>Start</strong>.</p>
+<p style="font-size:.9rem;color:#444">Build Command: <code>npm install && npm run build</code><br>
+Start Command: <code>npm start</code></p>
 </body></html>`);
   }
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

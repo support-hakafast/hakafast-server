@@ -2,8 +2,12 @@ services:
   - type: web
     name: hakafast-server
     runtime: node
+    # Build frontend during deploy (dist/ is not in git)
     buildCommand: npm install && npm run build
-    startCommand: node server.js
+    # npm start runs ensure-build.js then server.js (safety if build phase skipped)
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "20"
