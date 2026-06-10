@@ -84,6 +84,7 @@ function createStore(trackSlug = 'kart-demo') {
     heatRacingStarted: false,
     heatAutoFinishTriggered: false,
     autoFinishExportPending: false,
+    pendingExportDrain: false,
     autoFinishStartedAt: null,
     autoFinishHeatNumber: null,
     dailyHeat: { date: null, counter: 0, current: null },
@@ -194,6 +195,7 @@ function exportSnapshot(store) {
     heatRacingStarted: store.heatRacingStarted,
     heatAutoFinishTriggered: store.heatAutoFinishTriggered,
     autoFinishExportPending: store.autoFinishExportPending,
+    pendingExportDrain: store.pendingExportDrain,
     autoFinishStartedAt: store.autoFinishStartedAt,
     autoFinishHeatNumber: store.autoFinishHeatNumber,
     heatHistory: store.heatHistory,
@@ -226,6 +228,7 @@ function applySnapshot(store, snapshot) {
   if (typeof snapshot.heatRacingStarted === 'boolean') store.heatRacingStarted = snapshot.heatRacingStarted;
   if (typeof snapshot.heatAutoFinishTriggered === 'boolean') store.heatAutoFinishTriggered = snapshot.heatAutoFinishTriggered;
   if (typeof snapshot.autoFinishExportPending === 'boolean') store.autoFinishExportPending = snapshot.autoFinishExportPending;
+  if (typeof snapshot.pendingExportDrain === 'boolean') store.pendingExportDrain = snapshot.pendingExportDrain;
   if (snapshot.autoFinishStartedAt !== undefined) store.autoFinishStartedAt = snapshot.autoFinishStartedAt;
   if (snapshot.autoFinishHeatNumber !== undefined) store.autoFinishHeatNumber = snapshot.autoFinishHeatNumber;
   if (Array.isArray(snapshot.heatHistory)) store.heatHistory = snapshot.heatHistory;
@@ -607,8 +610,9 @@ function recordLapCrossing(store, ot, row, lapSec, options = {}) {
     checkAutoFinish(store);
     const kartNum = Number(ot.kart_number);
     if (!isKartReservedForNextHeat(store, kartNum)) {
-      returnKart(store, kartNum, ot.originLaneId ?? ot.laneId ?? 1, {
+      returnKart(store, kartNum, null, {
         skipNextHeatGuard: true,
+        evenSpread: true,
       });
     }
     return;
@@ -777,6 +781,106 @@ function allOnTrackClearedOrReadyForNextHeatDrain(store) {
   return true;
 }
 
+function getActivePitLaneIds(store) {
+  return Object.entries(store.pitLines || {})
+    .filter(([, lane]) => lane?.active !== false)
+    .map(([id]) => id)
+    .sort((a, b) => Number(a) - Number(b));
+}
+
+function countKartsInPitLines(pitLines) {
+  return Object.values(pitLines || {}).reduce(
+    (sum, lane) => sum + (lane?.karts?.length || 0),
+    0,
+  );
+}
+
+/** Keep server pit karts when the client sends a stale empty snapshot after session end. */
+function mergeClientPitLines(store, clientPitLines) {
+  if (!clientPitLines) return store.pitLines;
+  const client = sanitizePitLines(clientPitLines);
+  const server = sanitizePitLines(store.pitLines || {});
+
+  const serverKarts = new Set();
+  Object.values(server).forEach((lane) => {
+    (lane.karts || []).forEach((k) => serverKarts.add(Number(k)));
+  });
+
+  const clientKarts = new Set();
+  Object.values(client).forEach((lane) => {
+    (lane.karts || []).forEach((k) => clientKarts.add(Number(k)));
+  });
+
+  const onTrackKarts = new Set(store.onTrack.map((ot) => Number(ot.kart_number)));
+  const missingOnClient = [...serverKarts].filter(
+    (k) => !clientKarts.has(k) && !onTrackKarts.has(k),
+  );
+
+  if (missingOnClient.length === 0) {
+    store.pitLines = client;
+    return store.pitLines;
+  }
+
+  const merged = JSON.parse(JSON.stringify(server));
+  Object.entries(client).forEach(([laneId, clientLane]) => {
+    if (!merged[laneId]) {
+      merged[laneId] = {
+        name: clientLane.name,
+        active: clientLane.active !== false,
+        karts: [...(clientLane.karts || [])],
+      };
+      return;
+    }
+    merged[laneId] = {
+      ...merged[laneId],
+      name: clientLane.name ?? merged[laneId].name,
+      active: clientLane.active ?? merged[laneId].active,
+    };
+    const clientNums = (clientLane.karts || []).map(Number);
+    const serverOnly = (merged[laneId].karts || []).map(Number).filter((k) => !clientNums.includes(k));
+    merged[laneId].karts = [...clientNums, ...serverOnly];
+  });
+
+  missingOnClient.forEach((kartNum) => {
+    const laneId = pickShortestActiveLane({ pitLines: merged });
+    if (!laneId) return;
+    if (!merged[laneId]) merged[laneId] = { active: true, karts: [] };
+    if (!(merged[laneId].karts || []).some((k) => Number(k) === kartNum)) {
+      merged[laneId].karts.push(kartNum);
+    }
+  });
+
+  store.pitLines = sanitizePitLines(merged);
+  return store.pitLines;
+}
+
+function pickShortestActiveLane(store) {
+  const ids = getActivePitLaneIds(store);
+  if (!ids.length) return null;
+  let best = ids[0];
+  let bestLen = store.pitLines[best]?.karts?.length ?? 0;
+  ids.forEach((id) => {
+    const len = store.pitLines[id]?.karts?.length ?? 0;
+    if (len < bestLen) {
+      bestLen = len;
+      best = id;
+    }
+  });
+  return best;
+}
+
+function resolveReturnLaneId(store, requestedLaneId) {
+  const ids = getActivePitLaneIds(store);
+  if (!ids.length) return null;
+  if (requestedLaneId != null && requestedLaneId !== '') {
+    const lid = String(requestedLaneId);
+    if (store.pitLines[lid] && store.pitLines[lid].active !== false) {
+      return lid;
+    }
+  }
+  return pickShortestActiveLane(store);
+}
+
 function orderOnTrackKartsForPitEntryLocal(onTrackList = []) {
   const entries = onTrackList.map((item) => {
     if (item != null && typeof item === 'object') {
@@ -821,9 +925,10 @@ function returnAllDrainingKartsToPits(store, options = {}) {
       const inCooldown = store.heatCooldownPhase && ot.cooldownLapPending && !ot.cooldownLapDone;
       if (inCooldown) return;
     }
-    const result = returnKart(store, n, ot.originLaneId ?? ot.laneId ?? 1, {
+    const result = returnKart(store, n, null, {
       skipNextHeatGuard: true,
       skipDrain: true,
+      evenSpread: true,
     });
     if (result.success) returned.push(n);
   });
@@ -837,6 +942,17 @@ function returnAllDrainingKartsToPits(store, options = {}) {
 
 function maybeDrainFinishedHeat(store) {
   if (!store.heatFrozen || store.autoFinishExportPending) return;
+
+  if (allOnTrackAreForNextHeat(store)) {
+    store.heatFrozen = false;
+    store.heatAutoFinishTriggered = false;
+    store.heatCooldownPhase = false;
+    store.heatCooldownStartedAt = null;
+    promoteNextHeat(store, { preserveOnTrack: true });
+    return;
+  }
+
+  if (store.pendingExportDrain) return;
 
   if (store.onTrack.length === 0) {
     store.currentHeat = [];
@@ -860,15 +976,6 @@ function maybeDrainFinishedHeat(store) {
       store.heatCooldownStartedAt = null;
     }
     checkAutoFinish(store);
-    return;
-  }
-
-  if (allOnTrackAreForNextHeat(store)) {
-    store.heatFrozen = false;
-    store.heatAutoFinishTriggered = false;
-    store.heatCooldownPhase = false;
-    store.heatCooldownStartedAt = null;
-    promoteNextHeat(store, { preserveOnTrack: true });
   }
 }
 
@@ -926,9 +1033,10 @@ function returnKartsNotInNextHeat(store) {
       return;
     }
 
-    const result = returnKart(store, n, ot.originLaneId ?? ot.laneId ?? 1, {
+    const result = returnKart(store, n, null, {
       skipNextHeatGuard: true,
       skipDrain: true,
+      evenSpread: true,
     });
     if (result.success) returned.push(n);
   });
@@ -1665,10 +1773,15 @@ function returnKart(store, kartNumber, laneId, options = {}) {
   if (idx < 0) return { success: false, error: 'not_on_track' };
 
   const ot = store.onTrack[idx];
+  const preferredLane = options.evenSpread
+    ? null
+    : (laneId != null && laneId !== '' ? laneId : (ot.originLaneId ?? ot.laneId));
+  const lid = resolveReturnLaneId(store, preferredLane);
+  if (!lid) {
+    return { success: false, error: 'no_pit_lanes' };
+  }
   store.onTrack.splice(idx, 1);
-  const targetLane = laneId ?? ot.originLaneId ?? ot.laneId;
-  const lid = String(targetLane);
-  const assignedPending = tryAssignReturnedKartToNextHeat(store, n, targetLane);
+  const assignedPending = tryAssignReturnedKartToNextHeat(store, n, Number(lid));
   const reservedForNext = isKartReservedForNextHeat(store, n) || assignedPending;
 
   if (store.pitLines[lid]) {
@@ -1943,6 +2056,8 @@ function assignHeatBatch(store, assignmentRows, settings) {
     prepared: prepare,
     count: rows.length,
     heatNumber: prepare ? getCurrentHeatNumber(store) : store.dailyHeat?.current,
+    pitLines: store.pitLines,
+    onTrack: enrichOnTrack(store),
   };
 }
 
@@ -2013,10 +2128,19 @@ function finishHeat(store, options = {}) {
   store.heatRuntime.startedAt = null;
   if (keepOnTrack) {
     store.heatFrozen = true;
+    const needsExportHold = Boolean(
+      store.heatSettings?.exportCsv || store.heatSettings?.exportPdf,
+    );
+    if (needsExportHold) {
+      store.pendingExportDrain = true;
+    }
     if (store.nextHeat.length > 0) {
       returnKartsNotInNextHeat(store);
     } else {
-      returnAllDrainingKartsToPits(store);
+      returnAllDrainingKartsToPits(store, { skipDrain: needsExportHold });
+      if (!needsExportHold) {
+        maybeDrainFinishedHeat(store);
+      }
     }
   } else {
     enduranceRules.tickEnduranceRules(store, { final: true });
@@ -2034,7 +2158,11 @@ function finishHeat(store, options = {}) {
 
 function exportData(store) {
   const heatNumber = store.autoFinishHeatNumber || getCurrentHeatNumber(store);
-  const fromHistory = store.heatFrozen ? getResultsForHeatNumber(store, heatNumber) : null;
+  let fromHistory = store.heatFrozen ? getResultsForHeatNumber(store, heatNumber) : null;
+  if (!fromHistory?.results?.length && store.heatHistory?.length) {
+    const latest = store.heatHistory[store.heatHistory.length - 1];
+    if (latest?.results?.length) fromHistory = latest;
+  }
   const source = fromHistory?.results?.length ? fromHistory.results : store.currentHeat;
   return source
     .slice()
@@ -2067,10 +2195,11 @@ function checkAutoFinish(store) {
 
 function acknowledgeAutoExport(store) {
   store.autoFinishExportPending = false;
+  store.pendingExportDrain = false;
   store.autoFinishStartedAt = null;
   store.autoFinishHeatNumber = null;
   maybeDrainFinishedHeat(store);
-  return { success: true };
+  return { success: true, pitLines: store.pitLines, onTrack: enrichOnTrack(store) };
 }
 
 function enrichOnTrack(store) {
@@ -2349,6 +2478,7 @@ module.exports = {
   returnKart,
   returnKartsNotInNextHeat,
   returnAllDrainingKartsToPits,
+  mergeClientPitLines,
   processTransponderPitExit,
   processTransponderPitEntry,
   processTransponderLap,

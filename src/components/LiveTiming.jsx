@@ -19,6 +19,7 @@ import { useLiveTheme } from '../hooks/useLiveTheme.js';
 import { normalizeTimingColumns, normalizeTimingColumnOrder } from '../utils/liveTimingColumns.js';
 import { formatHeatClock, getHeatClockClassName } from '../utils/adminHelpers.js';
 import { useLiveLayoutTier } from '../hooks/useLiveWideLayout.js';
+import { useTickingHeatClock } from '../hooks/useTickingHeatClock.js';
 
 const HEAT_LABEL_KEYS = { time: 'heat_time', endurance: 'heat_endurance', sprint: 'heat_sprint' };
 
@@ -121,6 +122,8 @@ const LiveTiming = () => {
       : ['kart_number', 'driver_name', 'lap_count'],
   );
 
+  const displayHeatClock = useTickingHeatClock(heatClock);
+
   const layoutTier = useLiveLayoutTier();
   const isWide = layoutTier === 'wide' || layoutTier === 'ultra';
   const layoutClass = layoutTier === 'ultra' ? ' is-wide is-ultra' : (isWide ? ' is-wide' : '');
@@ -155,9 +158,9 @@ const LiveTiming = () => {
           </div>
         </div>
         <div className="live-header-row live-header-row-actions">
-          {heatClock ? (
-            <div className={`live-race-clock${getHeatClockClassName(heatClock)}`} aria-live="polite">
-              {formatHeatClock(heatClock, t('admin_heat_not_started'), '00:00', clockPhaseLabels)}
+          {displayHeatClock ? (
+            <div className={`live-race-clock${getHeatClockClassName(displayHeatClock)}`} aria-live="polite">
+              {formatHeatClock(displayHeatClock, t('admin_heat_not_started'), '00:00', clockPhaseLabels)}
             </div>
           ) : null}
           <div className="live-header-actions">

@@ -1004,7 +1004,12 @@ app.post('/api/admin/finish-heat', async (req, res) => {
   if (demo) {
     demoStore.finishHeat(demo, { keepOnTrack: demo.onTrack.length > 0 });
     notifyWorkspace(req);
-    return res.json({ success: true, draining: demo.heatFrozen });
+    return res.json({
+      success: true,
+      draining: demo.heatFrozen,
+      pitLines: demo.pitLines,
+      onTrack: demo.onTrack,
+    });
   }
   try {
     await applyAutoLevelUpgrades(1);
@@ -1045,9 +1050,15 @@ app.post('/api/admin/auto-export-ack', async (req, res) => {
         );
       }
     }
-    demoStore.acknowledgeAutoExport(demo);
+    const ack = demoStore.acknowledgeAutoExport(demo);
     notifyWorkspace(req);
-    return res.json({ success: true, fileExport: fileExportResult, rentix: rentixPush });
+    return res.json({
+      success: true,
+      fileExport: fileExportResult,
+      rentix: rentixPush,
+      pitLines: ack.pitLines,
+      onTrack: ack.onTrack,
+    });
   }
   res.json({ success: true });
 });
@@ -1173,7 +1184,7 @@ app.post('/api/admin/assign-heat', (req, res) => {
   if (!Array.isArray(assignments) || assignments.length === 0) {
     return res.json({ success: false, error: 'no_assignments' });
   }
-  if (pitLines) demo.pitLines = demoStore.sanitizePitLines(pitLines);
+  if (pitLines) demoStore.mergeClientPitLines(demo, pitLines);
   const result = demoStore.assignHeatBatch(demo, assignments, heatSettings);
   if (result.success) {
     demo.driverQueue = [];

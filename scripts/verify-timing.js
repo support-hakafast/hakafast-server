@@ -310,8 +310,8 @@ function testReturnNonNextHeatKartsOnFinish() {
   assert(!store.heatFrozen, 'should promote when only next-heat kart 1 remains');
   assert(store.onTrack.length === 1, 'only next-heat kart stays on track');
   assert(Number(store.onTrack[0].kart_number) === 1, 'kart 1 stays for next heat');
-  assert(store.pitLines[1].karts.includes(2), 'kart 2 should return to pits');
-  assert(store.pitLines[1].karts.includes(3), 'kart 3 should return to pits');
+  const pitKarts = [...(store.pitLines[1].karts || []), ...(store.pitLines[2].karts || [])];
+  assert(pitKarts.includes(2) && pitKarts.includes(3), 'kart 2 and 3 should return to pit lanes');
   assert(store.currentHeat[0].driver_name === 'A2', 'next heat promoted with new driver on kart 1');
 }
 
@@ -774,13 +774,60 @@ function testFinishWithoutNextHeatReturnsKartsToPits() {
   store.pitLines[1].karts = [];
   store.pitLines[2].karts = [];
   store.nextHeat = [];
+  store.heatSettings = { type: 'time', duration: 10, exportCsv: true };
 
   demoStore.finishHeat(store, { keepOnTrack: true });
   assert(store.onTrack.length === 0, 'all karts should leave track');
-  assert(store.pitLines[1].karts.includes(1), 'kart 1 in pit lane 1');
-  assert(store.pitLines[1].karts.includes(2), 'kart 2 in pit lane 1');
-  assert(store.pitLines[2].karts.includes(3), 'kart 3 in pit lane 2');
-  assert(!store.heatFrozen, 'heat should drain after karts return');
+  const pitKarts = [...(store.pitLines[1].karts || []), ...(store.pitLines[2].karts || [])];
+  assert(pitKarts.includes(1) && pitKarts.includes(2) && pitKarts.includes(3), 'karts spread in pit lanes');
+  assert(pitKarts.length === 3, 'no karts left in warehouse pool');
+  assert(store.heatFrozen, 'heat stays frozen until export drain');
+  const exportRows = demoStore.exportData(store);
+  assert(exportRows.length === 3, 'export data preserved before drain');
+  demoStore.acknowledgeAutoExport(store);
+  assert(!store.heatFrozen, 'heat drains after export ack');
+}
+
+function testMergeClientPitLinesPreservesServerKarts() {
+  const wsId = 'verify-merge-pits';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.pitLines[1].karts = [1, 2, 3];
+  store.pitLines[2].karts = [];
+  store.onTrack = [];
+  const staleClient = {
+    1: { active: true, karts: [] },
+    2: { active: true, karts: [] },
+  };
+  demoStore.mergeClientPitLines(store, staleClient);
+  const pitKarts = [...(store.pitLines[1].karts || []), ...(store.pitLines[2].karts || [])];
+  assert(pitKarts.includes(1) && pitKarts.includes(2) && pitKarts.includes(3), 'server pit karts preserved from stale client');
+  const result = demoStore.assignHeatBatch(store, [
+    { kart_number: 1, driver_name: 'A' },
+    { kart_number: 2, driver_name: 'B' },
+  ], { type: 'time', duration: 10 });
+  assert(result.success, 'assignment succeeds after pit merge');
+  assert((result.pitLines[1].karts || []).length + (result.pitLines[2].karts || []).length >= 1, 'pit lines remain populated');
+}
+
+function testEvenPitLaneSpreadOnReturn() {
+  const wsId = 'verify-even-spread';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.pitLines = {
+    1: { active: true, karts: [10] },
+    2: { active: true, karts: [] },
+  };
+  store.onTrack = [
+    { kart_number: 1, launchedAt: Date.now(), originLaneId: 1 },
+    { kart_number: 2, launchedAt: Date.now(), originLaneId: 1 },
+    { kart_number: 3, launchedAt: Date.now(), originLaneId: 1 },
+  ];
+  demoStore.returnKart(store, 1, null, { evenSpread: true });
+  demoStore.returnKart(store, 2, null, { evenSpread: true });
+  demoStore.returnKart(store, 3, null, { evenSpread: true });
+  assert(store.pitLines[1].karts.length === 2, 'lane 1 gets two karts evenly');
+  assert(store.pitLines[2].karts.length === 2, 'lane 2 gets two karts evenly');
 }
 
 function testCooldownAutoReturnWithoutNextHeat() {
@@ -1264,6 +1311,8 @@ async function main() {
   await run('daily 6-kart cooldown with next on track', () => testDailySixKartCooldownWithNextOnTrack());
   await run('cooldown completes from phase timer', () => testCooldownCompletesFromPhaseTimer());
   await run('finish without next heat returns karts to pits', () => testFinishWithoutNextHeatReturnsKartsToPits());
+  await run('merge client pit lines preserves server karts', () => testMergeClientPitLinesPreservesServerKarts());
+  await run('even pit lane spread on return', () => testEvenPitLaneSpreadOnReturn());
   await run('cooldown auto-return without next heat', () => testCooldownAutoReturnWithoutNextHeat());
   await run('overlap assignment during drain', testOverlapAssignmentDuringDrain);
   await run('pending slots filled on pit return', () => testPendingFilledOnPitReturn());

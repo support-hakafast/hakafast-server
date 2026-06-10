@@ -13,6 +13,7 @@ import LivePreviewFloat from './LivePreviewFloat.jsx';
 import TimingColumnOrderList from './TimingColumnOrderList.jsx';
 import '../assets/SalesPages.css';
 import KartCard from './KartCard.jsx';
+import { useTickingHeatClock } from '../hooks/useTickingHeatClock.js';
 import { isStrongPassword } from '../utils/password.js';
 import {
   parseKartNumbers,
@@ -72,6 +73,13 @@ function normalizeLinesData(data) {
   return data;
 }
 
+function countAllPitKarts(lines) {
+  return Object.values(lines || {}).reduce(
+    (sum, lane) => sum + (lane?.karts?.length || 0),
+    0,
+  );
+}
+
 const AdminPanel = () => {
   const { trackName } = useParams();
   const { t } = useLanguage();
@@ -126,6 +134,7 @@ const AdminPanel = () => {
   const [dragOverPool, setDragOverPool] = useState(false);
   const [transponderFlashLane, setTransponderFlashLane] = useState(null);
   const [heatClock, setHeatClock] = useState({ running: false, remainingSec: 600, durationMin: 10, hasDrivers: false });
+  const displayHeatClock = useTickingHeatClock(heatClock);
   const [onTrack, setOnTrack] = useState([]);
   const [heatDriverCount, setHeatDriverCount] = useState(0);
   const [autoFinishHandled, setAutoFinishHandled] = useState(false);
@@ -142,6 +151,8 @@ const AdminPanel = () => {
   const [nextHeatReadiness, setNextHeatReadiness] = useState(null);
   const autoFinishHandledRef = useRef(false);
   const pitsLocalEditUntilRef = useRef(0);
+  const linesDataRef = useRef(linesData);
+  linesDataRef.current = linesData;
 
 
   const syncPitsWithServer = useCallback(async (lines) => {
@@ -226,13 +237,23 @@ const AdminPanel = () => {
     if (usesIsolatedWorkspace(trackSlug)) {
       const wsId = getWorkspaceId(trackSlug);
       loadLocalSnapshot(trackSlug, wsId).then((local) => {
-        if (local?.allKarts) setAllKarts(local.allKarts);
+        if (local?.allKarts) {
+          setAllKarts((prev) => reconcileKartsFromLines(
+            { ...local.allKarts, ...prev },
+            linesDataRef.current,
+            (onTrack || []).map((k) => k.kart_number),
+          ));
+        }
       });
       apiFetch('/api/workspace/backup', {}, trackSlug)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
           if (data?.success && data?.snapshot?.clientSnapshot?.allKarts) {
-            setAllKarts((prev) => ({ ...data.snapshot.clientSnapshot.allKarts, ...prev }));
+            setAllKarts((prev) => reconcileKartsFromLines(
+              { ...data.snapshot.clientSnapshot.allKarts, ...prev },
+              linesDataRef.current,
+              (onTrack || []).map((k) => k.kart_number),
+            ));
           }
         })
         .catch(() => {});
@@ -661,6 +682,17 @@ const AdminPanel = () => {
     } catch { showAlert(t('admin_alert_server_error')); }
   };
 
+  const applySessionPayload = useCallback((data) => {
+    const trackNums = (data.onTrack || []).map((k) => Number(k.kart_number ?? k.kart));
+    if (data.pitLines) {
+      const lines = sanitizePitLines(normalizeLinesData(data.pitLines));
+      setLinesData(lines);
+      setAllKarts((prev) => reconcileKartsFromLines(prev, lines, trackNums));
+    }
+    if (data.onTrack) setOnTrack(data.onTrack);
+    if (data.heatClock) setHeatClock(data.heatClock);
+  }, []);
+
   const runFinishHeat = useCallback(async (isAuto = false, startedAtOverride = null, settingsOverride = null) => {
     let doCsv = exportCsv;
     let doPdf = exportPdf;
@@ -677,7 +709,9 @@ const AdminPanel = () => {
     }
 
     const ackAutoExport = async () => {
-      await apiFetch('/api/admin/auto-export-ack', { method: 'POST' }, trackSlug);
+      const ackRes = await apiFetch('/api/admin/auto-export-ack', { method: 'POST' }, trackSlug);
+      const ackData = ackRes.ok ? await ackRes.json() : null;
+      if (ackData?.pitLines) applySessionPayload(ackData);
       autoFinishHandledRef.current = true;
       setAutoFinishHandled(true);
     };
@@ -695,7 +729,11 @@ const AdminPanel = () => {
 
     try {
       if (!isAuto) {
-        await apiFetch('/api/admin/finish-heat', { method: 'POST' }, trackSlug);
+        const finishRes = await apiFetch('/api/admin/finish-heat', { method: 'POST' }, trackSlug);
+        if (finishRes.ok) {
+          const finishData = await finishRes.json();
+          if (finishData?.pitLines) applySessionPayload(finishData);
+        }
       }
       const res = await apiFetch('/api/admin/export-data', {}, trackSlug);
       const rows = await res.json();
@@ -725,6 +763,9 @@ const AdminPanel = () => {
         await ackAutoExport();
         showAlert(t('admin_finish_auto_done'));
       } else {
+        try {
+          await ackAutoExport();
+        } catch { /* drain is best-effort after manual export */ }
         showAlert(t('admin_finish_done'));
         setHeatDriverCount(0);
         setAssignedHeatKarts(new Set());
@@ -738,7 +779,7 @@ const AdminPanel = () => {
         showAlert(t('admin_alert_server_error'));
       }
     }
-  }, [exportCsv, exportPdf, heatType, heatClock.startedAt, trackSlug, t]);
+  }, [exportCsv, exportPdf, heatType, heatClock.startedAt, trackSlug, t, applySessionPayload]);
 
   const finishHeat = async () => {
     try {
@@ -771,10 +812,21 @@ const AdminPanel = () => {
           }
           if (s.onTrack) setOnTrack(s.onTrack);
           if (s.pitExitPosition) setPitExitPosition(s.pitExitPosition);
-          if (s.pitLines && Date.now() > pitsLocalEditUntilRef.current) {
-            const lines = normalizeLinesData(s.pitLines);
-            setLinesData(lines);
-            setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (s.onTrack || []).map((k) => k.kart_number)));
+          if (s.pitLines) {
+            const lines = sanitizePitLines(normalizeLinesData(s.pitLines));
+            const serverCount = countAllPitKarts(lines);
+            const localCount = countAllPitKarts(linesDataRef.current);
+            const pitsReturnedAfterSession = serverCount > 0
+              && (s.onTrack || []).length === 0
+              && localCount === 0;
+            if (Date.now() > pitsLocalEditUntilRef.current || serverCount > localCount || pitsReturnedAfterSession) {
+              setLinesData(lines);
+              setAllKarts((prev) => reconcileKartsFromLines(
+                prev,
+                lines,
+                (s.onTrack || []).map((k) => k.kart_number),
+              ));
+            }
           }
           if (typeof s.heatNumber === 'number') setHeatNumber(s.heatNumber);
           if (Array.isArray(s.enduranceTeams)) setEnduranceTeams(s.enduranceTeams);
@@ -803,9 +855,28 @@ const AdminPanel = () => {
     if (driverQueue.length === 0) { showAlert(t('admin_alert_no_drivers')); return; }
     let duration = heatDuration;
     if (heatType === 'endurance') duration = (parseInt(enduranceHours, 10) || 0) * 60 + (parseInt(enduranceMinutes, 10) || 0);
-    const laneKeys = Object.keys(linesData).filter((id) => linesData[id].active);
+    let baseLines = JSON.parse(JSON.stringify(linesData));
+    let trackForAssign = onTrack;
+    try {
+      const sessionRes = await apiFetch('/api/admin/session-state', {}, trackSlug);
+      if (sessionRes.ok) {
+        const s = await sessionRes.json();
+        if (s.pitLines) {
+          baseLines = sanitizePitLines(normalizeLinesData(s.pitLines));
+          trackForAssign = s.onTrack || [];
+          setLinesData(baseLines);
+          setOnTrack(trackForAssign);
+          setAllKarts((prev) => reconcileKartsFromLines(
+            prev,
+            baseLines,
+            trackForAssign.map((k) => k.kart_number),
+          ));
+        }
+      }
+    } catch { /* use local pit snapshot */ }
+    const laneKeys = Object.keys(baseLines).filter((id) => baseLines[id].active);
     if (laneKeys.length === 0) { showAlert(t('admin_alert_no_lanes')); return; }
-    const workingLines = JSON.parse(JSON.stringify(linesData));
+    const workingLines = JSON.parse(JSON.stringify(baseLines));
     const isEndurance = heatType === 'endurance';
     const teams = isEndurance ? groupQueueByTeam(driverQueue) : null;
     const assignCount = isEndurance ? teams.length : driverQueue.length;
@@ -815,7 +886,7 @@ const AdminPanel = () => {
     );
     const canUseTrackPool = overlapMode || sessionRunning;
     const { assigned: kartSlots, complete } = pickKartsForAssignment(workingLines, laneKeys, assignCount, {
-      onTrackKarts: canUseTrackPool ? onTrack : [],
+      onTrackKarts: canUseTrackPool ? trackForAssign : [],
       pendingOnTrackSlots: canUseTrackPool,
     });
     if (!complete) { showAlert(t('admin_alert_not_enough_karts')); return; }
@@ -904,8 +975,17 @@ const AdminPanel = () => {
         showAlert(t('admin_alert_assign_done'));
       }
       setDriverQueue([]);
-      setLinesData(workingLines);
-      syncPitsWithServer(workingLines);
+      if (data.pitLines) {
+        applySessionPayload(data);
+      } else {
+        setLinesData(workingLines);
+        setAllKarts((prev) => reconcileKartsFromLines(
+          prev,
+          workingLines,
+          (data.onTrack || []).map((k) => k.kart_number),
+        ));
+        syncPitsWithServer(workingLines);
+      }
     } catch {
       showAlert(t('admin_alert_server_error'));
     }
@@ -917,16 +997,6 @@ const AdminPanel = () => {
     if (kartNumbers?.trim()) {
       parseKartNumbers(kartNumbers).forEach((n) => addKartEntity(n));
     }
-  };
-
-  const applySessionPayload = (data) => {
-    if (data.pitLines) {
-      const lines = normalizeLinesData(data.pitLines);
-      setLinesData(lines);
-      setAllKarts((prev) => reconcileKartsFromLines(prev, lines, (data.onTrack || []).map((k) => k.kart_number)));
-    }
-    if (data.onTrack) setOnTrack(data.onTrack);
-    if (data.heatClock) setHeatClock(data.heatClock);
   };
 
   const deployAllGridKarts = async () => {
@@ -1442,8 +1512,8 @@ const AdminPanel = () => {
 
           <div className="heat-clock-bar">
             <span className="field-label">{t('admin_heat_timer')}</span>
-            <span className={`heat-clock-value${getHeatClockClassName(heatClock)}`}>
-              {formatHeatClock(heatClock, t('admin_heat_not_started'), '00:00', {
+            <span className={`heat-clock-value${getHeatClockClassName(displayHeatClock)}`}>
+              {formatHeatClock(displayHeatClock, t('admin_heat_not_started'), '00:00', {
                 lastLap: t('live_race_last_lap'),
                 checkered: '🏁',
                 formation: t('live_race_formation'),

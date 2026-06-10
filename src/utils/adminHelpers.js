@@ -50,6 +50,36 @@ export function reconcileKartsFromLines(allKarts, linesData, onTrackNums = []) {
   return next;
 }
 
+/** Recompute elapsed/remaining from startedAt so the UI can tick every second locally. */
+export function tickHeatClockDisplay(clock, now = Date.now()) {
+  if (!clock) return clock;
+  if (!clock.startedAt) return clock;
+  if (clock.racePhase === 'checkered' || clock.racePhase === 'formation' || clock.racePhase === 'last_lap') {
+    return clock;
+  }
+  if (!clock.running && !clock.cooldownPhase) return clock;
+
+  const startedAt = Number(clock.startedAt);
+  if (!Number.isFinite(startedAt) || startedAt <= 0) return clock;
+
+  const elapsedSec = Math.max(0, Math.floor((now - startedAt) / 1000));
+  const durationMin = Number(clock.durationMin) || 10;
+  const totalSec = durationMin * 60;
+
+  if (clock.clockMode === 'up') {
+    return { ...clock, elapsedSec };
+  }
+
+  const remainingSec = Math.max(0, totalSec - elapsedSec);
+  const timeExpired = remainingSec <= 0;
+  return {
+    ...clock,
+    elapsedSec,
+    remainingSec,
+    expired: timeExpired && !clock.cooldownPhase,
+  };
+}
+
 export function formatHeatClock(clock, notStartedLabel, expiredLabel = '00:00', phaseLabels = {}) {
   if (clock?.racePhase === 'checkered') {
     return phaseLabels.checkered || '🏁';
