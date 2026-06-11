@@ -3,13 +3,6 @@ import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useDialog } from '../i18n/DialogContext.jsx';
 import { isStrongPassword } from '../utils/password.js';
 import { apiFetch } from '../utils/apiClient.js';
-import {
-  collectKartAssignments,
-  DEFAULT_KART_TYPE_PRESETS,
-  joinKartNumbersForSetup,
-  normalizeKartTypes,
-} from '../utils/kartTypes.js';
-import KartTypesEditor from './KartTypesEditor.jsx';
 import '../assets/AdminWalkthrough.css';
 
 const CORE_STEPS = [
@@ -31,9 +24,7 @@ function buildSteps(isFirstRun) {
     return [...CORE_STEPS, { id: 'done', target: null, interactive: false }];
   }
   return [
-    CORE_STEPS[0],
-    { id: 'setup-karts', target: null, interactive: false },
-    ...CORE_STEPS.slice(1),
+    ...CORE_STEPS,
     { id: 'security', target: null, interactive: false },
     { id: 'done', target: null, interactive: false },
   ];
@@ -77,7 +68,6 @@ export default function AdminWalkthrough({
   trackSlug,
   isFirstRun = false,
   onStepChange,
-  onApplySetupKarts,
   onComplete,
 }) {
   const { t, dir } = useLanguage();
@@ -87,29 +77,12 @@ export default function AdminWalkthrough({
   const [spotlight, setSpotlight] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const [kartNumbers, setKartNumbers] = useState('');
-  const [kartNumbersByType, setKartNumbersByType] = useState({});
-  const [multipleKartTypes, setMultipleKartTypes] = useState(false);
-  const [kartTypes, setKartTypes] = useState(() => DEFAULT_KART_TYPE_PRESETS.map((row) => ({ ...row })));
   const [enforceSecurity, setEnforceSecurity] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const step = steps[stepIndex];
   const stepId = step.id;
-
-  const getSetupPayload = useCallback(() => {
-    const normalizedTypes = normalizeKartTypes(kartTypes);
-    const multi = multipleKartTypes && normalizedTypes.length >= 2;
-    const assignments = collectKartAssignments(multi, normalizedTypes, kartNumbersByType, kartNumbers);
-    return {
-      kartNumbers: joinKartNumbersForSetup(assignments) || kartNumbers.trim(),
-      kartNumbersByType,
-      multipleKartTypes: multi,
-      kartTypes: multi ? normalizedTypes : [],
-      assignments,
-    };
-  }, [kartNumbers, kartNumbersByType, multipleKartTypes, kartTypes]);
 
   const updateSpotlight = useCallback(() => {
     if (!step.target) {
@@ -147,8 +120,6 @@ export default function AdminWalkthrough({
   }, [updateSpotlight]);
 
   const submitFirstRunSetup = async (skipped = false) => {
-    const payload = getSetupPayload();
-    const saveMultiType = !skipped && payload.multipleKartTypes;
     setSaving(true);
     try {
       const res = await apiFetch('/api/admin/track-setup', {
@@ -156,10 +127,8 @@ export default function AdminWalkthrough({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           trackSlug,
-          kartNumbers: payload.kartNumbers,
+          kartNumbers: '',
           editPassword: (!skipped && enforceSecurity) ? password : '',
-          multipleKartTypes: saveMultiType,
-          kartTypes: saveMultiType ? payload.kartTypes : [],
         }),
       }, trackSlug);
       const data = await res.json();
@@ -178,30 +147,19 @@ export default function AdminWalkthrough({
 
   const finish = async (skipped = false) => {
     if (isFirstRun) {
-      const payload = getSetupPayload();
-      if (payload.assignments.length || payload.multipleKartTypes) {
-        onApplySetupKarts?.(payload);
-      }
-      if (!skipped) {
-        if (multipleKartTypes && payload.kartTypes.length < 2) {
-          showAlert(t('admin_kart_types_min_two'));
+      if (!skipped && enforceSecurity) {
+        if (!isStrongPassword(password)) {
+          showAlert(t('admin_password_weak'));
           return;
         }
-        if (enforceSecurity) {
-          if (!isStrongPassword(password)) {
-            showAlert(t('admin_password_weak'));
-            return;
-          }
-          if (password !== confirmPassword) {
-            showAlert(t('admin_setup_password_mismatch'));
-            return;
-          }
+        if (password !== confirmPassword) {
+          showAlert(t('admin_setup_password_mismatch'));
+          return;
         }
       }
       const ok = await submitFirstRunSetup(skipped);
       if (!ok) return;
       onComplete?.({
-        ...payload,
         hasPassword: !skipped && enforceSecurity,
         skipped,
       });
@@ -209,16 +167,6 @@ export default function AdminWalkthrough({
       onComplete?.({ skipped });
     }
     markAdminTourDone(trackSlug);
-  };
-
-  const validateSetupKartsStep = () => {
-    const payload = getSetupPayload();
-    if (multipleKartTypes && payload.kartTypes.length < 2) {
-      showAlert(t('admin_kart_types_min_two'));
-      return false;
-    }
-    onApplySetupKarts?.(payload);
-    return true;
   };
 
   const validateSecurityStep = () => {
@@ -235,7 +183,6 @@ export default function AdminWalkthrough({
   };
 
   const next = async () => {
-    if (stepId === 'setup-karts' && !validateSetupKartsStep()) return;
     if (stepId === 'security' && !validateSecurityStep()) return;
 
     if (stepIndex >= steps.length - 1) {
@@ -248,7 +195,7 @@ export default function AdminWalkthrough({
   const isLast = stepIndex >= steps.length - 1;
   const hasSpotlight = Boolean(spotlight);
   const isInteractive = step.interactive && hasSpotlight;
-  const isFormStep = stepId === 'setup-karts' || stepId === 'security';
+  const isFormStep = stepId === 'security';
 
   return (
     <div className="admin-tour-root" dir={dir} role="dialog" aria-modal="true" aria-labelledby="admin-tour-title">
@@ -269,50 +216,6 @@ export default function AdminWalkthrough({
         </p>
         <h2 id="admin-tour-title">{t(`admin_tour_${stepId}_title`)}</h2>
         <p className="admin-tour-body">{t(`admin_tour_${stepId}_body`)}</p>
-
-        {stepId === 'setup-karts' && (
-          <div className="admin-tour-form">
-            <div className="security-toggle-row admin-tour-toggle-row">
-              <span className="field-label">{t('admin_multiple_kart_types')}</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={multipleKartTypes}
-                className={`hf-toggle${multipleKartTypes ? ' is-on' : ''}`}
-                onClick={() => setMultipleKartTypes((v) => !v)}
-              >
-                <span className="hf-toggle-knob" />
-              </button>
-            </div>
-            {multipleKartTypes ? (
-              <KartTypesEditor
-                t={t}
-                compact
-                showNumbers
-                types={kartTypes}
-                numbersByType={kartNumbersByType}
-                onNumbersChange={(typeId, value) => {
-                  setKartNumbersByType((prev) => ({ ...prev, [typeId]: value }));
-                }}
-                colorRejectedMessage={t('admin_kart_color_not_allowed')}
-                onChange={setKartTypes}
-              />
-            ) : (
-              <>
-                <label className="admin-tour-field">
-                  <span>{t('admin_kart_input_placeholder')}</span>
-                  <input
-                    type="text"
-                    value={kartNumbers}
-                    onChange={(e) => setKartNumbers(e.target.value)}
-                    placeholder={t('admin_setup_karts_optional_ph')}
-                  />
-                </label>
-                <p className="admin-tour-field-hint">{t('admin_setup_karts_optional_hint')}</p>
-              </>
-            )}
-          </div>
-        )}
 
         {stepId === 'security' && (
           <div className="admin-tour-form">

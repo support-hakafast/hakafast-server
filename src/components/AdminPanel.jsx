@@ -1239,41 +1239,12 @@ const AdminPanel = () => {
     }
   };
 
-  const applyWalkthroughSetupKarts = ({
-    kartNumbers,
-    kartNumbersByType: numbersByType,
-    multipleKartTypes: multi,
-    kartTypes: types,
-  }) => {
-    if (multi && Array.isArray(types) && types.length >= 2) {
-      setMultipleKartTypes(true);
-      setKartTypes(types);
-      setSelectedKartTypeId(types[0]?.id || '');
-      if (numbersByType) setKartNumbersByType(numbersByType);
-    }
-    const assignments = collectKartAssignments(
-      multi && types?.length >= 2,
-      types || [],
-      numbersByType || {},
-      kartNumbers || '',
-    );
-    if (assignments.length) addKartAssignments(assignments, { silent: true });
-  };
-
   const handleWalkthroughComplete = useCallback((payload = {}) => {
     setShowWalkthrough(false);
     setShowLivePreview(false);
     setShowTrackPlannerModal(false);
     setNeedsOnboarding(false);
     if (payload.hasPassword) setHasPassword(true);
-    if (payload.multipleKartTypes && Array.isArray(payload.kartTypes) && payload.kartTypes.length >= 2) {
-      setMultipleKartTypes(true);
-      setKartTypes(payload.kartTypes);
-      setSelectedKartTypeId(payload.kartTypes[0]?.id || '');
-    }
-    if (payload.kartNumbers?.trim()) {
-      parseKartNumbers(payload.kartNumbers).forEach((n) => addKartEntity(n, payload.kartTypes?.[0]?.id));
-    }
   }, []);
 
   const handleWalkthroughStep = useCallback((stepId) => {
@@ -1595,7 +1566,6 @@ const AdminPanel = () => {
           trackSlug={trackSlug}
           isFirstRun={needsOnboarding}
           onStepChange={handleWalkthroughStep}
-          onApplySetupKarts={applyWalkthroughSetupKarts}
           onComplete={handleWalkthroughComplete}
         />
       )}
