@@ -486,9 +486,10 @@ const AdminPanel = () => {
     });
   };
 
-  const addKartAssignments = (assignments) => {
+  const addKartAssignments = (assignments, options = {}) => {
+    const silent = Boolean(options.silent);
     if (!assignments.length) {
-      showAlert(t('admin_karts_invalid_input'));
+      if (!silent) showAlert(t('admin_karts_invalid_input'));
       return;
     }
 
@@ -536,6 +537,7 @@ const AdminPanel = () => {
     if (inPits > 0) msgs.push(t('admin_karts_in_pits', { count: inPits }));
     if (onTrackCount > 0) msgs.push(t('admin_karts_on_track', { count: onTrackCount }));
     if (alreadyInPool > 0) msgs.push(t('admin_karts_already_pool', { count: alreadyInPool }));
+    if (silent) return;
     if (msgs.length) showAlert(msgs.join('\n'));
     else showAlert(t('admin_karts_none_added'));
   };
@@ -1255,7 +1257,7 @@ const AdminPanel = () => {
       numbersByType || {},
       kartNumbers || '',
     );
-    if (assignments.length) addKartAssignments(assignments);
+    if (assignments.length) addKartAssignments(assignments, { silent: true });
   };
 
   const handleWalkthroughComplete = useCallback((payload = {}) => {
