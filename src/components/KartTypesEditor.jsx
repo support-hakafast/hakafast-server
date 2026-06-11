@@ -159,9 +159,22 @@ export default function KartTypesEditor({
 
   return (
     <div className={`kart-types-editor${compact ? ' kart-types-editor-compact' : ''}${showNumbers ? ' kart-types-editor-inventory' : ''}${inventoryCompact ? ' kart-types-editor-inventory-compact' : ''}`}>
-      <p className="kart-types-editor-hint">
-        {showNumbers ? t('admin_kart_types_inventory_hint') : t('admin_kart_types_hint')}
-      </p>
+      <div className={`kart-types-editor-head${inventoryCompact ? ' kart-types-editor-head-compact' : ''}`}>
+        <p className="kart-types-editor-hint">
+          {showNumbers ? t('admin_kart_types_inventory_hint') : t('admin_kart_types_hint')}
+        </p>
+        {inventoryCompact && (
+          <button
+            type="button"
+            className="kart-type-add-compact"
+            onClick={addType}
+            title={t('admin_kart_type_add')}
+            aria-label={t('admin_kart_type_add')}
+          >
+            +
+          </button>
+        )}
+      </div>
       <ul className="kart-types-list">
         {types.map((type, index) => (
           <li
@@ -239,16 +252,13 @@ export default function KartTypesEditor({
           </li>
         ))}
       </ul>
-      <div className="kart-types-editor-footer">
-        <button type="button" className="kart-type-add" onClick={addType}>
-          {t('admin_kart_type_add')}
-        </button>
-        {showNumbers && (
-          <button type="button" className="kart-type-add-all" onClick={() => onAddModel?.('all')}>
-            {t('admin_kart_types_add_all')}
+      {!inventoryCompact && (
+        <div className="kart-types-editor-footer">
+          <button type="button" className="kart-type-add" onClick={addType}>
+            {t('admin_kart_type_add')}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {colorModalIndex != null && types[colorModalIndex] && createPortal(
         <ColorPickerModal

@@ -571,10 +571,9 @@ const AdminPanel = () => {
     setKartInput('');
   };
 
-  const addKartsFromModels = (typeId = 'all') => {
-    const types = typeId === 'all'
-      ? kartTypes
-      : kartTypes.filter((row) => row.id === typeId);
+  const addKartsFromModels = (typeId) => {
+    if (!typeId || typeId === 'all') return;
+    const types = kartTypes.filter((row) => row.id === typeId);
     const scopedNumbers = {};
     types.forEach((row) => {
       scopedNumbers[row.id] = kartNumbersByType[row.id] || '';
@@ -585,11 +584,7 @@ const AdminPanel = () => {
       return;
     }
     addKartAssignments(assignments, { silent: showWalkthrough });
-    if (typeId === 'all') {
-      setKartNumbersByType({});
-    } else {
-      setKartNumbersByType((prev) => ({ ...prev, [typeId]: '' }));
-    }
+    setKartNumbersByType((prev) => ({ ...prev, [typeId]: '' }));
   };
 
   const toggleKartActive = (num, event) => {

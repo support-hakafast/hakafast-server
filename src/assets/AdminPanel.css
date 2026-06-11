@@ -2449,8 +2449,41 @@ html:has(.admin-no-scroll) body {
 }
 
 .kart-types-editor-inventory-compact .kart-types-editor-hint {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0;
   font-size: 0.72rem;
+}
+
+.kart-types-editor-head-compact {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.kart-types-editor-head-compact .kart-types-editor-hint {
+  flex: 1;
+  min-width: 0;
+}
+
+.kart-type-add-compact {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  min-width: 1.75rem;
+  padding: 0;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f766e;
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.kart-type-add-compact:hover {
+  border-color: #40e0d0;
+  background: #f0fdfa;
 }
 
 .kart-types-editor-inventory-compact .kart-types-list {
@@ -2641,17 +2674,6 @@ html:has(.admin-no-scroll) body {
   flex-wrap: wrap;
   gap: 0.45rem;
   margin-top: 0.45rem;
-}
-
-.kart-type-add-all {
-  padding: 0.45rem 0.75rem;
-  border: 2px solid var(--navy);
-  border-radius: 8px;
-  background: #40e0d0;
-  color: var(--navy);
-  font-size: 0.78rem;
-  font-weight: 900;
-  cursor: pointer;
 }
 
 .kart-type-name-input,
@@ -2902,6 +2924,7 @@ html:has(.admin-no-scroll) body {
 .admin-theme-dark .on-track-strip,
 .admin-theme-dark .queue-item,
 .admin-theme-dark .kart-type-add,
+.admin-theme-dark .kart-type-add-compact,
 .admin-theme-dark .kart-color-custom-trigger {
   background: var(--admin-surface);
   border-color: var(--admin-border);
@@ -3020,6 +3043,7 @@ html:has(.admin-no-scroll) body {
 }
 
 .admin-theme-dark .kart-type-add,
+.admin-theme-dark .kart-type-add-compact,
 .admin-theme-dark .kart-color-custom-trigger {
   background: var(--admin-surface-raised);
   border-color: var(--admin-border);

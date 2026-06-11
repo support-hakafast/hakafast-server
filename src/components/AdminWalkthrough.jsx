@@ -9,11 +9,11 @@ const CORE_STEPS = [
   { id: 'welcome', target: null, interactive: false },
   { id: 'warehouse', target: 'warehouse', interactive: true },
   { id: 'pits', target: 'pits', interactive: true },
+  { id: 'heat-settings', target: 'heat-settings', interactive: true },
   { id: 'drivers', target: 'drivers', interactive: true },
   { id: 'execute', target: 'drivers', interactive: true },
   { id: 'preview', targets: ['preview-trigger', 'preview'], interactive: true },
   { id: 'planner', target: 'planner', interactive: true },
-  { id: 'heat-settings', target: 'heat-settings', interactive: true },
 ];
 
 const TOUR_STORAGE_KEY = (slug) => `hf_admin_tour_v2_${slug}`;
