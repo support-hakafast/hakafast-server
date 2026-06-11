@@ -7,6 +7,15 @@ export const DEFAULT_KART_TYPE_PRESETS = [
 
 const FALLBACK_COLORS = ['#dc2626', '#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777'];
 
+export const KART_COLOR_PRESETS = [
+  ...FALLBACK_COLORS,
+  '#000000',
+  '#ffffff',
+  '#facc15',
+  '#f97316',
+  '#64748b',
+];
+
 export function sanitizeKartColor(hex, fallbackIndex = 0) {
   const fallback = FALLBACK_COLORS[fallbackIndex % FALLBACK_COLORS.length];
   if (!/^#[0-9a-fA-F]{6}$/.test(hex || '')) return fallback;
