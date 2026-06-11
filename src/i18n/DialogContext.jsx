@@ -1,6 +1,7 @@
 import React, {
   createContext, useCallback, useContext, useMemo, useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from './LanguageContext.jsx';
 import '../assets/AppDialog.css';
 
@@ -117,7 +118,10 @@ export function DialogProvider({ children }) {
   return (
     <DialogContext.Provider value={value}>
       {children}
-      <AppDialogView dialog={dialog} onClose={closeDialog} t={t} />
+      {dialog && createPortal(
+        <AppDialogView dialog={dialog} onClose={closeDialog} t={t} />,
+        document.body,
+      )}
     </DialogContext.Provider>
   );
 }

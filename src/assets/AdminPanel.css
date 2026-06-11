@@ -133,7 +133,7 @@ html:has(.admin-no-scroll) body {
   min-height: 0;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 50%) minmax(280px, 1fr) minmax(220px, 280px);
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 420px);
   gap: clamp(8px, 1vw, 14px);
   overflow: hidden;
 }
@@ -144,7 +144,8 @@ html:has(.admin-no-scroll) body {
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .admin-drivers-column {
@@ -156,9 +157,81 @@ html:has(.admin-no-scroll) body {
   overflow: hidden;
 }
 
+.admin-session-column {
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.admin-session-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-inline-end: 2px;
+}
+
+.admin-session-panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.admin-session-panel-drivers {
+  border-inline-start: 4px solid var(--turquoise);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.admin-session-panel-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.admin-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.admin-theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.admin-session-panel-drivers .queue-list-tall {
+  max-height: min(280px, 32vh);
+  flex: none;
+  overflow-y: auto;
+}
+
+.admin-session-panel .timing-columns-bar {
+  margin-bottom: 0;
+}
+
 .driver-column-main {
   flex: 1;
-  border-inline-start: 4px solid var(--turquoise);
+  min-height: 0;
+  border-inline-start: none;
 }
 
 .queue-heading {
@@ -221,7 +294,8 @@ html:has(.admin-no-scroll) body {
 .pits-zone {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .warehouse-zone {
@@ -569,16 +643,12 @@ html:has(.admin-no-scroll) body {
   border-color: var(--navy);
 }
 
-.timing-chip-session.active {
-  background: #dbeafe;
-  border-color: #2563eb;
-  color: #1e3a8a;
-}
-
-.timing-chip-race.active {
-  background: #ede9fe;
-  border-color: #7c3aed;
-  color: #5b21b6;
+.timing-chip-session.active,
+.timing-chip-race.active,
+.timing-chip.active {
+  background: var(--turquoise);
+  border-color: var(--navy);
+  color: var(--navy);
 }
 
 .timing-column-order {
@@ -1756,7 +1826,8 @@ html:has(.admin-no-scroll) body {
   width: 100%;
 }
 
-.admin-sidebar-actions {
+.admin-sidebar-actions,
+.admin-session-actions {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2074,19 +2145,24 @@ html:has(.admin-no-scroll) body {
     line-height: 1.35;
   }
 
-  .admin-sidebar {
+  .admin-sidebar,
+  .admin-session-column {
     flex-direction: column;
   }
 
   .admin-sidebar .btn-preview,
   .admin-sidebar .heat-type-bar,
-  .admin-sidebar-actions .btn-sidebar-tool {
+  .admin-sidebar-actions .btn-sidebar-tool,
+  .admin-session-actions .btn-preview,
+  .admin-session-actions .btn-sidebar-tool,
+  .admin-session-panel-settings .heat-type-bar {
     flex: none;
     width: 100%;
     min-width: 0;
   }
 
-  .admin-sidebar-actions {
+  .admin-sidebar-actions,
+  .admin-session-actions {
     width: 100%;
   }
 
@@ -2604,7 +2680,8 @@ html:has(.admin-no-scroll) body {
 
   .admin-pits-column,
   .admin-drivers-column,
-  .admin-sidebar {
+  .admin-sidebar,
+  .admin-session-column {
     min-width: 0;
     max-width: 100%;
   }
@@ -2734,4 +2811,141 @@ html:has(.admin-no-scroll) body {
 .btn-pro-event-inline {
   width: 100%;
   margin-top: 8px;
+}
+
+/* Admin dark theme */
+.admin-dashboard.admin-theme-dark {
+  --admin-bg: #0b1220;
+  --admin-surface: #111827;
+  --admin-surface-raised: #1e293b;
+  --admin-border: #334155;
+  --admin-text: #e2e8f0;
+  --admin-text-muted: #94a3b8;
+  --dark-bg: #0b1220;
+  color: var(--admin-text);
+}
+
+.admin-theme-dark .inventory-pits-panel,
+.admin-theme-dark .admin-session-panel,
+.admin-theme-dark .heat-type-bar,
+.admin-theme-dark .timing-columns-bar,
+.admin-theme-dark .heat-clock-bar,
+.admin-theme-dark .kart-types-editor,
+.admin-theme-dark .kart-type-row-inventory,
+.admin-theme-dark .timing-order-row,
+.admin-theme-dark .timing-order-grip,
+.admin-theme-dark .timing-order-btn {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-theme-dark .warehouse-zone {
+  background: linear-gradient(180deg, #0f172a 0%, #111827 42%, #1e293b 100%);
+  border-color: rgba(64, 224, 208, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.8);
+}
+
+.admin-theme-dark .warehouse-zone h2,
+.admin-theme-dark .pits-zone h2,
+.admin-theme-dark .queue-heading,
+.admin-theme-dark .timing-group-label,
+.admin-theme-dark .admin-session-panel h2,
+.admin-theme-dark .field-label {
+  color: #f1f5f9;
+}
+
+.admin-theme-dark .warehouse-pool-label,
+.admin-theme-dark .kart-types-editor-hint,
+.admin-theme-dark .timing-columns-intro,
+.admin-theme-dark .timing-group-hint,
+.admin-theme-dark .heat-mode-hint,
+.admin-theme-dark .level-hint,
+.admin-theme-dark .bulk-hint,
+.admin-theme-dark .pro-event-inline-hint,
+.admin-theme-dark .endurance-field-label,
+.admin-theme-dark .queue-empty {
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark input,
+.admin-theme-dark select,
+.admin-theme-dark textarea,
+.admin-theme-dark .lane-header-input,
+.admin-theme-dark .kart-type-name-input,
+.admin-theme-dark .kart-type-engine-input,
+.admin-theme-dark .kart-type-numbers-input {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-theme-dark input::placeholder {
+  color: #64748b;
+}
+
+.admin-theme-dark .section-box,
+.admin-theme-dark .advanced-zone,
+.admin-theme-dark .endurance-starter-panel,
+.admin-theme-dark .le-mans-panel {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+}
+
+.admin-theme-dark .queue-item {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+}
+
+.admin-theme-dark .btn-muted,
+.admin-theme-dark .btn-sidebar-tool,
+.admin-theme-dark .duration-chip,
+.admin-theme-dark .timing-chip:not(.active) {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-theme-dark .timing-chip.active,
+.admin-theme-dark .timing-chip-session.active,
+.admin-theme-dark .timing-chip-race.active,
+.admin-theme-dark .duration-chip.active {
+  background: var(--turquoise);
+  border-color: #ecfeff;
+  color: var(--navy);
+}
+
+.admin-theme-dark .btn-advanced-link {
+  color: #99f6e4;
+  border-color: #99f6e4;
+}
+
+.admin-theme-dark .admin-next-heat-banner {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+}
+
+.admin-theme-dark .admin-heat-number {
+  color: #93c5fd;
+}
+
+.admin-theme-dark .pro-event-day-banner {
+  background: rgba(51, 65, 85, 0.65);
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark .pro-event-draft-badge {
+  color: #5eead4;
+}
+
+.admin-theme-dark .kart-type-add,
+.admin-theme-dark .kart-color-custom-trigger {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+  color: #5eead4;
+}
+
+.admin-theme-dark .timing-order-row-draggable.is-drop-target {
+  background: rgba(64, 224, 208, 0.12);
 }
