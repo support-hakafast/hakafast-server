@@ -133,7 +133,7 @@ html:has(.admin-no-scroll) body {
   min-height: 0;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 420px);
+  grid-template-columns: minmax(0, 50%) minmax(280px, 1fr) minmax(220px, 280px);
   gap: clamp(8px, 1vw, 14px);
   overflow: hidden;
 }
@@ -157,46 +157,55 @@ html:has(.admin-no-scroll) body {
   overflow: hidden;
 }
 
-.admin-session-column {
+.admin-sidebar {
   min-height: 0;
   min-width: 0;
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-
-.admin-session-scroll {
-  flex: 1;
-  min-height: 0;
+  gap: 8px;
   overflow-x: hidden;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-inline-end: 2px;
 }
 
-.admin-session-panel {
-  background: #fff;
+.heat-session-combo {
+  display: grid;
+  grid-template-columns: minmax(148px, 36%) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.heat-type-bar-embedded {
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 8px;
+  margin: 0;
+}
+
+.heat-session-drivers {
   min-width: 0;
 }
 
-.admin-session-panel-drivers {
-  border-inline-start: 4px solid var(--turquoise);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+.heat-session-drivers h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
 }
 
-.admin-session-panel-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-shrink: 0;
+.driver-column-main {
+  flex: 1;
+  min-height: 0;
+  border-inline-start: 4px solid var(--turquoise);
+}
+
+.driver-column .queue-list-tall {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
 }
 
 .admin-theme-toggle {
@@ -216,22 +225,6 @@ html:has(.admin-no-scroll) body {
 
 .admin-theme-toggle:hover {
   background: rgba(255, 255, 255, 0.2);
-}
-
-.admin-session-panel-drivers .queue-list-tall {
-  max-height: min(280px, 32vh);
-  flex: none;
-  overflow-y: auto;
-}
-
-.admin-session-panel .timing-columns-bar {
-  margin-bottom: 0;
-}
-
-.driver-column-main {
-  flex: 1;
-  min-height: 0;
-  border-inline-start: none;
 }
 
 .queue-heading {
@@ -379,7 +372,49 @@ html:has(.admin-no-scroll) body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.duration-presets-compact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.duration-presets-compact .duration-chip {
+  padding: 4px 2px;
+  font-size: 0.72rem;
+}
+
+.endurance-row-compact {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heat-type-bar-embedded .pro-event-day-banner,
+.heat-type-bar-embedded .pro-event-draft-badge {
+  font-size: 0.72rem;
+  padding: 6px 8px;
+}
+
+.le-mans-panel-embedded {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.le-mans-panel-embedded .btn-muted {
+  width: 100%;
+  font-size: 0.72rem;
+  padding: 6px 8px;
+}
+
+@media (max-width: 1200px) {
+  .heat-session-combo {
+    grid-template-columns: 1fr;
+  }
 }
 
 .btn-preview {
@@ -1826,8 +1861,7 @@ html:has(.admin-no-scroll) body {
   width: 100%;
 }
 
-.admin-sidebar-actions,
-.admin-session-actions {
+.admin-sidebar-actions {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2145,24 +2179,18 @@ html:has(.admin-no-scroll) body {
     line-height: 1.35;
   }
 
-  .admin-sidebar,
-  .admin-session-column {
+  .admin-sidebar {
     flex-direction: column;
   }
 
   .admin-sidebar .btn-preview,
-  .admin-sidebar .heat-type-bar,
-  .admin-sidebar-actions .btn-sidebar-tool,
-  .admin-session-actions .btn-preview,
-  .admin-session-actions .btn-sidebar-tool,
-  .admin-session-panel-settings .heat-type-bar {
+  .admin-sidebar-actions .btn-sidebar-tool {
     flex: none;
     width: 100%;
     min-width: 0;
   }
 
-  .admin-sidebar-actions,
-  .admin-session-actions {
+  .admin-sidebar-actions {
     width: 100%;
   }
 
@@ -2680,8 +2708,7 @@ html:has(.admin-no-scroll) body {
 
   .admin-pits-column,
   .admin-drivers-column,
-  .admin-sidebar,
-  .admin-session-column {
+  .admin-sidebar {
     min-width: 0;
     max-width: 100%;
   }
@@ -2826,8 +2853,9 @@ html:has(.admin-no-scroll) body {
 }
 
 .admin-theme-dark .inventory-pits-panel,
-.admin-theme-dark .admin-session-panel,
+.admin-theme-dark .driver-column,
 .admin-theme-dark .heat-type-bar,
+.admin-theme-dark .heat-type-bar-embedded,
 .admin-theme-dark .timing-columns-bar,
 .admin-theme-dark .heat-clock-bar,
 .admin-theme-dark .kart-types-editor,
@@ -2850,7 +2878,7 @@ html:has(.admin-no-scroll) body {
 .admin-theme-dark .pits-zone h2,
 .admin-theme-dark .queue-heading,
 .admin-theme-dark .timing-group-label,
-.admin-theme-dark .admin-session-panel h2,
+.admin-theme-dark .heat-session-drivers h2,
 .admin-theme-dark .field-label {
   color: #f1f5f9;
 }
@@ -2944,6 +2972,10 @@ html:has(.admin-no-scroll) body {
   background: var(--admin-surface-raised);
   border-color: var(--admin-border);
   color: #5eead4;
+}
+
+.admin-theme-dark .heat-session-combo {
+  border-bottom-color: var(--admin-border);
 }
 
 .admin-theme-dark .timing-order-row-draggable.is-drop-target {

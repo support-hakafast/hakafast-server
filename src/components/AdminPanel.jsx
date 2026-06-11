@@ -1884,176 +1884,10 @@ const AdminPanel = () => {
           </div>
         </section>
 
-        <section className="admin-session-column">
-          <div className="admin-session-scroll">
-            <div className="admin-session-actions">
-              <button
-                type="button"
-                className="btn-preview"
-                data-tour="preview-trigger"
-                onClick={() => setShowLivePreview((open) => !open)}
-              >
-                {showLivePreview ? t('admin_preview_close') : t('admin_preview')}
-              </button>
-              <button
-                type="button"
-                className="btn-muted btn-sidebar-tool"
-                onClick={() => setShowTrackPlannerModal(true)}
-              >
-                {t('admin_track_planner')}
-              </button>
-              {heatType === 'time' && (
-                <button
-                  type="button"
-                  className="btn-muted btn-sidebar-tool"
-                  data-tour="pro-event"
-                  onClick={() => openProEventModal(plannedRaceEvent?.type || 'endurance')}
-                >
-                  {t('admin_pro_event_prep_day')}
-                </button>
-              )}
-              {heatType === 'endurance' && (
-                <>
-                  <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => openProEventModal('endurance')}>
-                    {t('admin_pro_event_plan_endurance')}
-                  </button>
-                  <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => setShowEnduranceModal(true)}>
-                    {t('admin_open_endurance_tools')}
-                  </button>
-                </>
-              )}
-              {heatType === 'sprint' && (
-                <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => openProEventModal('sprint')}>
-                  {t('admin_pro_event_plan_sprint')}
-                </button>
-              )}
-              {heatType === 'sprint' && sprintHeatsRemaining > 0 && (
-                <button type="button" className="btn-muted btn-sidebar-tool" onClick={loadNextSprintSession}>
-                  {t('admin_pro_event_next_heat', { n: sprintHeatsRemaining })}
-                </button>
-              )}
-            </div>
-
-            <div className="admin-session-panel admin-session-panel-drivers" data-tour="drivers">
-              <h2>{t('admin_register_title')}</h2>
-              <div className="section-box">
-                <label>{t('admin_req_label')}</label>
-                <input
-                  type="text"
-                  value={drName}
-                  onChange={(e) => setDrName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && canAddDriver) { e.preventDefault(); addDriverToQueue(); } }}
-                  placeholder={t('admin_driver_placeholder_bulk')}
-                />
-                {isBulkDrivers && <p className="bulk-hint">{t('admin_bulk_names_hint')} ({driverNames.length})</p>}
-                {heatType === 'endurance' && (
-                  <>
-                    <input
-                      type="text"
-                      value={drTeam}
-                      onChange={(e) => setDrTeam(e.target.value)}
-                      placeholder={t('admin_team_placeholder')}
-                    />
-                    <button
-                      type="button"
-                      className="btn-muted btn-pro-event-inline"
-                      onClick={() => openProEventModal('endurance')}
-                    >
-                      {t('admin_pro_event_open_endurance')}
-                    </button>
-                    <p className="pro-event-inline-hint">{t('admin_pro_event_endurance_hint')}</p>
-                  </>
-                )}
-                {heatType === 'sprint' && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn-muted btn-pro-event-inline"
-                      onClick={() => openProEventModal('sprint')}
-                    >
-                      {t('admin_pro_event_open_sprint')}
-                    </button>
-                    <p className="pro-event-inline-hint">{t('admin_pro_event_sprint_hint')}</p>
-                  </>
-                )}
-              </div>
-              <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
-              <button type="button" className={`btn-register-saved${showAdvancedReg ? ' is-open' : ''}`} onClick={() => setShowAdvancedReg((v) => !v)} disabled={isBulkDrivers}>
-                {showAdvancedReg ? t('admin_toggle_reg_open') : t('admin_toggle_reg_closed')}
-              </button>
-              {showAdvancedReg && !isBulkDrivers && (
-                <div className="advanced-zone">
-                  <div className="checkbox-zone">
-                    <label><input type="checkbox" checked={chkPhone} onChange={(e) => setChkPhone(e.target.checked)} />{t('admin_chk_phone')}</label>
-                    <label><input type="checkbox" checked={chkEmail} onChange={(e) => setChkEmail(e.target.checked)} />{t('admin_chk_email')}</label>
-                  </div>
-                  {chkPhone && <input type="text" value={drPhone} onChange={(e) => setDrPhone(e.target.value)} placeholder={t('admin_phone_placeholder')} />}
-                  {chkEmail && <input type="text" value={drEmail} onChange={(e) => setDrEmail(e.target.value)} placeholder={t('admin_email_placeholder')} />}
-                  <select value={drLevel} onChange={(e) => setDrLevel(e.target.value)}>
-                    <option value="Amateur">{t('level_amateur')}</option>
-                    <option value="Master">{t('level_master')}</option>
-                    <option value="Pro">{t('level_pro')}</option>
-                  </select>
-                </div>
-              )}
-              <p className="level-hint">{t('admin_level_from_laps_hint')}</p>
-              <h3 className="queue-heading">{t('admin_queue_title')}</h3>
-              {heatType === 'endurance' && enduranceQueueTeams.length > 0 && (
-                <div className="endurance-starter-panel">
-                  <span className="field-label">{t('admin_starter_drivers')}</span>
-                  <p className="timing-columns-intro">{t('admin_starter_drivers_hint')}</p>
-                  {enduranceQueueTeams.map((team) => (
-                    <div key={team.teamName} className="endurance-starter-team">
-                      <strong>{team.teamName}</strong>
-                      {team.drivers.map((d) => (
-                        <label key={`${team.teamName}-${d.name}`} className="endurance-starter-option">
-                          <input
-                            type="radio"
-                            name={`starter-${team.teamName}`}
-                            checked={(teamStarters[team.teamName] || team.drivers[0]?.name) === d.name}
-                            onChange={() => setTeamStarters((prev) => ({ ...prev, [team.teamName]: d.name }))}
-                          />
-                          {d.name}
-                        </label>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <ul className="queue-list queue-list-tall">
-                {driverQueue.length === 0 ? (
-                  <li className="queue-empty">{t('admin_queue_empty')}</li>
-                ) : driverQueue.map((d, i) => (
-                  <li key={`${d.name}-${i}`} className={`queue-item${d.saved ? ' queue-item-saved' : ''}`}>
-                    <span className="queue-pos">{i + 1}</span>
-                    <span className="queue-name">
-                      {d.saved && <span className="saved-badge">★</span>}
-                      {d.team && <span className="queue-team">{d.team} — </span>}
-                      {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}
-                    </span>
-                    <button type="button" className="btn-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>X</button>
-                  </li>
-                ))}
-              </ul>
-              <button type="button" className="btn-execute" data-tour="execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
-            </div>
-
-            <div className="admin-session-panel admin-session-panel-settings">
-              <div className="heat-clock-bar">
-                <span className="field-label">{t('admin_heat_timer')}</span>
-                <span className={`heat-clock-value${getHeatClockClassName(displayHeatClock)}`}>
-                  {formatHeatClock(displayHeatClock, t('admin_heat_not_started'), '00:00', {
-                    lastLap: t('live_race_last_lap'),
-                    checkered: '🏁',
-                    formation: t('live_race_formation'),
-                  })}
-                </span>
-                {heatNumber ? (
-                  <span className="admin-heat-number">{t('live_heat_number', { n: heatNumber })}</span>
-                ) : null}
-              </div>
-
-              <div className="heat-type-bar" data-tour="heat-settings">
+        <section className="admin-drivers-column">
+          <div className="driver-column driver-column-main" data-tour="drivers">
+            <div className="heat-session-combo">
+              <div className="heat-type-bar heat-type-bar-embedded" data-tour="heat-settings">
                 <label className="field-label">{t('admin_heat_settings')}</label>
                 <select value={heatType} onChange={(e) => setHeatType(e.target.value)}>
                   <option value="time">{t('heat_time')}</option>
@@ -2074,7 +1908,7 @@ const AdminPanel = () => {
                 {heatType === 'time' && (
                   <>
                     <span className="duration-unit-label">{t('admin_duration_unit')}</span>
-                    <div className="duration-presets">
+                    <div className="duration-presets duration-presets-compact">
                       {HEAT_DURATIONS.map((m) => (
                         <button
                           key={m}
@@ -2090,7 +1924,7 @@ const AdminPanel = () => {
                   </>
                 )}
                 {heatType === 'endurance' && (
-                  <div className="endurance-row">
+                  <div className="endurance-row endurance-row-compact">
                     <label className="endurance-field">
                       <span className="endurance-field-label">{t('admin_hours_placeholder')}</span>
                       <input type="number" min="0" value={enduranceHours} onChange={(e) => setEnduranceHours(e.target.value)} />
@@ -2126,59 +1960,225 @@ const AdminPanel = () => {
                     </select>
                   </label>
                 )}
-              </div>
-
-              {heatType === 'endurance' && startMode === 'le_mans' && (
-                <div className="le-mans-panel">
-                  <span className="field-label">{t('admin_le_mans_deploy')}</span>
-                  <button type="button" className="btn-muted" onClick={deployAllGridKarts}>
-                    {t('admin_le_mans_deploy_all')}
-                  </button>
-                  <p className="endurance-hint">{t('admin_le_mans_hint')}</p>
-                </div>
-              )}
-
-              <div className="timing-columns-bar">
-                <span className="field-label">{t('admin_timing_columns')}</span>
-                <p className="timing-columns-intro">{t('admin_timing_columns_hint')}</p>
-                {visibleColumnGroups.map((group) => (
-                  <div key={group.id} className={`timing-column-group timing-column-group-${group.id}`}>
-                    <div className="timing-group-head">
-                      <span className="timing-group-label">{t(group.labelKey)}</span>
-                      <span className="timing-group-hint">{t(group.descriptionKey)}</span>
-                    </div>
-                    <div className="timing-columns-chips">
-                      {OPTIONAL_TIMING_COLUMNS.filter((col) => col.group === group.id && !col.alwaysOn).map((col) => (
-                        <button
-                          key={col.id}
-                          type="button"
-                          className={`timing-chip timing-chip-${group.id}${timingColumns[col.id] ? ' active' : ''}`}
-                          onClick={() => setTimingColumns((prev) => ({ ...prev, [col.id]: !prev[col.id] }))}
-                        >
-                          {t(col.labelKey)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {reorderableColumns.length > 0 && (
-                  <div className="timing-column-order">
-                    <span className="field-label">{t('admin_timing_column_order')}</span>
-                    <p className="timing-columns-intro">{t('admin_timing_column_order_fixed')}</p>
-                    <TimingColumnOrderList
-                      columns={reorderableColumns}
-                      onReorder={handleTimingColumnReorder}
-                      dragHint={t('admin_timing_column_drag_hint')}
-                      getLabel={(col) => t(col.labelKey)}
-                    />
+                {heatType === 'endurance' && startMode === 'le_mans' && (
+                  <div className="le-mans-panel le-mans-panel-embedded">
+                    <button type="button" className="btn-muted" onClick={deployAllGridKarts}>
+                      {t('admin_le_mans_deploy_all')}
+                    </button>
                   </div>
                 )}
               </div>
 
-              <button type="button" className="btn-advanced-link" onClick={() => setShowAdvanced(true)}>{t('admin_advanced_settings')}</button>
+              <div className="heat-session-drivers">
+                <h2>{t('admin_register_title')}</h2>
+                <div className="section-box">
+                  <label>{t('admin_req_label')}</label>
+                  <input
+                    type="text"
+                    value={drName}
+                    onChange={(e) => setDrName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && canAddDriver) { e.preventDefault(); addDriverToQueue(); } }}
+                    placeholder={t('admin_driver_placeholder_bulk')}
+                  />
+                  {isBulkDrivers && <p className="bulk-hint">{t('admin_bulk_names_hint')} ({driverNames.length})</p>}
+                  {heatType === 'endurance' && (
+                    <>
+                      <input
+                        type="text"
+                        value={drTeam}
+                        onChange={(e) => setDrTeam(e.target.value)}
+                        placeholder={t('admin_team_placeholder')}
+                      />
+                      <button
+                        type="button"
+                        className="btn-muted btn-pro-event-inline"
+                        onClick={() => openProEventModal('endurance')}
+                      >
+                        {t('admin_pro_event_open_endurance')}
+                      </button>
+                      <p className="pro-event-inline-hint">{t('admin_pro_event_endurance_hint')}</p>
+                    </>
+                  )}
+                  {heatType === 'sprint' && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-muted btn-pro-event-inline"
+                        onClick={() => openProEventModal('sprint')}
+                      >
+                        {t('admin_pro_event_open_sprint')}
+                      </button>
+                      <p className="pro-event-inline-hint">{t('admin_pro_event_sprint_hint')}</p>
+                    </>
+                  )}
+                </div>
+                <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
+                <button type="button" className={`btn-register-saved${showAdvancedReg ? ' is-open' : ''}`} onClick={() => setShowAdvancedReg((v) => !v)} disabled={isBulkDrivers}>
+                  {showAdvancedReg ? t('admin_toggle_reg_open') : t('admin_toggle_reg_closed')}
+                </button>
+                {showAdvancedReg && !isBulkDrivers && (
+                  <div className="advanced-zone">
+                    <div className="checkbox-zone">
+                      <label><input type="checkbox" checked={chkPhone} onChange={(e) => setChkPhone(e.target.checked)} />{t('admin_chk_phone')}</label>
+                      <label><input type="checkbox" checked={chkEmail} onChange={(e) => setChkEmail(e.target.checked)} />{t('admin_chk_email')}</label>
+                    </div>
+                    {chkPhone && <input type="text" value={drPhone} onChange={(e) => setDrPhone(e.target.value)} placeholder={t('admin_phone_placeholder')} />}
+                    {chkEmail && <input type="text" value={drEmail} onChange={(e) => setDrEmail(e.target.value)} placeholder={t('admin_email_placeholder')} />}
+                    <select value={drLevel} onChange={(e) => setDrLevel(e.target.value)}>
+                      <option value="Amateur">{t('level_amateur')}</option>
+                      <option value="Master">{t('level_master')}</option>
+                      <option value="Pro">{t('level_pro')}</option>
+                    </select>
+                  </div>
+                )}
+                <p className="level-hint">{t('admin_level_from_laps_hint')}</p>
+              </div>
             </div>
+
+            <h3 className="queue-heading">{t('admin_queue_title')}</h3>
+            {heatType === 'endurance' && enduranceQueueTeams.length > 0 && (
+              <div className="endurance-starter-panel">
+                <span className="field-label">{t('admin_starter_drivers')}</span>
+                <p className="timing-columns-intro">{t('admin_starter_drivers_hint')}</p>
+                {enduranceQueueTeams.map((team) => (
+                  <div key={team.teamName} className="endurance-starter-team">
+                    <strong>{team.teamName}</strong>
+                    {team.drivers.map((d) => (
+                      <label key={`${team.teamName}-${d.name}`} className="endurance-starter-option">
+                        <input
+                          type="radio"
+                          name={`starter-${team.teamName}`}
+                          checked={(teamStarters[team.teamName] || team.drivers[0]?.name) === d.name}
+                          onChange={() => setTeamStarters((prev) => ({ ...prev, [team.teamName]: d.name }))}
+                        />
+                        {d.name}
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+            <ul className="queue-list queue-list-tall">
+              {driverQueue.length === 0 ? (
+                <li className="queue-empty">{t('admin_queue_empty')}</li>
+              ) : driverQueue.map((d, i) => (
+                <li key={`${d.name}-${i}`} className={`queue-item${d.saved ? ' queue-item-saved' : ''}`}>
+                  <span className="queue-pos">{i + 1}</span>
+                  <span className="queue-name">
+                    {d.saved && <span className="saved-badge">★</span>}
+                    {d.team && <span className="queue-team">{d.team} — </span>}
+                    {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}
+                  </span>
+                  <button type="button" className="btn-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>X</button>
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="btn-execute" data-tour="execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
           </div>
         </section>
+
+        <aside className="admin-sidebar">
+          <div className="admin-sidebar-actions">
+            <button
+              type="button"
+              className="btn-preview"
+              data-tour="preview-trigger"
+              onClick={() => setShowLivePreview((open) => !open)}
+            >
+              {showLivePreview ? t('admin_preview_close') : t('admin_preview')}
+            </button>
+            <button
+              type="button"
+              className="btn-muted btn-sidebar-tool"
+              onClick={() => setShowTrackPlannerModal(true)}
+            >
+              {t('admin_track_planner')}
+            </button>
+            {heatType === 'time' && (
+              <button
+                type="button"
+                className="btn-muted btn-sidebar-tool"
+                data-tour="pro-event"
+                onClick={() => openProEventModal(plannedRaceEvent?.type || 'endurance')}
+              >
+                {t('admin_pro_event_prep_day')}
+              </button>
+            )}
+            {heatType === 'endurance' && (
+              <>
+                <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => openProEventModal('endurance')}>
+                  {t('admin_pro_event_plan_endurance')}
+                </button>
+                <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => setShowEnduranceModal(true)}>
+                  {t('admin_open_endurance_tools')}
+                </button>
+              </>
+            )}
+            {heatType === 'sprint' && (
+              <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => openProEventModal('sprint')}>
+                {t('admin_pro_event_plan_sprint')}
+              </button>
+            )}
+            {heatType === 'sprint' && sprintHeatsRemaining > 0 && (
+              <button type="button" className="btn-muted btn-sidebar-tool" onClick={loadNextSprintSession}>
+                {t('admin_pro_event_next_heat', { n: sprintHeatsRemaining })}
+              </button>
+            )}
+          </div>
+
+          <div className="heat-clock-bar">
+            <span className="field-label">{t('admin_heat_timer')}</span>
+            <span className={`heat-clock-value${getHeatClockClassName(displayHeatClock)}`}>
+              {formatHeatClock(displayHeatClock, t('admin_heat_not_started'), '00:00', {
+                lastLap: t('live_race_last_lap'),
+                checkered: '🏁',
+                formation: t('live_race_formation'),
+              })}
+            </span>
+            {heatNumber ? (
+              <span className="admin-heat-number">{t('live_heat_number', { n: heatNumber })}</span>
+            ) : null}
+          </div>
+
+          <div className="timing-columns-bar">
+            <span className="field-label">{t('admin_timing_columns')}</span>
+            <p className="timing-columns-intro">{t('admin_timing_columns_hint')}</p>
+            {visibleColumnGroups.map((group) => (
+              <div key={group.id} className={`timing-column-group timing-column-group-${group.id}`}>
+                <div className="timing-group-head">
+                  <span className="timing-group-label">{t(group.labelKey)}</span>
+                  <span className="timing-group-hint">{t(group.descriptionKey)}</span>
+                </div>
+                <div className="timing-columns-chips">
+                  {OPTIONAL_TIMING_COLUMNS.filter((col) => col.group === group.id && !col.alwaysOn).map((col) => (
+                    <button
+                      key={col.id}
+                      type="button"
+                      className={`timing-chip timing-chip-${group.id}${timingColumns[col.id] ? ' active' : ''}`}
+                      onClick={() => setTimingColumns((prev) => ({ ...prev, [col.id]: !prev[col.id] }))}
+                    >
+                      {t(col.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {reorderableColumns.length > 0 && (
+              <div className="timing-column-order">
+                <span className="field-label">{t('admin_timing_column_order')}</span>
+                <p className="timing-columns-intro">{t('admin_timing_column_order_fixed')}</p>
+                <TimingColumnOrderList
+                  columns={reorderableColumns}
+                  onReorder={handleTimingColumnReorder}
+                  dragHint={t('admin_timing_column_drag_hint')}
+                  getLabel={(col) => t(col.labelKey)}
+                />
+              </div>
+            )}
+          </div>
+
+          <button type="button" className="btn-advanced-link" onClick={() => setShowAdvanced(true)}>{t('admin_advanced_settings')}</button>
+        </aside>
       </div>
     </div>
   );
