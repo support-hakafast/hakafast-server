@@ -20,12 +20,14 @@ export default function TrackPlannerModal({
   competitiveHeatsPlanned,
   setCompetitiveHeatsPlanned,
   dayPlan,
-  onApplySessionDuration,
+  onSave,
+  isSaving,
 }) {
   return (
     <div className="admin-modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
       <div
         className="admin-modal admin-modal-wide admin-modal-light track-planner-modal"
+        data-tour="planner"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="admin-modal-header admin-modal-header-light">
@@ -98,8 +100,13 @@ export default function TrackPlannerModal({
         </div>
 
         <footer className="admin-modal-footer track-planner-footer">
-          <button type="button" className="btn-preview track-planner-apply" onClick={onApplySessionDuration}>
-            {t('admin_apply_session_duration')}
+          <button
+            type="button"
+            className="btn-preview track-planner-apply"
+            onClick={onSave}
+            disabled={isSaving}
+          >
+            {isSaving ? t('admin_track_planner_saving') : t('admin_track_planner_save')}
           </button>
           <button type="button" className="btn-muted track-planner-cancel" onClick={onClose}>
             {t('modal_cancel')}

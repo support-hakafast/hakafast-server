@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import '../assets/AdminPanel.css';
+import '../assets/AdminWalkthrough.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useDialog } from '../i18n/DialogContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
@@ -9,6 +10,7 @@ import AdminSetupModal from './AdminSetupModal.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
+import AdminWalkthrough, { isAdminTourDone } from './AdminWalkthrough.jsx';
 import LivePreviewFloat from './LivePreviewFloat.jsx';
 import TimingColumnOrderList from './TimingColumnOrderList.jsx';
 import '../assets/SalesPages.css';
@@ -146,6 +148,8 @@ const AdminPanel = () => {
   const [driverChangeName, setDriverChangeName] = useState('');
   const [showEnduranceModal, setShowEnduranceModal] = useState(false);
   const [showTrackPlannerModal, setShowTrackPlannerModal] = useState(false);
+  const [plannerSaving, setPlannerSaving] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(false);
   const [teamStarters, setTeamStarters] = useState({});
   const [nextHeatReadiness, setNextHeatReadiness] = useState(null);
@@ -178,6 +182,9 @@ const AdminPanel = () => {
         if (!s.onboarded) {
           setShowSetup(true);
           return;
+        }
+        if (!isAdminTourDone(trackSlug)) {
+          setShowWalkthrough(true);
         }
         if (s.kartNumbers) {
           const nums = parseKartNumbers(s.kartNumbers);
@@ -997,6 +1004,72 @@ const AdminPanel = () => {
     if (kartNumbers?.trim()) {
       parseKartNumbers(kartNumbers).forEach((n) => addKartEntity(n));
     }
+    if (!isAdminTourDone(trackSlug)) {
+      window.setTimeout(() => setShowWalkthrough(true), 400);
+    }
+  };
+
+  const handleWalkthroughStep = useCallback((stepId) => {
+    setShowLivePreview(stepId === 'preview');
+    setShowTrackPlannerModal(stepId === 'planner');
+  }, []);
+
+  const handleWalkthroughComplete = useCallback(() => {
+    setShowWalkthrough(false);
+    setShowLivePreview(false);
+    setShowTrackPlannerModal(false);
+  }, []);
+
+  const applyTrackPlanner = async () => {
+    const duration = Math.max(1, Number(sessionDurationPlan) || 10);
+    setPlannerSaving(true);
+    try {
+      setHeatDuration(duration);
+      if (heatType !== 'time') setHeatType('time');
+      const profileBody = {
+        trackDisplayName,
+        openingTime,
+        closingTime,
+        sessionDurationMin: duration,
+        competitiveBlockMin: Number(competitiveBlockMin) || 45,
+        turnoverMin: Number(turnoverMin) || 0,
+        pricePerSession: Number(pricePerSession) || 0,
+      };
+      const heatBody = {
+        type: 'time',
+        duration,
+        targetLaps: parseInt(targetLaps, 10) || 0,
+        formationLaps: parseInt(formationLaps, 10) || 0,
+        startMode,
+        exportCsv,
+        exportPdf,
+        timingColumns,
+        timingColumnOrder,
+        enduranceRules: '',
+      };
+      const [profileRes, heatRes] = await Promise.all([
+        apiFetch('/api/admin/track-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileBody),
+        }, trackSlug),
+        apiFetch('/api/admin/heat-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(heatBody),
+        }, trackSlug),
+      ]);
+      if (!profileRes.ok || !heatRes.ok) {
+        showAlert(t('admin_alert_server_error'));
+        return;
+      }
+      setShowTrackPlannerModal(false);
+      showAlert(t('admin_track_planner_saved', { duration }));
+    } catch {
+      showAlert(t('admin_alert_server_error'));
+    } finally {
+      setPlannerSaving(false);
+    }
   };
 
   const deployAllGridKarts = async () => {
@@ -1239,6 +1312,13 @@ const AdminPanel = () => {
           onClose={() => setShowLivePreview(false)}
         />
       )}
+      {showWalkthrough && (
+        <AdminWalkthrough
+          trackSlug={trackSlug}
+          onStepChange={handleWalkthroughStep}
+          onComplete={handleWalkthroughComplete}
+        />
+      )}
       {showTrackPlannerModal && (
         <TrackPlannerModal
           onClose={() => setShowTrackPlannerModal(false)}
@@ -1260,7 +1340,8 @@ const AdminPanel = () => {
           competitiveHeatsPlanned={competitiveHeatsPlanned}
           setCompetitiveHeatsPlanned={setCompetitiveHeatsPlanned}
           dayPlan={dayPlan}
-          onApplySessionDuration={() => setHeatDuration(String(sessionDurationPlan))}
+          onSave={applyTrackPlanner}
+          isSaving={plannerSaving}
         />
       )}
       {showEnduranceModal && (
@@ -1295,6 +1376,14 @@ const AdminPanel = () => {
               {t('demo_workspace_badge', { id: getWorkspaceLabel(trackSlug) })}
             </span>
           )}
+          <button
+            type="button"
+            className="admin-tour-restart"
+            onClick={() => setShowWalkthrough(true)}
+            title={t('admin_tour_restart')}
+          >
+            🚀 {t('admin_tour_restart')}
+          </button>
           <LanguageSwitcher className="admin-header-lang" />
         </div>
       </header>
@@ -1312,7 +1401,7 @@ const AdminPanel = () => {
       <div className="admin-workspace">
         <section className="admin-pits-column">
           <div className="inventory-pits-panel">
-            <div className="warehouse-zone">
+            <div className="warehouse-zone" data-tour="warehouse">
               <h2>{t('admin_warehouse')}</h2>
               <div className="input-group">
                 <input
@@ -1335,7 +1424,7 @@ const AdminPanel = () => {
                 ))}
               </div>
             </div>
-            <div className="pits-zone">
+            <div className="pits-zone" data-tour="pits">
               <div className="panel-head-row">
                 <h2>{t('admin_pits_title')}</h2>
                 <button type="button" className="btn-purple" onClick={addNewLane}>{t('admin_add_lane')}</button>
@@ -1407,7 +1496,7 @@ const AdminPanel = () => {
           </div>
         </section>
 
-        <section className="admin-drivers-column">
+        <section className="admin-drivers-column" data-tour="drivers">
           <div className="driver-column driver-column-main">
             <h2>{t('admin_register_title')}</h2>
             <div className="section-box">
@@ -1487,7 +1576,7 @@ const AdminPanel = () => {
                 </li>
               ))}
             </ul>
-            <button type="button" className="btn-execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
+            <button type="button" className="btn-execute" data-tour="execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
           </div>
         </section>
 
@@ -1500,7 +1589,11 @@ const AdminPanel = () => {
             >
               {showLivePreview ? t('admin_preview_close') : t('admin_preview')}
             </button>
-            <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => setShowTrackPlannerModal(true)}>
+            <button
+              type="button"
+              className="btn-muted btn-sidebar-tool"
+              onClick={() => setShowTrackPlannerModal(true)}
+            >
               {t('admin_track_planner')}
             </button>
             {heatType === 'endurance' && (
@@ -1524,7 +1617,7 @@ const AdminPanel = () => {
             ) : null}
           </div>
 
-          <div className="heat-type-bar">
+          <div className="heat-type-bar" data-tour="heat-settings">
             <label className="field-label">{t('admin_heat_settings')}</label>
             <select value={heatType} onChange={(e) => setHeatType(e.target.value)}>
               <option value="time">{t('heat_time')}</option>

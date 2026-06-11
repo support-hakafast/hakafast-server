@@ -1,0 +1,111 @@
+.admin-tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 13000;
+  pointer-events: none;
+}
+
+.admin-tour-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.62);
+  pointer-events: auto;
+}
+
+.admin-tour-spotlight {
+  position: fixed;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.62);
+  border: 3px solid #40e0d0;
+  pointer-events: none;
+  z-index: 12001;
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+.admin-tour-card {
+  position: fixed;
+  z-index: 12002;
+  max-width: min(420px, calc(100vw - 2rem));
+  background: #fff;
+  color: #0f172a;
+  border-radius: 14px;
+  padding: 1.25rem 1.35rem;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+  pointer-events: auto;
+}
+
+.admin-tour-card.is-centered {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.admin-tour-card.has-spotlight {
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.admin-tour-step-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.admin-tour-card h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #000080;
+}
+
+.admin-tour-body {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.admin-tour-actions {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+.admin-tour-actions .btn-muted,
+.admin-tour-actions .btn-preview {
+  min-width: 5.5rem;
+  padding: 0.55rem 1rem;
+  font-size: 0.88rem;
+}
+
+.admin-tour-restart {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid rgba(64, 224, 208, 0.45);
+  background: rgba(64, 224, 208, 0.12);
+  color: #0f766e;
+  cursor: pointer;
+}
+
+.admin-tour-restart:hover {
+  background: rgba(64, 224, 208, 0.22);
+}
+
+@media (max-width: 640px) {
+  .admin-tour-card.has-spotlight {
+    bottom: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    transform: none;
+    max-width: none;
+  }
+}

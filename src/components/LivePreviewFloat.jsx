@@ -77,6 +77,7 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
   return (
     <div
       className={`live-preview-float${compact ? ' live-preview-float--compact' : ''}`}
+      data-tour="preview"
       style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
     >
       <div className="live-preview-header" onPointerDown={onDragStart}>

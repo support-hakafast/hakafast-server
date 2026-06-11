@@ -712,11 +712,13 @@
 }
 
 .live-timing-driver-name {
-  display: block;
+  display: flex;
+  align-items: center;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Arial Black', 'Helvetica Neue', sans-serif;
   font-size: clamp(1.45rem, 4.5vw, 2.15rem);
   font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: 0.015em;
+  line-height: 1;
+  letter-spacing: 0.02em;
   word-break: break-word;
   color: var(--live-driver-color, var(--hf-navy, #000080));
 }
@@ -1053,10 +1055,19 @@
   padding: 0.08rem 0.15rem;
 }
 
+.live-timing-dense .live-col-driver {
+  padding-top: 0;
+  padding-bottom: 0;
+  vertical-align: middle;
+}
+
 .live-timing-dense .live-timing-driver-name {
-  font-size: clamp(0.72rem, 1.65vh, 0.92rem);
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Arial Black', 'Helvetica Neue', sans-serif;
+  font-size: clamp(0.95rem, 3.2vh, 1.35rem);
   font-weight: 900;
   line-height: 1;
+  letter-spacing: 0.025em;
+  min-height: clamp(24px, 3.4vh, 32px);
 }
 
 .live-timing-dense .live-pos {
