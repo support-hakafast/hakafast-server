@@ -557,7 +557,7 @@ const AdminPanel = () => {
 
   const addKartsFromInput = () => {
     const { assignments } = collectKartAssignments(false, kartTypes, {}, kartInput);
-    addKartAssignments(assignments);
+    addKartAssignments(assignments, { silent: showWalkthrough });
     setKartInput('');
   };
 
@@ -574,7 +574,7 @@ const AdminPanel = () => {
       showAlert(t('admin_kart_number_conflict', { nums: conflicts.join(', ') }));
       return;
     }
-    addKartAssignments(assignments);
+    addKartAssignments(assignments, { silent: showWalkthrough });
     if (typeId === 'all') {
       setKartNumbersByType({});
     } else {
@@ -1964,6 +1964,7 @@ const AdminPanel = () => {
             <button
               type="button"
               className="btn-preview"
+              data-tour="preview-trigger"
               onClick={() => setShowLivePreview((open) => !open)}
             >
               {showLivePreview ? t('admin_preview_close') : t('admin_preview')}

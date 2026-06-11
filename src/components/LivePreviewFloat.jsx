@@ -86,7 +86,12 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
           <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => setMode('assignments')}>
             {t('live_mode_assignments')}
           </button>
-          <button type="button" className={mode === 'timing' ? 'active' : ''} onClick={() => setMode('timing')}>
+          <button
+            type="button"
+            className={mode === 'timing' ? 'active' : ''}
+            data-tour="preview-timing-tab"
+            onClick={() => setMode('timing')}
+          >
             {t('live_mode_timing')}
           </button>
         </div>

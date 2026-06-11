@@ -11,7 +11,7 @@ const CORE_STEPS = [
   { id: 'pits', target: 'pits', interactive: true },
   { id: 'drivers', target: 'drivers', interactive: true },
   { id: 'execute', target: 'drivers', interactive: true },
-  { id: 'preview', target: 'preview', interactive: true },
+  { id: 'preview', targets: ['preview-trigger', 'preview'], interactive: true },
   { id: 'planner', target: 'planner', interactive: true },
   { id: 'heat-settings', target: 'heat-settings', interactive: true },
 ];
@@ -84,30 +84,48 @@ export default function AdminWalkthrough({
   const step = steps[stepIndex];
   const stepId = step.id;
 
+  const tourTargetIds = useMemo(() => {
+    if (Array.isArray(step.targets) && step.targets.length) return step.targets;
+    if (step.target) return [step.target];
+    return [];
+  }, [step.target, step.targets]);
+
   const updateSpotlight = useCallback(() => {
-    if (!step.target) {
+    if (!tourTargetIds.length) {
       setSpotlight(null);
       return;
     }
-    const el = document.querySelector(`[data-tour="${step.target}"]`);
-    if (!el) {
+    const rects = tourTargetIds
+      .map((id) => document.querySelector(`[data-tour="${id}"]`))
+      .filter(Boolean)
+      .map((el) => el.getBoundingClientRect());
+    if (!rects.length) {
       setSpotlight(null);
       return;
     }
-    const domRect = el.getBoundingClientRect();
+    const top = Math.min(...rects.map((r) => r.top));
+    const left = Math.min(...rects.map((r) => r.left));
+    const right = Math.max(...rects.map((r) => r.right));
+    const bottom = Math.max(...rects.map((r) => r.bottom));
     setSpotlight({
-      top: domRect.top,
-      left: domRect.left,
-      width: domRect.width,
-      height: domRect.height,
+      top,
+      left,
+      width: right - left,
+      height: bottom - top,
     });
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [step.target]);
+    document.querySelector(`[data-tour="${tourTargetIds[0]}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [tourTargetIds]);
 
   useLayoutEffect(() => {
     onStepChange?.(stepId, stepIndex);
     const timer = window.setTimeout(updateSpotlight, 120);
-    return () => window.clearTimeout(timer);
+    const retry = stepId === 'preview'
+      ? window.setTimeout(updateSpotlight, 450)
+      : null;
+    return () => {
+      window.clearTimeout(timer);
+      if (retry) window.clearTimeout(retry);
+    };
   }, [stepId, stepIndex, onStepChange, updateSpotlight]);
 
   useEffect(() => {
@@ -197,6 +215,11 @@ export default function AdminWalkthrough({
   const isInteractive = step.interactive && hasSpotlight;
   const isFormStep = stepId === 'security';
 
+  const showPasswordWeak = enforceSecurity && password.length > 0 && !isStrongPassword(password);
+  const showPasswordMismatch = enforceSecurity
+    && confirmPassword.length > 0
+    && password !== confirmPassword;
+
   return (
     <div className="admin-tour-root" dir={dir} role="dialog" aria-modal="true" aria-labelledby="admin-tour-title">
       {isInteractive ? (
@@ -235,13 +258,31 @@ export default function AdminWalkthrough({
               <>
                 <label className="admin-tour-field">
                   <span>{t('admin_setup_password')}</span>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    aria-invalid={showPasswordWeak}
+                  />
+                  {showPasswordWeak && (
+                    <p className="admin-tour-field-error" role="alert">{t('admin_password_weak')}</p>
+                  )}
                 </label>
                 <label className="admin-tour-field">
                   <span>{t('admin_setup_confirm')}</span>
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    aria-invalid={showPasswordMismatch}
+                  />
+                  {showPasswordMismatch && (
+                    <p className="admin-tour-field-error" role="alert">{t('admin_setup_password_mismatch')}</p>
+                  )}
                 </label>
-                <p className="admin-tour-field-hint">{t('admin_password_rules')}</p>
+                {!showPasswordWeak && (
+                  <p className="admin-tour-field-hint">{t('admin_password_rules')}</p>
+                )}
               </>
             )}
             {!enforceSecurity && (

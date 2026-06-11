@@ -94,6 +94,19 @@
   line-height: 1.4;
 }
 
+.admin-tour-field-error {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #b91c1c;
+  line-height: 1.35;
+}
+
+.admin-tour-field input[aria-invalid='true'] {
+  border-color: #f87171;
+  background: #fef2f2;
+}
+
 .admin-tour-toggle-row {
   margin: 0.15rem 0;
 }
