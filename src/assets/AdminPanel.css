@@ -2338,12 +2338,28 @@ html:has(.admin-no-scroll) body {
   background: transparent;
 }
 
-.kart-type-name-input {
+.kart-type-name-input,
+.kart-type-engine-input,
+.kart-type-numbers-input {
   width: 100%;
   padding: 0.45rem 0.55rem;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 0.85rem;
+}
+
+.kart-type-engine-input {
+  max-width: 6.5rem;
+}
+
+.kart-shape.kart-light-shell .kart-number {
+  color: var(--navy);
+  text-shadow: 0 0 3px #fff, 0 0 5px #fff;
+}
+
+.kart-shape.kart-light-shell.kart-variant-ontrack .kart-number {
+  color: var(--navy);
+  text-shadow: 0 0 3px #fff;
 }
 
 .kart-type-remove {

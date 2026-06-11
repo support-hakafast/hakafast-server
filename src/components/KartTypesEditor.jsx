@@ -1,5 +1,5 @@
 import React from 'react';
-import { createEmptyKartType, isDisallowedKartColor, sanitizeKartColor } from '../utils/kartTypes.js';
+import { createEmptyKartType, sanitizeKartColor } from '../utils/kartTypes.js';
 
 export default function KartTypesEditor({
   t,
@@ -10,7 +10,6 @@ export default function KartTypesEditor({
   numbersByType = {},
   onNumbersChange,
   onAddModel,
-  colorRejectedMessage,
 }) {
   const updateType = (index, patch) => {
     onChange(types.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -26,11 +25,6 @@ export default function KartTypesEditor({
   };
 
   const handleColorChange = (index, rawColor) => {
-    if (isDisallowedKartColor(rawColor)) {
-      if (colorRejectedMessage) window.alert(colorRejectedMessage);
-      updateType(index, { color: sanitizeKartColor(types[index]?.color, index) });
-      return;
-    }
     updateType(index, { color: sanitizeKartColor(rawColor, index) });
   };
 
@@ -56,6 +50,14 @@ export default function KartTypesEditor({
                 value={type.name}
                 onChange={(e) => updateType(index, { name: e.target.value })}
                 placeholder={t('admin_kart_type_name_ph')}
+              />
+              <input
+                type="text"
+                className="kart-type-engine-input"
+                value={type.engineCc || ''}
+                onChange={(e) => updateType(index, { engineCc: e.target.value })}
+                placeholder={t('admin_kart_type_engine_ph')}
+                title={t('admin_kart_type_engine_hint')}
               />
               {showNumbers && (
                 <input

@@ -52,9 +52,10 @@ import { calculateDayPlan } from '../utils/trackProfileClient.js';
 import {
   collectKartAssignments,
   DEFAULT_KART_TYPE_PRESETS,
+  formatKartTypeLabel,
   getKartTypeById,
   normalizeKartTypes,
-  resolveKartModelId,
+  resolveKartModelId as lookupKartModelId,
 } from '../utils/kartTypes.js';
 import KartTypesEditor from './KartTypesEditor.jsx';
 import { apiFetch } from '../utils/apiClient.js';
@@ -312,10 +313,10 @@ const AdminPanel = () => {
       const next = { ...prev };
       Object.keys(next).forEach((key) => {
         const k = next[key];
-        if (!k || k.modelId) return;
-        const modelId = resolveKartModelId(k, kartTypes, kartNumbersByType);
-        if (modelId) {
-          next[key] = { ...k, modelId };
+        if (!k) return;
+        const expectedId = lookupKartModelId(k, kartTypes, kartNumbersByType);
+        if ((k.modelId || null) !== (expectedId || null)) {
+          next[key] = { ...k, modelId: expectedId };
           changed = true;
         }
       });
@@ -447,7 +448,7 @@ const AdminPanel = () => {
   const isBulkDrivers = isBulkDriverInput(drName);
   const canAddDriver = driverNames.length > 0;
 
-  const resolveKartModelId = useCallback((modelId) => {
+  const coerceModelTypeId = useCallback((modelId) => {
     if (!multipleKartTypes || kartTypes.length === 0) return null;
     if (modelId && kartTypes.some((row) => row.id === modelId)) return modelId;
     const id = selectedKartTypeId || kartTypes[0]?.id;
@@ -456,13 +457,13 @@ const AdminPanel = () => {
 
   const kartModelProps = useCallback((kart) => {
     if (!multipleKartTypes) return {};
-    const modelId = resolveKartModelId(kart, kartTypes, kartNumbersByType);
+    const modelId = kart?.modelId || lookupKartModelId(kart, kartTypes, kartNumbersByType);
     const type = getKartTypeById(kartTypes, modelId);
-    return type ? { modelColor: type.color, modelName: type.name } : {};
+    return type ? { modelColor: type.color, modelName: formatKartTypeLabel(type) } : {};
   }, [multipleKartTypes, kartTypes, kartNumbersByType]);
 
   const addKartEntity = (num, modelId = null) => {
-    const resolvedModelId = resolveKartModelId(modelId);
+    const resolvedModelId = coerceModelTypeId(modelId);
     setAllKarts((prev) => {
       const existing = prev[num];
       if (existing?.onTrack) return prev;
@@ -498,15 +499,26 @@ const AdminPanel = () => {
     let inPits = 0;
     let onTrackCount = 0;
     let alreadyInPool = 0;
+    let recategorized = 0;
     const next = { ...allKarts };
 
     assignments.forEach(({ num, modelId }) => {
       const key = String(num);
-      const resolvedModelId = resolveKartModelId(modelId);
+      const resolvedModelId = modelId && kartTypes.some((row) => row.id === modelId)
+        ? modelId
+        : coerceModelTypeId(modelId);
       const k = next[key];
       if (k?.onTrack) { onTrackCount += 1; return; }
       if (k?.lane != null) { inPits += 1; return; }
-      if (k?.active && k.lane == null) { alreadyInPool += 1; return; }
+      if (k?.active && k.lane == null) {
+        if (resolvedModelId && k.modelId !== resolvedModelId) {
+          next[key] = { ...k, modelId: resolvedModelId };
+          recategorized += 1;
+        } else {
+          alreadyInPool += 1;
+        }
+        return;
+      }
       if (k && !k.active) {
         next[key] = {
           ...k,
@@ -533,6 +545,7 @@ const AdminPanel = () => {
 
     const msgs = [];
     if (added > 0) msgs.push(t('admin_karts_added', { count: added }));
+    if (recategorized > 0) msgs.push(t('admin_karts_recategorized', { count: recategorized }));
     if (reactivated > 0) msgs.push(t('admin_karts_reactivated', { count: reactivated }));
     if (inPits > 0) msgs.push(t('admin_karts_in_pits', { count: inPits }));
     if (onTrackCount > 0) msgs.push(t('admin_karts_on_track', { count: onTrackCount }));
@@ -543,7 +556,7 @@ const AdminPanel = () => {
   };
 
   const addKartsFromInput = () => {
-    const assignments = collectKartAssignments(false, kartTypes, {}, kartInput);
+    const { assignments } = collectKartAssignments(false, kartTypes, {}, kartInput);
     addKartAssignments(assignments);
     setKartInput('');
   };
@@ -556,7 +569,11 @@ const AdminPanel = () => {
     types.forEach((row) => {
       scopedNumbers[row.id] = kartNumbersByType[row.id] || '';
     });
-    const assignments = collectKartAssignments(true, types, scopedNumbers, '');
+    const { assignments, conflicts } = collectKartAssignments(true, types, scopedNumbers, '');
+    if (conflicts.length) {
+      showAlert(t('admin_kart_number_conflict', { nums: conflicts.join(', ') }));
+      return;
+    }
     addKartAssignments(assignments);
     if (typeId === 'all') {
       setKartNumbersByType({});
@@ -1701,7 +1718,6 @@ const AdminPanel = () => {
                     setKartNumbersByType((prev) => ({ ...prev, [typeId]: value }));
                   }}
                   onAddModel={addKartsFromModels}
-                  colorRejectedMessage={t('admin_kart_color_not_allowed')}
                   onChange={(next) => {
                     const normalized = normalizeKartTypes(next);
                     setKartTypes(normalized);

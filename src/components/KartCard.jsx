@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { isLightKartColor } from '../utils/kartTypes.js';
 
 function KartSvg() {
   return (
@@ -32,10 +33,11 @@ export default function KartCard({
   const [dragging, setDragging] = useState(false);
   const canDrag = Boolean(draggable) && !inactive;
   const shellStyle = modelColor ? { '--kart-shell-fill': modelColor } : undefined;
+  const lightShell = modelColor ? isLightKartColor(modelColor) : false;
 
   return (
     <div
-      className={`kart-shape kart-variant-${variant}${modelColor ? ' has-model' : ''}${inactive ? ' is-disabled' : ''}${transponderActive ? ' transponder-active' : ''}${dragging ? ' is-dragging' : ''}`}
+      className={`kart-shape kart-variant-${variant}${modelColor ? ' has-model' : ''}${lightShell ? ' kart-light-shell' : ''}${inactive ? ' is-disabled' : ''}${transponderActive ? ' transponder-active' : ''}${dragging ? ' is-dragging' : ''}`}
       style={shellStyle}
       draggable={canDrag}
       onDragStart={(e) => {
