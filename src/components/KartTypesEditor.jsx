@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   createEmptyKartType,
   formatKartTypeLabel,
@@ -249,17 +250,18 @@ export default function KartTypesEditor({
         )}
       </div>
 
-      {colorModalIndex != null && types[colorModalIndex] && (
+      {colorModalIndex != null && types[colorModalIndex] && createPortal(
         <ColorPickerModal
           t={t}
           type={types[colorModalIndex]}
           index={colorModalIndex}
           onPick={handleColorChange}
           onClose={() => setColorModalIndex(null)}
-        />
+        />,
+        document.body,
       )}
 
-      {addModalType && (
+      {addModalType && createPortal(
         <AddKartsModal
           t={t}
           type={addModalType}
@@ -267,7 +269,8 @@ export default function KartTypesEditor({
           onNumbersChange={onNumbersChange}
           onAdd={onAddModel}
           onClose={() => setAddModalTypeId(null)}
-        />
+        />,
+        document.body,
       )}
     </div>
   );
