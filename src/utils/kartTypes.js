@@ -68,3 +68,22 @@ export function collectKartAssignments(multipleKartTypes, kartTypes, kartNumbers
 export function joinKartNumbersForSetup(assignments) {
   return assignments.map((a) => String(a.num)).join(', ');
 }
+
+/** Map kart number → model id from per-type number fields. */
+export function buildModelIdByNumber(kartTypes, kartNumbersByType) {
+  const map = new Map();
+  if (!Array.isArray(kartTypes)) return map;
+  kartTypes.forEach((type) => {
+    parseKartNumbers(kartNumbersByType?.[type.id] || '').forEach((num) => {
+      map.set(Number(num), type.id);
+    });
+  });
+  return map;
+}
+
+export function resolveKartModelId(kart, kartTypes, kartNumbersByType) {
+  if (kart?.modelId && getKartTypeById(kartTypes, kart.modelId)) return kart.modelId;
+  const map = buildModelIdByNumber(kartTypes, kartNumbersByType);
+  const fromMap = map.get(Number(kart?.number ?? kart));
+  return fromMap || null;
+}

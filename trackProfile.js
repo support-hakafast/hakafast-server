@@ -9,6 +9,7 @@ const DEFAULT_TRACK_PROFILE = {
   currency: 'ILS',
   multipleKartTypes: false,
   kartTypes: [],
+  kartNumbersByType: {},
 };
 
 function isDisallowedKartColor(hex) {
@@ -62,6 +63,11 @@ function normalizeTrackProfile(raw, trackSlug = '') {
   if (typeof raw.currency === 'string' && raw.currency.trim()) base.currency = raw.currency.trim();
   if (typeof raw.multipleKartTypes === 'boolean') base.multipleKartTypes = raw.multipleKartTypes;
   if (Array.isArray(raw.kartTypes)) base.kartTypes = normalizeKartTypes(raw.kartTypes);
+  if (raw.kartNumbersByType && typeof raw.kartNumbersByType === 'object') {
+    base.kartNumbersByType = Object.fromEntries(
+      Object.entries(raw.kartNumbersByType).map(([id, val]) => [id, String(val ?? '')]),
+    );
+  }
   if (base.multipleKartTypes && base.kartTypes.length < 2) {
     base.multipleKartTypes = false;
     base.kartTypes = [];

@@ -15,6 +15,7 @@ import LivePreviewFloat from './LivePreviewFloat.jsx';
 import TimingColumnOrderList from './TimingColumnOrderList.jsx';
 import '../assets/SalesPages.css';
 import KartCard from './KartCard.jsx';
+import LaneKartSlot from './LaneKartSlot.jsx';
 import { useTickingHeatClock } from '../hooks/useTickingHeatClock.js';
 import { isStrongPassword } from '../utils/password.js';
 import {
@@ -29,6 +30,7 @@ import {
   buildExportFilename,
   pickKartsForAssignment,
   reorderAssignedKartsToPitFront,
+  reorderKartsInLaneArray,
   groupQueueByTeam,
   getExitKartNumber,
   getWaitingKartNumbers,
@@ -52,6 +54,7 @@ import {
   DEFAULT_KART_TYPE_PRESETS,
   getKartTypeById,
   normalizeKartTypes,
+  resolveKartModelId,
 } from '../utils/kartTypes.js';
 import KartTypesEditor from './KartTypesEditor.jsx';
 import { apiFetch } from '../utils/apiClient.js';
@@ -245,6 +248,9 @@ const AdminPanel = () => {
         setKartTypes(types);
         setSelectedKartTypeId((prev) => prev || types[0]?.id || '');
       }
+      if (p.kartNumbersByType && typeof p.kartNumbersByType === 'object') {
+        setKartNumbersByType(p.kartNumbersByType);
+      }
     }).catch(() => {});
     apiFetch('/api/heat-settings', {}, trackSlug).then((r) => r.json()).then((s) => {
       if (s?.type) setHeatType(s.type);
@@ -300,6 +306,24 @@ const AdminPanel = () => {
   useEffect(() => { syncQueue(driverQueue); }, [driverQueue, syncQueue]);
 
   useEffect(() => {
+    if (!multipleKartTypes || !kartTypes.length) return;
+    setAllKarts((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        const k = next[key];
+        if (!k || k.modelId) return;
+        const modelId = resolveKartModelId(k, kartTypes, kartNumbersByType);
+        if (modelId) {
+          next[key] = { ...k, modelId };
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [multipleKartTypes, kartTypes, kartNumbersByType]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       let duration = heatDuration;
       if (heatType === 'endurance') {
@@ -341,6 +365,7 @@ const AdminPanel = () => {
           pricePerSession: Number(pricePerSession) || 0,
           multipleKartTypes,
           kartTypes: multipleKartTypes ? normalizeKartTypes(kartTypes) : [],
+          kartNumbersByType: multipleKartTypes ? kartNumbersByType : {},
         }),
       }, trackSlug).catch(() => {});
     }, 700);
@@ -355,6 +380,7 @@ const AdminPanel = () => {
     pricePerSession,
     multipleKartTypes,
     kartTypes,
+    kartNumbersByType,
     trackSlug,
   ]);
 
@@ -430,9 +456,10 @@ const AdminPanel = () => {
 
   const kartModelProps = useCallback((kart) => {
     if (!multipleKartTypes) return {};
-    const type = getKartTypeById(kartTypes, kart?.modelId);
+    const modelId = resolveKartModelId(kart, kartTypes, kartNumbersByType);
+    const type = getKartTypeById(kartTypes, modelId);
     return type ? { modelColor: type.color, modelName: type.name } : {};
-  }, [multipleKartTypes, kartTypes]);
+  }, [multipleKartTypes, kartTypes, kartNumbersByType]);
 
   const addKartEntity = (num, modelId = null) => {
     const resolvedModelId = resolveKartModelId(modelId);
@@ -607,11 +634,15 @@ const AdminPanel = () => {
         ));
         if (!onTrackNow && !alreadyInLane && !inOtherLane) {
           const karts = [...targetLane.karts];
-          if (insertAt === 'front') {
-            karts.unshift(n);
-          } else {
-            karts.push(n);
+          const sameLane = fromLaneId != null && String(fromLaneId) === laneKey && fromLaneIndex >= 0;
+          let insertIndex = karts.length;
+          if (typeof insertAt === 'number') {
+            insertIndex = Math.max(0, Math.min(insertAt, karts.length));
+            if (sameLane && fromLaneIndex < insertIndex) insertIndex -= 1;
+          } else if (insertAt === 'front') {
+            insertIndex = 0;
           }
+          karts.splice(insertIndex, 0, n);
           updatedLines[laneKey] = { ...targetLane, karts };
         }
       }
@@ -639,6 +670,29 @@ const AdminPanel = () => {
     setLinesData(updatedLines);
     pitsLocalEditUntilRef.current = Date.now() + 2000;
     await syncPitsWithServer(updatedLines);
+  };
+
+  const reorderKartInLane = async (laneId, fromIndex, toIndex) => {
+    const lane = linesData[laneId];
+    if (!lane?.karts?.length || fromIndex === toIndex) return;
+    const karts = reorderKartsInLaneArray(lane.karts, fromIndex, toIndex);
+    const updatedLines = { ...linesData, [laneId]: { ...lane, karts } };
+    setLinesData(updatedLines);
+    pitsLocalEditUntilRef.current = Date.now() + 2000;
+    await syncPitsWithServer(updatedLines);
+  };
+
+  const handleDropOnLaneKart = (e, laneId, toIndex) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const payload = parseDragPayload(e);
+    if (!payload) return;
+    const fromLaneId = payload.laneId != null ? String(payload.laneId) : null;
+    if (fromLaneId === String(laneId) && payload.laneIndex >= 0) {
+      reorderKartInLane(laneId, payload.laneIndex, toIndex);
+      return;
+    }
+    dropKart(payload.num, laneId, payload.laneId, payload.laneIndex, toIndex);
   };
 
   const handleDropToLane = (e, laneNum, insertAt = 'append') => {
@@ -1393,17 +1447,24 @@ const AdminPanel = () => {
         </div>
         <div className="lane-exit-track" />
         {exitKart && allKarts[exitKart] ? (
-          <KartCard
-            key={`${laneId}-exit-${exitKart}-0`}
-            num={exitKart}
-            kart={allKarts[exitKart]}
-            {...kartModelProps(allKarts[exitKart])}
-            draggable
-            variant="exiting"
+          <LaneKartSlot
             laneId={laneId}
             laneIndex={0}
-            transponderActive={transponderReady}
-          />
+            onReorder={reorderKartInLane}
+            onDropOnSlot={handleDropOnLaneKart}
+          >
+            <KartCard
+              key={`${laneId}-exit-${exitKart}-0`}
+              num={exitKart}
+              kart={allKarts[exitKart]}
+              {...kartModelProps(allKarts[exitKart])}
+              draggable
+              variant="exiting"
+              laneId={laneId}
+              laneIndex={0}
+              transponderActive={transponderReady}
+            />
+          </LaneKartSlot>
         ) : (
           <div className="lane-exit-slot" aria-hidden />
         )}
@@ -1424,16 +1485,23 @@ const AdminPanel = () => {
           const kart = allKarts[num] || allKarts[String(num)];
           if (!kart) return null;
           return (
-            <KartCard
-              key={`${laneId}-w-${laneIndex}-${num}`}
-              num={num}
-              kart={kart}
-              {...kartModelProps(kart)}
-              draggable
-              variant="waiting"
+            <LaneKartSlot
+              key={`${laneId}-w-slot-${laneIndex}-${num}`}
               laneId={laneId}
               laneIndex={laneIndex}
-            />
+              onReorder={reorderKartInLane}
+              onDropOnSlot={handleDropOnLaneKart}
+            >
+              <KartCard
+                num={num}
+                kart={kart}
+                {...kartModelProps(kart)}
+                draggable
+                variant="waiting"
+                laneId={laneId}
+                laneIndex={laneIndex}
+              />
+            </LaneKartSlot>
           );
         })}
       </div>
@@ -1712,6 +1780,7 @@ const AdminPanel = () => {
                 <h2>{t('admin_pits_title')}</h2>
                 <button type="button" className="btn-purple" onClick={addNewLane}>{t('admin_add_lane')}</button>
               </div>
+              <p className="lane-reorder-hint">{t('admin_lane_kart_reorder_hint')}</p>
               <div className="pit-lanes-board">
                 {Object.keys(linesData).map((laneId) => {
                   const lane = linesData[laneId];
@@ -1760,18 +1829,35 @@ const AdminPanel = () => {
                   ) : (
                     [...onTrack]
                       .sort((a, b) => (a.launchedAt || 0) - (b.launchedAt || 0))
-                      .map((ot) => (
-                        <button
-                          key={ot.kart_number}
-                          type="button"
-                          className="on-track-num"
-                          title={t('admin_on_track_simulate_lap')}
-                          onClick={() => simulateTransponderLap(ot.kart_number)}
-                          onDoubleClick={() => returnKartFromTrack(ot.kart_number, ot.laneId || ot.originLaneId)}
-                        >
-                          {ot.kart_number}
-                        </button>
-                      ))
+                      .map((ot) => {
+                        const kart = allKarts[ot.kart_number] || allKarts[String(ot.kart_number)];
+                        return (
+                          <div
+                            key={ot.kart_number}
+                            className="on-track-kart-wrap"
+                            title={t('admin_on_track_simulate_lap')}
+                            onClick={() => simulateTransponderLap(ot.kart_number)}
+                            onDoubleClick={() => returnKartFromTrack(ot.kart_number, ot.laneId || ot.originLaneId)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') simulateTransponderLap(ot.kart_number);
+                            }}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            {kart ? (
+                              <KartCard
+                                num={ot.kart_number}
+                                kart={kart}
+                                {...kartModelProps(kart)}
+                                variant="ontrack"
+                                draggable={false}
+                              />
+                            ) : (
+                              <span className="on-track-num">{ot.kart_number}</span>
+                            )}
+                          </div>
+                        );
+                      })
                   )}
                 </div>
               </div>

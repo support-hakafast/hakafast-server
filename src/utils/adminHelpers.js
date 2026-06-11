@@ -158,6 +158,17 @@ export function getWaitingKartNumbers(lane) {
   return lane.karts.slice(1).map(Number);
 }
 
+/** Reorder a kart within a lane array (exit = index 0). */
+export function reorderKartsInLaneArray(karts, fromIndex, toIndex) {
+  if (!Array.isArray(karts) || fromIndex === toIndex) return karts;
+  const next = [...karts];
+  const from = Math.max(0, Math.min(fromIndex, next.length - 1));
+  const to = Math.max(0, Math.min(toIndex, next.length - 1));
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
 export function groupQueueByTeam(queue) {
   const teams = [];
   const map = new Map();
