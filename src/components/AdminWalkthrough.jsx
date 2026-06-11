@@ -3,7 +3,12 @@ import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useDialog } from '../i18n/DialogContext.jsx';
 import { isStrongPassword } from '../utils/password.js';
 import { apiFetch } from '../utils/apiClient.js';
-import { DEFAULT_KART_TYPE_PRESETS, normalizeKartTypes } from '../utils/kartTypes.js';
+import {
+  collectKartAssignments,
+  DEFAULT_KART_TYPE_PRESETS,
+  joinKartNumbersForSetup,
+  normalizeKartTypes,
+} from '../utils/kartTypes.js';
 import KartTypesEditor from './KartTypesEditor.jsx';
 import '../assets/AdminWalkthrough.css';
 
@@ -83,6 +88,7 @@ export default function AdminWalkthrough({
   const [saving, setSaving] = useState(false);
 
   const [kartNumbers, setKartNumbers] = useState('');
+  const [kartNumbersByType, setKartNumbersByType] = useState({});
   const [multipleKartTypes, setMultipleKartTypes] = useState(false);
   const [kartTypes, setKartTypes] = useState(() => DEFAULT_KART_TYPE_PRESETS.map((row) => ({ ...row })));
   const [enforceSecurity, setEnforceSecurity] = useState(false);
@@ -91,6 +97,19 @@ export default function AdminWalkthrough({
 
   const step = steps[stepIndex];
   const stepId = step.id;
+
+  const getSetupPayload = useCallback(() => {
+    const normalizedTypes = normalizeKartTypes(kartTypes);
+    const multi = multipleKartTypes && normalizedTypes.length >= 2;
+    const assignments = collectKartAssignments(multi, normalizedTypes, kartNumbersByType, kartNumbers);
+    return {
+      kartNumbers: joinKartNumbersForSetup(assignments) || kartNumbers.trim(),
+      kartNumbersByType,
+      multipleKartTypes: multi,
+      kartTypes: multi ? normalizedTypes : [],
+      assignments,
+    };
+  }, [kartNumbers, kartNumbersByType, multipleKartTypes, kartTypes]);
 
   const updateSpotlight = useCallback(() => {
     if (!step.target) {
@@ -128,8 +147,8 @@ export default function AdminWalkthrough({
   }, [updateSpotlight]);
 
   const submitFirstRunSetup = async (skipped = false) => {
-    const normalizedTypes = normalizeKartTypes(kartTypes);
-    const saveMultiType = !skipped && multipleKartTypes && normalizedTypes.length >= 2;
+    const payload = getSetupPayload();
+    const saveMultiType = !skipped && payload.multipleKartTypes;
     setSaving(true);
     try {
       const res = await apiFetch('/api/admin/track-setup', {
@@ -137,10 +156,10 @@ export default function AdminWalkthrough({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           trackSlug,
-          kartNumbers: kartNumbers.trim(),
+          kartNumbers: payload.kartNumbers,
           editPassword: (!skipped && enforceSecurity) ? password : '',
           multipleKartTypes: saveMultiType,
-          kartTypes: saveMultiType ? normalizedTypes : [],
+          kartTypes: saveMultiType ? payload.kartTypes : [],
         }),
       }, trackSlug);
       const data = await res.json();
@@ -159,17 +178,12 @@ export default function AdminWalkthrough({
 
   const finish = async (skipped = false) => {
     if (isFirstRun) {
-      if (kartNumbers.trim() || multipleKartTypes) {
-        const normalizedTypes = normalizeKartTypes(kartTypes);
-        onApplySetupKarts?.({
-          kartNumbers: kartNumbers.trim(),
-          multipleKartTypes: multipleKartTypes && normalizedTypes.length >= 2,
-          kartTypes: multipleKartTypes && normalizedTypes.length >= 2 ? normalizedTypes : [],
-        });
+      const payload = getSetupPayload();
+      if (payload.assignments.length || payload.multipleKartTypes) {
+        onApplySetupKarts?.(payload);
       }
       if (!skipped) {
-        const normalizedTypes = normalizeKartTypes(kartTypes);
-        if (multipleKartTypes && normalizedTypes.length < 2) {
+        if (multipleKartTypes && payload.kartTypes.length < 2) {
           showAlert(t('admin_kart_types_min_two'));
           return;
         }
@@ -186,13 +200,9 @@ export default function AdminWalkthrough({
       }
       const ok = await submitFirstRunSetup(skipped);
       if (!ok) return;
-      const normalizedTypes = normalizeKartTypes(kartTypes);
-      const savedMulti = !skipped && multipleKartTypes && normalizedTypes.length >= 2;
       onComplete?.({
-        kartNumbers: kartNumbers.trim(),
+        ...payload,
         hasPassword: !skipped && enforceSecurity,
-        multipleKartTypes: savedMulti,
-        kartTypes: savedMulti ? normalizedTypes : [],
         skipped,
       });
     } else {
@@ -202,16 +212,12 @@ export default function AdminWalkthrough({
   };
 
   const validateSetupKartsStep = () => {
-    const normalizedTypes = normalizeKartTypes(kartTypes);
-    if (multipleKartTypes && normalizedTypes.length < 2) {
+    const payload = getSetupPayload();
+    if (multipleKartTypes && payload.kartTypes.length < 2) {
       showAlert(t('admin_kart_types_min_two'));
       return false;
     }
-    onApplySetupKarts?.({
-      kartNumbers: kartNumbers.trim(),
-      multipleKartTypes,
-      kartTypes: multipleKartTypes ? normalizedTypes : [],
-    });
+    onApplySetupKarts?.(payload);
     return true;
   };
 
@@ -266,16 +272,6 @@ export default function AdminWalkthrough({
 
         {stepId === 'setup-karts' && (
           <div className="admin-tour-form">
-            <label className="admin-tour-field">
-              <span>{t('admin_kart_input_placeholder')}</span>
-              <input
-                type="text"
-                value={kartNumbers}
-                onChange={(e) => setKartNumbers(e.target.value)}
-                placeholder={t('admin_setup_karts_optional_ph')}
-              />
-            </label>
-            <p className="admin-tour-field-hint">{t('admin_setup_karts_optional_hint')}</p>
             <div className="security-toggle-row admin-tour-toggle-row">
               <span className="field-label">{t('admin_multiple_kart_types')}</span>
               <button
@@ -288,8 +284,32 @@ export default function AdminWalkthrough({
                 <span className="hf-toggle-knob" />
               </button>
             </div>
-            {multipleKartTypes && (
-              <KartTypesEditor t={t} types={kartTypes} onChange={setKartTypes} compact />
+            {multipleKartTypes ? (
+              <KartTypesEditor
+                t={t}
+                compact
+                showNumbers
+                types={kartTypes}
+                numbersByType={kartNumbersByType}
+                onNumbersChange={(typeId, value) => {
+                  setKartNumbersByType((prev) => ({ ...prev, [typeId]: value }));
+                }}
+                colorRejectedMessage={t('admin_kart_color_not_allowed')}
+                onChange={setKartTypes}
+              />
+            ) : (
+              <>
+                <label className="admin-tour-field">
+                  <span>{t('admin_kart_input_placeholder')}</span>
+                  <input
+                    type="text"
+                    value={kartNumbers}
+                    onChange={(e) => setKartNumbers(e.target.value)}
+                    placeholder={t('admin_setup_karts_optional_ph')}
+                  />
+                </label>
+                <p className="admin-tour-field-hint">{t('admin_setup_karts_optional_hint')}</p>
+              </>
             )}
           </div>
         )}

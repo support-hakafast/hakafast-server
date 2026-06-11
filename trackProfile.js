@@ -11,13 +11,30 @@ const DEFAULT_TRACK_PROFILE = {
   kartTypes: [],
 };
 
+function isDisallowedKartColor(hex) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex || '')) return true;
+  const h = hex.slice(1);
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return r >= 242 && g >= 242 && b >= 242;
+}
+
+function sanitizeKartColor(hex, index = 0) {
+  const palette = ['#dc2626', '#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777'];
+  const fallback = palette[index % palette.length];
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex || '')) return fallback;
+  if (isDisallowedKartColor(hex)) return fallback;
+  return hex.toLowerCase();
+}
+
 function normalizeKartTypes(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((t, i) => ({
       id: (typeof t?.id === 'string' && t.id.trim()) ? t.id.trim() : `kart-type-${i + 1}`,
       name: (typeof t?.name === 'string' && t.name.trim()) ? t.name.trim().slice(0, 48) : '',
-      color: /^#[0-9a-fA-F]{6}$/.test(t?.color) ? t.color : '#64748b',
+      color: sanitizeKartColor(t?.color, i),
     }))
     .filter((t) => t.name);
 }

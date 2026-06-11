@@ -46,7 +46,12 @@ import {
   reorderColumnOrder,
 } from '../utils/liveTimingColumns.js';
 import { calculateDayPlan } from '../utils/trackProfileClient.js';
-import { DEFAULT_KART_TYPE_PRESETS, getKartTypeById, normalizeKartTypes } from '../utils/kartTypes.js';
+import {
+  collectKartAssignments,
+  DEFAULT_KART_TYPE_PRESETS,
+  getKartTypeById,
+  normalizeKartTypes,
+} from '../utils/kartTypes.js';
 import KartTypesEditor from './KartTypesEditor.jsx';
 import { apiFetch } from '../utils/apiClient.js';
 import {
@@ -121,7 +126,7 @@ const AdminPanel = () => {
   const [multipleKartTypes, setMultipleKartTypes] = useState(false);
   const [kartTypes, setKartTypes] = useState([]);
   const [selectedKartTypeId, setSelectedKartTypeId] = useState('');
-  const [showKartTypesEditor, setShowKartTypesEditor] = useState(false);
+  const [kartNumbersByType, setKartNumbersByType] = useState({});
   const [enduranceTeams, setEnduranceTeams] = useState([]);
 
   const [drName, setDrName] = useState('');
@@ -404,8 +409,9 @@ const AdminPanel = () => {
 
   const resolveKartModelId = useCallback((modelId) => {
     if (!multipleKartTypes || kartTypes.length === 0) return null;
-    const id = modelId || selectedKartTypeId || kartTypes[0]?.id;
-    return kartTypes.some((t) => t.id === id) ? id : kartTypes[0]?.id || null;
+    if (modelId && kartTypes.some((row) => row.id === modelId)) return modelId;
+    const id = selectedKartTypeId || kartTypes[0]?.id;
+    return kartTypes.some((row) => row.id === id) ? id : kartTypes[0]?.id || null;
   }, [multipleKartTypes, kartTypes, selectedKartTypeId]);
 
   const kartModelProps = useCallback((kart) => {
@@ -439,11 +445,8 @@ const AdminPanel = () => {
     });
   };
 
-  const addKartsFromInput = () => {
-    const val = kartInput.trim();
-    if (!val) return;
-    const nums = parseKartNumbers(val);
-    if (!nums.length) {
+  const addKartAssignments = (assignments) => {
+    if (!assignments.length) {
       showAlert(t('admin_karts_invalid_input'));
       return;
     }
@@ -454,10 +457,10 @@ const AdminPanel = () => {
     let onTrackCount = 0;
     let alreadyInPool = 0;
     const next = { ...allKarts };
-    const resolvedModelId = resolveKartModelId();
 
-    nums.forEach((num) => {
+    assignments.forEach(({ num, modelId }) => {
       const key = String(num);
+      const resolvedModelId = resolveKartModelId(modelId);
       const k = next[key];
       if (k?.onTrack) { onTrackCount += 1; return; }
       if (k?.lane != null) { inPits += 1; return; }
@@ -494,7 +497,29 @@ const AdminPanel = () => {
     if (alreadyInPool > 0) msgs.push(t('admin_karts_already_pool', { count: alreadyInPool }));
     if (msgs.length) showAlert(msgs.join('\n'));
     else showAlert(t('admin_karts_none_added'));
+  };
+
+  const addKartsFromInput = () => {
+    const assignments = collectKartAssignments(false, kartTypes, {}, kartInput);
+    addKartAssignments(assignments);
     setKartInput('');
+  };
+
+  const addKartsFromModels = (typeId = 'all') => {
+    const types = typeId === 'all'
+      ? kartTypes
+      : kartTypes.filter((row) => row.id === typeId);
+    const scopedNumbers = {};
+    types.forEach((row) => {
+      scopedNumbers[row.id] = kartNumbersByType[row.id] || '';
+    });
+    const assignments = collectKartAssignments(true, types, scopedNumbers, '');
+    addKartAssignments(assignments);
+    if (typeId === 'all') {
+      setKartNumbersByType({});
+    } else {
+      setKartNumbersByType((prev) => ({ ...prev, [typeId]: '' }));
+    }
   };
 
   const toggleKartActive = (num, event) => {
@@ -1055,15 +1080,25 @@ const AdminPanel = () => {
     }
   };
 
-  const applyWalkthroughSetupKarts = ({ kartNumbers, multipleKartTypes: multi, kartTypes: types }) => {
+  const applyWalkthroughSetupKarts = ({
+    kartNumbers,
+    kartNumbersByType: numbersByType,
+    multipleKartTypes: multi,
+    kartTypes: types,
+  }) => {
     if (multi && Array.isArray(types) && types.length >= 2) {
       setMultipleKartTypes(true);
       setKartTypes(types);
       setSelectedKartTypeId(types[0]?.id || '');
+      if (numbersByType) setKartNumbersByType(numbersByType);
     }
-    if (kartNumbers?.trim()) {
-      parseKartNumbers(kartNumbers).forEach((n) => addKartEntity(n, types?.[0]?.id));
-    }
+    const assignments = collectKartAssignments(
+      multi && types?.length >= 2,
+      types || [],
+      numbersByType || {},
+      kartNumbers || '',
+    );
+    if (assignments.length) addKartAssignments(assignments);
   };
 
   const handleWalkthroughComplete = useCallback((payload = {}) => {
@@ -1474,79 +1509,45 @@ const AdminPanel = () => {
         <section className="admin-pits-column">
           <div className="inventory-pits-panel" data-tour="pits">
             <div className="warehouse-zone" data-tour="warehouse">
-              <h2>{t('admin_warehouse')}</h2>
-              <div className="input-group kart-add-row">
-                <input
-                  type="text"
-                  value={kartInput}
-                  onChange={(e) => setKartInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addKartsFromInput(); } }}
-                  placeholder={t('admin_kart_input_placeholder')}
-                />
-                {multipleKartTypes && kartTypes.length > 0 && (
-                  <select
-                    className="kart-type-select"
-                    value={selectedKartTypeId}
-                    onChange={(e) => setSelectedKartTypeId(e.target.value)}
-                    aria-label={t('admin_kart_type_select')}
-                  >
-                    {kartTypes.map((type) => (
-                      <option key={type.id} value={type.id}>{type.name}</option>
-                    ))}
-                  </select>
-                )}
-                <button type="button" onClick={addKartsFromInput}>{t('admin_add_inventory')}</button>
+              <div className="warehouse-zone-head">
+                <h2>{t('admin_warehouse')}</h2>
+                <span className="warehouse-kart-count">{poolKarts.length}</span>
               </div>
-              <div className="kart-types-toolbar">
-                <div className="security-toggle-row kart-types-toggle-row">
-                  <span className="field-label">{t('admin_multiple_kart_types')}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={multipleKartTypes}
-                    className={`hf-toggle${multipleKartTypes ? ' is-on' : ''}`}
-                    onClick={() => {
-                      setMultipleKartTypes((on) => {
-                        const next = !on;
-                        if (next && kartTypes.length < 2) {
-                          const seeded = DEFAULT_KART_TYPE_PRESETS.map((row) => ({ ...row }));
-                          setKartTypes(seeded);
-                          setSelectedKartTypeId(seeded[0]?.id || '');
-                          setShowKartTypesEditor(true);
-                        }
-                        if (!next) setShowKartTypesEditor(false);
-                        return next;
-                      });
-                    }}
-                  >
-                    <span className="hf-toggle-knob" />
-                  </button>
-                </div>
-                {multipleKartTypes && kartTypes.length > 0 && (
-                  <>
-                    <div className="kart-types-legend">
-                      {kartTypes.map((type) => (
-                        <span key={type.id} className="kart-type-legend-item">
-                          <span className="kart-type-swatch" style={{ background: type.color }} aria-hidden />
-                          {type.name}
-                        </span>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className="kart-types-manage-toggle"
-                      onClick={() => setShowKartTypesEditor((open) => !open)}
-                    >
-                      {showKartTypesEditor ? t('admin_kart_types_close') : t('admin_kart_types_manage')}
-                    </button>
-                  </>
-                )}
+              <div className="security-toggle-row kart-types-toggle-row">
+                <span className="field-label">{t('admin_multiple_kart_types')}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={multipleKartTypes}
+                  className={`hf-toggle${multipleKartTypes ? ' is-on' : ''}`}
+                  onClick={() => {
+                    setMultipleKartTypes((on) => {
+                      const next = !on;
+                      if (next && kartTypes.length < 2) {
+                        const seeded = DEFAULT_KART_TYPE_PRESETS.map((row) => ({ ...row }));
+                        setKartTypes(seeded);
+                        setSelectedKartTypeId(seeded[0]?.id || '');
+                      }
+                      if (!next) setKartNumbersByType({});
+                      return next;
+                    });
+                  }}
+                >
+                  <span className="hf-toggle-knob" />
+                </button>
               </div>
-              {multipleKartTypes && showKartTypesEditor && (
+              {multipleKartTypes && kartTypes.length > 0 ? (
                 <KartTypesEditor
                   t={t}
                   compact
+                  showNumbers
                   types={kartTypes}
+                  numbersByType={kartNumbersByType}
+                  onNumbersChange={(typeId, value) => {
+                    setKartNumbersByType((prev) => ({ ...prev, [typeId]: value }));
+                  }}
+                  onAddModel={addKartsFromModels}
+                  colorRejectedMessage={t('admin_kart_color_not_allowed')}
                   onChange={(next) => {
                     const normalized = normalizeKartTypes(next);
                     setKartTypes(normalized);
@@ -1555,13 +1556,25 @@ const AdminPanel = () => {
                     }
                     if (normalized.length < 2) {
                       setMultipleKartTypes(false);
-                      setShowKartTypesEditor(false);
+                      setKartNumbersByType({});
                     }
                   }}
                 />
+              ) : (
+                <div className="input-group kart-add-row">
+                  <input
+                    type="text"
+                    value={kartInput}
+                    onChange={(e) => setKartInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addKartsFromInput(); } }}
+                    placeholder={t('admin_kart_input_placeholder')}
+                  />
+                  <button type="button" onClick={addKartsFromInput}>{t('admin_add_inventory')}</button>
+                </div>
               )}
+              <div className="warehouse-pool-label">{t('admin_warehouse_pool')}</div>
               <div
-                className={`kart-pool${dragOverPool ? ' drag-over' : ''}`}
+                className={`kart-pool warehouse-kart-pool${dragOverPool ? ' drag-over' : ''}`}
                 onDragOver={(e) => { e.preventDefault(); setDragOverPool(true); }}
                 onDragLeave={() => setDragOverPool(false)}
                 onDrop={handleDropToPool}
