@@ -18,6 +18,8 @@ function KartSvg() {
 export default function KartCard({
   num,
   kart,
+  modelColor = null,
+  modelName = null,
   onToggle,
   draggable,
   variant = 'pool',
@@ -29,10 +31,12 @@ export default function KartCard({
   const inactive = !kart.active;
   const [dragging, setDragging] = useState(false);
   const canDrag = Boolean(draggable) && !inactive;
+  const shellStyle = modelColor ? { '--kart-shell-fill': modelColor } : undefined;
 
   return (
     <div
-      className={`kart-shape kart-variant-${variant}${inactive ? ' is-disabled' : ''}${transponderActive ? ' transponder-active' : ''}${dragging ? ' is-dragging' : ''}`}
+      className={`kart-shape kart-variant-${variant}${modelColor ? ' has-model' : ''}${inactive ? ' is-disabled' : ''}${transponderActive ? ' transponder-active' : ''}${dragging ? ' is-dragging' : ''}`}
+      style={shellStyle}
       draggable={canDrag}
       onDragStart={(e) => {
         if (!canDrag) { e.preventDefault(); return; }
@@ -46,7 +50,7 @@ export default function KartCard({
         setDragging(true);
       }}
       onDragEnd={() => setDragging(false)}
-      title={`#${num}`}
+      title={modelName ? `#${num} · ${modelName}` : `#${num}`}
     >
       <KartSvg />
       <span className="kart-number">{num}</span>

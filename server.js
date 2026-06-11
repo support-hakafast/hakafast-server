@@ -894,7 +894,7 @@ app.get('/api/admin/track-setup/:trackSlug', (req, res) => {
 });
 
 app.post('/api/admin/track-setup', (req, res) => {
-  const { trackSlug, kartNumbers, editPassword } = req.body;
+  const { trackSlug, kartNumbers, editPassword, multipleKartTypes, kartTypes } = req.body;
   if (!trackSlug) {
     return res.json({ success: false, error: 'missing_fields' });
   }
@@ -904,13 +904,18 @@ app.post('/api/admin/track-setup', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     demo.trackSetup = { onboarded: true, kartNumbers: String(kartNumbers || '').trim() };
-    if (!demo.trackProfile) {
-      demo.trackProfile = trackProfile.normalizeTrackProfile({}, trackSlug);
-    }
+    const profilePatch = {};
+    if (typeof multipleKartTypes === 'boolean') profilePatch.multipleKartTypes = multipleKartTypes;
+    if (Array.isArray(kartTypes)) profilePatch.kartTypes = kartTypes;
+    demoStore.updateTrackProfile(demo, profilePatch);
     if (editPassword) demo.levelSettings.editPassword = editPassword;
     demoStore.persistStore(demo);
     saveTrackProfileToDb(demo.trackSlug, demoStore.getTrackProfile(demo));
-    return res.json({ success: true, kartNumbers: demo.trackSetup.kartNumbers });
+    return res.json({
+      success: true,
+      kartNumbers: demo.trackSetup.kartNumbers,
+      profile: demoStore.getTrackProfile(demo),
+    });
   }
   trackSetups[trackSlug] = { onboarded: true, kartNumbers: String(kartNumbers || '').trim() };
   if (editPassword) levelSettings.editPassword = editPassword;

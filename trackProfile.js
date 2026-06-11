@@ -7,7 +7,20 @@ const DEFAULT_TRACK_PROFILE = {
   turnoverMin: 5,
   pricePerSession: 0,
   currency: 'ILS',
+  multipleKartTypes: false,
+  kartTypes: [],
 };
+
+function normalizeKartTypes(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((t, i) => ({
+      id: (typeof t?.id === 'string' && t.id.trim()) ? t.id.trim() : `kart-type-${i + 1}`,
+      name: (typeof t?.name === 'string' && t.name.trim()) ? t.name.trim().slice(0, 48) : '',
+      color: /^#[0-9a-fA-F]{6}$/.test(t?.color) ? t.color : '#64748b',
+    }))
+    .filter((t) => t.name);
+}
 
 function parseTimeToMinutes(value) {
   if (!value || typeof value !== 'string') return null;
@@ -30,6 +43,12 @@ function normalizeTrackProfile(raw, trackSlug = '') {
   if (raw.turnoverMin != null) base.turnoverMin = Math.max(0, Number(raw.turnoverMin) || 0);
   if (raw.pricePerSession != null) base.pricePerSession = Math.max(0, Number(raw.pricePerSession) || 0);
   if (typeof raw.currency === 'string' && raw.currency.trim()) base.currency = raw.currency.trim();
+  if (typeof raw.multipleKartTypes === 'boolean') base.multipleKartTypes = raw.multipleKartTypes;
+  if (Array.isArray(raw.kartTypes)) base.kartTypes = normalizeKartTypes(raw.kartTypes);
+  if (base.multipleKartTypes && base.kartTypes.length < 2) {
+    base.multipleKartTypes = false;
+    base.kartTypes = [];
+  }
   if (!base.trackDisplayName && trackSlug) base.trackDisplayName = trackSlug;
   return base;
 }

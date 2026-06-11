@@ -6,7 +6,6 @@ import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useDialog } from '../i18n/DialogContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
-import AdminSetupModal from './AdminSetupModal.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
@@ -47,6 +46,8 @@ import {
   reorderColumnOrder,
 } from '../utils/liveTimingColumns.js';
 import { calculateDayPlan } from '../utils/trackProfileClient.js';
+import { DEFAULT_KART_TYPE_PRESETS, getKartTypeById, normalizeKartTypes } from '../utils/kartTypes.js';
+import KartTypesEditor from './KartTypesEditor.jsx';
 import { apiFetch } from '../utils/apiClient.js';
 import {
   usesIsolatedWorkspace,
@@ -88,8 +89,8 @@ const AdminPanel = () => {
   const { showAlert, showConfirmTwice } = useDialog();
   const trackSlug = trackName || 'kart-demo';
 
-  const [showSetup, setShowSetup] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
 
   const [allKarts, setAllKarts] = useState({});
@@ -117,6 +118,10 @@ const AdminPanel = () => {
   const [turnoverMin, setTurnoverMin] = useState(5);
   const [pricePerSession, setPricePerSession] = useState(0);
   const [competitiveHeatsPlanned, setCompetitiveHeatsPlanned] = useState(0);
+  const [multipleKartTypes, setMultipleKartTypes] = useState(false);
+  const [kartTypes, setKartTypes] = useState([]);
+  const [selectedKartTypeId, setSelectedKartTypeId] = useState('');
+  const [showKartTypesEditor, setShowKartTypesEditor] = useState(false);
   const [enduranceTeams, setEnduranceTeams] = useState([]);
 
   const [drName, setDrName] = useState('');
@@ -180,7 +185,8 @@ const AdminPanel = () => {
       .then((r) => r.json())
       .then((s) => {
         if (!s.onboarded) {
-          setShowSetup(true);
+          setNeedsOnboarding(true);
+          setShowWalkthrough(true);
           return;
         }
         if (!isAdminTourDone(trackSlug)) {
@@ -216,6 +222,12 @@ const AdminPanel = () => {
       if (p.competitiveBlockMin != null) setCompetitiveBlockMin(Number(p.competitiveBlockMin) || 45);
       if (p.turnoverMin != null) setTurnoverMin(Number(p.turnoverMin) || 0);
       if (p.pricePerSession != null) setPricePerSession(Number(p.pricePerSession) || 0);
+      if (typeof p.multipleKartTypes === 'boolean') setMultipleKartTypes(p.multipleKartTypes);
+      if (Array.isArray(p.kartTypes)) {
+        const types = normalizeKartTypes(p.kartTypes);
+        setKartTypes(types);
+        setSelectedKartTypeId((prev) => prev || types[0]?.id || '');
+      }
     }).catch(() => {});
     apiFetch('/api/heat-settings', {}, trackSlug).then((r) => r.json()).then((s) => {
       if (s?.type) setHeatType(s.type);
@@ -308,6 +320,8 @@ const AdminPanel = () => {
           competitiveBlockMin: Number(competitiveBlockMin) || 45,
           turnoverMin: Number(turnoverMin) || 0,
           pricePerSession: Number(pricePerSession) || 0,
+          multipleKartTypes,
+          kartTypes: multipleKartTypes ? normalizeKartTypes(kartTypes) : [],
         }),
       }, trackSlug).catch(() => {});
     }, 700);
@@ -320,6 +334,8 @@ const AdminPanel = () => {
     competitiveBlockMin,
     turnoverMin,
     pricePerSession,
+    multipleKartTypes,
+    kartTypes,
     trackSlug,
   ]);
 
@@ -386,13 +402,40 @@ const AdminPanel = () => {
   const isBulkDrivers = isBulkDriverInput(drName);
   const canAddDriver = driverNames.length > 0;
 
-  const addKartEntity = (num) => {
+  const resolveKartModelId = useCallback((modelId) => {
+    if (!multipleKartTypes || kartTypes.length === 0) return null;
+    const id = modelId || selectedKartTypeId || kartTypes[0]?.id;
+    return kartTypes.some((t) => t.id === id) ? id : kartTypes[0]?.id || null;
+  }, [multipleKartTypes, kartTypes, selectedKartTypeId]);
+
+  const kartModelProps = useCallback((kart) => {
+    if (!multipleKartTypes) return {};
+    const type = getKartTypeById(kartTypes, kart?.modelId);
+    return type ? { modelColor: type.color, modelName: type.name } : {};
+  }, [multipleKartTypes, kartTypes]);
+
+  const addKartEntity = (num, modelId = null) => {
+    const resolvedModelId = resolveKartModelId(modelId);
     setAllKarts((prev) => {
       const existing = prev[num];
       if (existing?.onTrack) return prev;
       if (existing?.lane != null) return prev;
-      if (existing) return { ...prev, [num]: { ...existing, active: true, lane: null, onTrack: false } };
-      return { ...prev, [num]: { number: num, active: true, lane: null, onTrack: false } };
+      if (existing) {
+        return {
+          ...prev,
+          [num]: {
+            ...existing,
+            active: true,
+            lane: null,
+            onTrack: false,
+            modelId: resolvedModelId || existing.modelId || null,
+          },
+        };
+      }
+      return {
+        ...prev,
+        [num]: { number: num, active: true, lane: null, onTrack: false, modelId: resolvedModelId },
+      };
     });
   };
 
@@ -411,6 +454,7 @@ const AdminPanel = () => {
     let onTrackCount = 0;
     let alreadyInPool = 0;
     const next = { ...allKarts };
+    const resolvedModelId = resolveKartModelId();
 
     nums.forEach((num) => {
       const key = String(num);
@@ -419,10 +463,23 @@ const AdminPanel = () => {
       if (k?.lane != null) { inPits += 1; return; }
       if (k?.active && k.lane == null) { alreadyInPool += 1; return; }
       if (k && !k.active) {
-        next[key] = { ...k, number: num, active: true, lane: null, onTrack: false };
+        next[key] = {
+          ...k,
+          number: num,
+          active: true,
+          lane: null,
+          onTrack: false,
+          modelId: resolvedModelId || k.modelId || null,
+        };
         reactivated += 1;
       } else {
-        next[key] = { number: num, active: true, lane: null, onTrack: false };
+        next[key] = {
+          number: num,
+          active: true,
+          lane: null,
+          onTrack: false,
+          modelId: resolvedModelId,
+        };
         added += 1;
       }
     });
@@ -998,26 +1055,36 @@ const AdminPanel = () => {
     }
   };
 
-  const handleSetupComplete = ({ kartNumbers, hasPassword: pwSet }) => {
-    setShowSetup(false);
-    if (pwSet) setHasPassword(true);
-    if (kartNumbers?.trim()) {
-      parseKartNumbers(kartNumbers).forEach((n) => addKartEntity(n));
+  const applyWalkthroughSetupKarts = ({ kartNumbers, multipleKartTypes: multi, kartTypes: types }) => {
+    if (multi && Array.isArray(types) && types.length >= 2) {
+      setMultipleKartTypes(true);
+      setKartTypes(types);
+      setSelectedKartTypeId(types[0]?.id || '');
     }
-    if (!isAdminTourDone(trackSlug)) {
-      window.setTimeout(() => setShowWalkthrough(true), 400);
+    if (kartNumbers?.trim()) {
+      parseKartNumbers(kartNumbers).forEach((n) => addKartEntity(n, types?.[0]?.id));
     }
   };
+
+  const handleWalkthroughComplete = useCallback((payload = {}) => {
+    setShowWalkthrough(false);
+    setShowLivePreview(false);
+    setShowTrackPlannerModal(false);
+    setNeedsOnboarding(false);
+    if (payload.hasPassword) setHasPassword(true);
+    if (payload.multipleKartTypes && Array.isArray(payload.kartTypes) && payload.kartTypes.length >= 2) {
+      setMultipleKartTypes(true);
+      setKartTypes(payload.kartTypes);
+      setSelectedKartTypeId(payload.kartTypes[0]?.id || '');
+    }
+    if (payload.kartNumbers?.trim()) {
+      parseKartNumbers(payload.kartNumbers).forEach((n) => addKartEntity(n, payload.kartTypes?.[0]?.id));
+    }
+  }, []);
 
   const handleWalkthroughStep = useCallback((stepId) => {
     setShowLivePreview(stepId === 'preview');
     setShowTrackPlannerModal(stepId === 'planner');
-  }, []);
-
-  const handleWalkthroughComplete = useCallback(() => {
-    setShowWalkthrough(false);
-    setShowLivePreview(false);
-    setShowTrackPlannerModal(false);
   }, []);
 
   const applyTrackPlanner = async () => {
@@ -1031,9 +1098,11 @@ const AdminPanel = () => {
         openingTime,
         closingTime,
         sessionDurationMin: duration,
-        competitiveBlockMin: Number(competitiveBlockMin) || 45,
-        turnoverMin: Number(turnoverMin) || 0,
-        pricePerSession: Number(pricePerSession) || 0,
+          competitiveBlockMin: Number(competitiveBlockMin) || 45,
+          turnoverMin: Number(turnoverMin) || 0,
+          pricePerSession: Number(pricePerSession) || 0,
+          multipleKartTypes,
+          kartTypes: multipleKartTypes ? normalizeKartTypes(kartTypes) : [],
       };
       const heatBody = {
         type: 'time',
@@ -1190,6 +1259,7 @@ const AdminPanel = () => {
             key={`${laneId}-exit-${exitKart}-0`}
             num={exitKart}
             kart={allKarts[exitKart]}
+            {...kartModelProps(allKarts[exitKart])}
             draggable
             variant="exiting"
             laneId={laneId}
@@ -1220,6 +1290,7 @@ const AdminPanel = () => {
               key={`${laneId}-w-${laneIndex}-${num}`}
               num={num}
               kart={kart}
+              {...kartModelProps(kart)}
               draggable
               variant="waiting"
               laneId={laneId}
@@ -1282,7 +1353,6 @@ const AdminPanel = () => {
 
   return (
     <div className="admin-dashboard admin-no-scroll">
-      {showSetup && <AdminSetupModal trackSlug={trackSlug} onComplete={handleSetupComplete} />}
       {showAdvanced && (
         <AdvancedSettingsModal
           trackSlug={trackSlug}
@@ -1315,7 +1385,9 @@ const AdminPanel = () => {
       {showWalkthrough && (
         <AdminWalkthrough
           trackSlug={trackSlug}
+          isFirstRun={needsOnboarding}
           onStepChange={handleWalkthroughStep}
+          onApplySetupKarts={applyWalkthroughSetupKarts}
           onComplete={handleWalkthroughComplete}
         />
       )}
@@ -1400,10 +1472,10 @@ const AdminPanel = () => {
 
       <div className="admin-workspace">
         <section className="admin-pits-column">
-          <div className="inventory-pits-panel">
+          <div className="inventory-pits-panel" data-tour="pits">
             <div className="warehouse-zone" data-tour="warehouse">
               <h2>{t('admin_warehouse')}</h2>
-              <div className="input-group">
+              <div className="input-group kart-add-row">
                 <input
                   type="text"
                   value={kartInput}
@@ -1411,8 +1483,83 @@ const AdminPanel = () => {
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addKartsFromInput(); } }}
                   placeholder={t('admin_kart_input_placeholder')}
                 />
+                {multipleKartTypes && kartTypes.length > 0 && (
+                  <select
+                    className="kart-type-select"
+                    value={selectedKartTypeId}
+                    onChange={(e) => setSelectedKartTypeId(e.target.value)}
+                    aria-label={t('admin_kart_type_select')}
+                  >
+                    {kartTypes.map((type) => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
+                    ))}
+                  </select>
+                )}
                 <button type="button" onClick={addKartsFromInput}>{t('admin_add_inventory')}</button>
               </div>
+              <div className="kart-types-toolbar">
+                <div className="security-toggle-row kart-types-toggle-row">
+                  <span className="field-label">{t('admin_multiple_kart_types')}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={multipleKartTypes}
+                    className={`hf-toggle${multipleKartTypes ? ' is-on' : ''}`}
+                    onClick={() => {
+                      setMultipleKartTypes((on) => {
+                        const next = !on;
+                        if (next && kartTypes.length < 2) {
+                          const seeded = DEFAULT_KART_TYPE_PRESETS.map((row) => ({ ...row }));
+                          setKartTypes(seeded);
+                          setSelectedKartTypeId(seeded[0]?.id || '');
+                          setShowKartTypesEditor(true);
+                        }
+                        if (!next) setShowKartTypesEditor(false);
+                        return next;
+                      });
+                    }}
+                  >
+                    <span className="hf-toggle-knob" />
+                  </button>
+                </div>
+                {multipleKartTypes && kartTypes.length > 0 && (
+                  <>
+                    <div className="kart-types-legend">
+                      {kartTypes.map((type) => (
+                        <span key={type.id} className="kart-type-legend-item">
+                          <span className="kart-type-swatch" style={{ background: type.color }} aria-hidden />
+                          {type.name}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="kart-types-manage-toggle"
+                      onClick={() => setShowKartTypesEditor((open) => !open)}
+                    >
+                      {showKartTypesEditor ? t('admin_kart_types_close') : t('admin_kart_types_manage')}
+                    </button>
+                  </>
+                )}
+              </div>
+              {multipleKartTypes && showKartTypesEditor && (
+                <KartTypesEditor
+                  t={t}
+                  compact
+                  types={kartTypes}
+                  onChange={(next) => {
+                    const normalized = normalizeKartTypes(next);
+                    setKartTypes(normalized);
+                    if (!normalized.some((row) => row.id === selectedKartTypeId)) {
+                      setSelectedKartTypeId(normalized[0]?.id || '');
+                    }
+                    if (normalized.length < 2) {
+                      setMultipleKartTypes(false);
+                      setShowKartTypesEditor(false);
+                    }
+                  }}
+                />
+              )}
               <div
                 className={`kart-pool${dragOverPool ? ' drag-over' : ''}`}
                 onDragOver={(e) => { e.preventDefault(); setDragOverPool(true); }}
@@ -1420,11 +1567,20 @@ const AdminPanel = () => {
                 onDrop={handleDropToPool}
               >
                 {poolKarts.map((num) => (
-                  <KartCard key={num} num={num} kart={allKarts[num]} onToggle={toggleKartActive} draggable variant="pool" showToggle />
+                  <KartCard
+                    key={num}
+                    num={num}
+                    kart={allKarts[num]}
+                    {...kartModelProps(allKarts[num])}
+                    onToggle={toggleKartActive}
+                    draggable
+                    variant="pool"
+                    showToggle
+                  />
                 ))}
               </div>
             </div>
-            <div className="pits-zone" data-tour="pits">
+            <div className="pits-zone">
               <div className="panel-head-row">
                 <h2>{t('admin_pits_title')}</h2>
                 <button type="button" className="btn-purple" onClick={addNewLane}>{t('admin_add_lane')}</button>

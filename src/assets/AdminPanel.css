@@ -1071,6 +1071,14 @@ html:has(.admin-no-scroll) body {
   stroke-width: 2;
 }
 
+.kart-shape.has-model .kart-shell {
+  fill: var(--kart-shell-fill, #fff);
+}
+
+.kart-shape.has-model .kart-seat {
+  fill: color-mix(in srgb, var(--kart-shell-fill, #fff) 55%, #fff);
+}
+
 .kart-cage {
   fill: none;
   stroke: var(--navy);
@@ -2003,6 +2011,146 @@ html:has(.admin-no-scroll) body {
     flex: 1 1 200px;
     min-width: 0;
   }
+}
+
+.kart-add-row {
+  flex-wrap: wrap;
+}
+
+.kart-type-select {
+  min-width: 7.5rem;
+  max-width: 11rem;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #fff;
+  color: var(--navy);
+}
+
+.kart-types-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+}
+
+.kart-types-toggle-row {
+  margin: 0;
+}
+
+.kart-types-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+}
+
+.kart-type-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.kart-type-swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 128, 0.25);
+  flex-shrink: 0;
+}
+
+.kart-types-manage-toggle {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.kart-types-editor {
+  margin: 0.35rem 0 0.65rem;
+  padding: 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.kart-types-editor-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.kart-types-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.kart-type-row {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr 2rem;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.kart-type-color-input {
+  width: 2.2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.kart-type-name-input {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.kart-type-remove {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.kart-type-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.kart-type-add {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 @media (max-width: 900px) {
