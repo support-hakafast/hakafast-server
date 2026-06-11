@@ -154,7 +154,8 @@ html:has(.admin-no-scroll) body {
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .admin-sidebar {
@@ -169,13 +170,21 @@ html:has(.admin-no-scroll) body {
 }
 
 .heat-session-combo {
-  display: grid;
-  grid-template-columns: minmax(148px, 36%) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-  align-items: start;
+  align-items: stretch;
   margin-bottom: 10px;
   padding-bottom: 10px;
   border-bottom: 1px dashed #e2e8f0;
+}
+
+@media (min-width: 900px) {
+  .heat-session-combo {
+    display: grid;
+    grid-template-columns: minmax(160px, 38%) minmax(0, 1fr);
+    align-items: start;
+  }
 }
 
 .heat-type-bar-embedded {
@@ -184,10 +193,14 @@ html:has(.admin-no-scroll) body {
   border-radius: 8px;
   padding: 8px;
   margin: 0;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .heat-session-drivers {
   min-width: 0;
+  width: 100%;
 }
 
 .heat-session-drivers h2 {
@@ -413,7 +426,8 @@ html:has(.admin-no-scroll) body {
 
 @media (max-width: 1200px) {
   .heat-session-combo {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -454,7 +468,7 @@ html:has(.admin-no-scroll) body {
   padding: 12px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .driver-column h2 {
@@ -2254,21 +2268,32 @@ html:has(.admin-no-scroll) body {
 @media (max-width: 1200px) {
   .admin-workspace {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto;
+    grid-template-areas:
+      "pits drivers"
+      "sidebar sidebar";
     overflow-y: auto;
   }
 
+  .admin-pits-column {
+    grid-area: pits;
+  }
+
+  .admin-drivers-column {
+    grid-area: drivers;
+  }
+
   .admin-sidebar {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    flex-wrap: wrap;
+    grid-area: sidebar;
+    flex-direction: column;
+    flex-wrap: nowrap;
     overflow-y: visible;
     min-width: 0;
   }
 
   .admin-sidebar .btn-preview,
-  .admin-sidebar .heat-type-bar {
-    flex: 1 1 200px;
+  .admin-sidebar-actions .btn-sidebar-tool {
+    flex: none;
+    width: 100%;
     min-width: 0;
   }
 }
@@ -2685,7 +2710,10 @@ html:has(.admin-no-scroll) body {
 @media (max-width: 900px) {
   .admin-workspace {
     grid-template-columns: 1fr;
-    overflow-y: auto;
+    grid-template-areas:
+      "pits"
+      "drivers"
+      "sidebar";
   }
 
   .admin-dashboard.admin-no-scroll {
@@ -2854,6 +2882,8 @@ html:has(.admin-no-scroll) body {
 
 .admin-theme-dark .inventory-pits-panel,
 .admin-theme-dark .driver-column,
+.admin-theme-dark .admin-sidebar,
+.admin-theme-dark .admin-sidebar-actions,
 .admin-theme-dark .heat-type-bar,
 .admin-theme-dark .heat-type-bar-embedded,
 .admin-theme-dark .timing-columns-bar,
@@ -2862,7 +2892,17 @@ html:has(.admin-no-scroll) body {
 .admin-theme-dark .kart-type-row-inventory,
 .admin-theme-dark .timing-order-row,
 .admin-theme-dark .timing-order-grip,
-.admin-theme-dark .timing-order-btn {
+.admin-theme-dark .timing-order-btn,
+.admin-theme-dark .section-box,
+.admin-theme-dark .advanced-zone,
+.admin-theme-dark .endurance-starter-panel,
+.admin-theme-dark .le-mans-panel,
+.admin-theme-dark .lane,
+.admin-theme-dark .panel,
+.admin-theme-dark .on-track-strip,
+.admin-theme-dark .queue-item,
+.admin-theme-dark .kart-type-add,
+.admin-theme-dark .kart-color-custom-trigger {
   background: var(--admin-surface);
   border-color: var(--admin-border);
   color: var(--admin-text);
@@ -2876,10 +2916,12 @@ html:has(.admin-no-scroll) body {
 
 .admin-theme-dark .warehouse-zone h2,
 .admin-theme-dark .pits-zone h2,
+.admin-theme-dark .driver-column h2,
 .admin-theme-dark .queue-heading,
 .admin-theme-dark .timing-group-label,
 .admin-theme-dark .heat-session-drivers h2,
-.admin-theme-dark .field-label {
+.admin-theme-dark .field-label,
+.admin-theme-dark .timing-order-label {
   color: #f1f5f9;
 }
 
@@ -2915,23 +2957,33 @@ html:has(.admin-no-scroll) body {
 .admin-theme-dark .section-box,
 .admin-theme-dark .advanced-zone,
 .admin-theme-dark .endurance-starter-panel,
-.admin-theme-dark .le-mans-panel {
+.admin-theme-dark .le-mans-panel,
+.admin-theme-dark .queue-item,
+.admin-theme-dark .lane-flow-hint,
+.admin-theme-dark .lane-reorder-hint {
   background: var(--admin-surface-raised);
   border-color: var(--admin-border);
 }
 
-.admin-theme-dark .queue-item {
-  background: var(--admin-surface-raised);
-  border-color: var(--admin-border);
+.admin-theme-dark .queue-item-saved {
+  background: rgba(64, 224, 208, 0.08);
 }
 
 .admin-theme-dark .btn-muted,
 .admin-theme-dark .btn-sidebar-tool,
 .admin-theme-dark .duration-chip,
-.admin-theme-dark .timing-chip:not(.active) {
+.admin-theme-dark .timing-chip:not(.active),
+.admin-theme-dark .btn-register-saved,
+.admin-theme-dark .btn-advanced-link,
+.admin-theme-dark .lane-header-input {
   background: var(--admin-surface-raised);
   border-color: var(--admin-border);
   color: var(--admin-text);
+}
+
+.admin-theme-dark .btn-register-saved.is-open {
+  background: rgba(64, 224, 208, 0.12);
+  color: #99f6e4;
 }
 
 .admin-theme-dark .timing-chip.active,
@@ -2976,6 +3028,21 @@ html:has(.admin-no-scroll) body {
 
 .admin-theme-dark .heat-session-combo {
   border-bottom-color: var(--admin-border);
+}
+
+.admin-theme-dark .disabled-lane {
+  opacity: 0.72;
+}
+
+.admin-theme-dark .warehouse-kart-count {
+  background: #1e3a5f;
+  color: #e2e8f0;
+}
+
+.admin-theme-dark .admin-tour-restart {
+  background: rgba(64, 224, 208, 0.15);
+  border-color: rgba(64, 224, 208, 0.35);
+  color: #5eead4;
 }
 
 .admin-theme-dark .timing-order-row-draggable.is-drop-target {
