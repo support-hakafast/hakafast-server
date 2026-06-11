@@ -8,6 +8,7 @@ import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
+import ProRaceEventModal from './ProRaceEventModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
 import AdminWalkthrough, { isAdminTourDone } from './AdminWalkthrough.jsx';
 import LivePreviewFloat from './LivePreviewFloat.jsx';
@@ -61,6 +62,13 @@ import {
   resetWorkspaceId,
 } from '../utils/workspace.js';
 import { saveLocalSnapshot, loadLocalSnapshot, clearLocalSnapshot } from '../utils/workspaceStorage.js';
+import {
+  appendStintRulesToEnduranceRules,
+  buildSessionsFromGroups,
+  buildTeamStartersFromGroups,
+  groupsToDriverQueue,
+  normalizePlannedRaceEvent,
+} from '../utils/raceEventHelpers.js';
 
 const DEFAULT_LINES = {
   1: { name: 'טור 1', active: true, karts: [] },
@@ -157,6 +165,10 @@ const AdminPanel = () => {
   const [driverChangeKart, setDriverChangeKart] = useState('');
   const [driverChangeName, setDriverChangeName] = useState('');
   const [showEnduranceModal, setShowEnduranceModal] = useState(false);
+  const [showProEventModal, setShowProEventModal] = useState(false);
+  const [proEventModalType, setProEventModalType] = useState('endurance');
+  const [proEventSaving, setProEventSaving] = useState(false);
+  const [plannedRaceEvent, setPlannedRaceEvent] = useState(null);
   const [showTrackPlannerModal, setShowTrackPlannerModal] = useState(false);
   const [plannerSaving, setPlannerSaving] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
@@ -245,6 +257,7 @@ const AdminPanel = () => {
       if (s?.timingColumns) setTimingColumns(normalizeTimingColumns(s.timingColumns));
       if (s?.timingColumnOrder) setTimingColumnOrder(normalizeTimingColumnOrder(s.timingColumnOrder));
       if (typeof s?.enduranceRules === 'string') setEnduranceRules(s.enduranceRules);
+      if (s?.plannedRaceEvent) setPlannedRaceEvent(normalizePlannedRaceEvent(s.plannedRaceEvent));
       if (s?.heatClock) setHeatClock(s.heatClock);
       if (s?.onTrack) {
         setOnTrack(s.onTrack);
@@ -306,11 +319,12 @@ const AdminPanel = () => {
           timingColumns,
           timingColumnOrder,
           enduranceRules: heatType === 'endurance' ? enduranceRules : '',
+          plannedRaceEvent,
         }),
       }, trackSlug).catch(() => {});
     }, 600);
     return () => clearTimeout(timer);
-  }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, formationLaps, startMode, exportCsv, exportPdf, timingColumns, timingColumnOrder, enduranceRules, trackSlug]);
+  }, [heatType, heatDuration, enduranceHours, enduranceMinutes, targetLaps, formationLaps, startMode, exportCsv, exportPdf, timingColumns, timingColumnOrder, enduranceRules, plannedRaceEvent, trackSlug]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -702,6 +716,95 @@ const AdminPanel = () => {
     if (!(await showConfirmTwice(t('admin_confirm_remove_lane'), t('admin_confirm_remove_lane_final')))) return;
     removeLane(laneId);
   };
+
+  const openProEventModal = (type = 'endurance') => {
+    setProEventModalType(type === 'sprint' ? 'sprint' : 'endurance');
+    setShowProEventModal(true);
+  };
+
+  const applyPlannedRaceEvent = async (eventPayload) => {
+    const { prepOnly, ...eventFields } = eventPayload || {};
+    const normalized = normalizePlannedRaceEvent(eventFields);
+    if (!normalized?.groups?.length) {
+      showAlert(t('admin_pro_event_empty_groups'));
+      return;
+    }
+    setProEventSaving(true);
+    try {
+      const sessions = buildSessionsFromGroups(normalized.groups);
+      const stored = {
+        ...normalized,
+        sessions,
+        activeSessionIndex: 0,
+      };
+      setPlannedRaceEvent(stored);
+
+      if (prepOnly) {
+        showAlert(t('admin_pro_event_draft_saved'));
+        setShowProEventModal(false);
+        return;
+      }
+
+      const isEndurance = normalized.type === 'endurance';
+      const activeSession = isEndurance
+        ? { name: normalized.name || 'Endurance', drivers: normalized.groups.flatMap((g) => g.drivers) }
+        : sessions[0];
+      const queueGroups = isEndurance
+        ? normalized.groups
+        : [{ name: activeSession?.name || sessions[0]?.name || 'Heat 1', drivers: activeSession?.drivers || [] }];
+
+      setHeatType(normalized.type);
+      if (isEndurance) {
+        setEnduranceHours(String(normalized.enduranceHours));
+        setEnduranceMinutes(String(normalized.enduranceMinutes));
+        setStartMode(normalized.startMode);
+        setFormationLaps(normalized.formationLaps);
+        setEnduranceRules(appendStintRulesToEnduranceRules(
+          normalized.enduranceRules,
+          normalized.stintMinutes,
+          normalized.driverChangeSec,
+        ));
+        setTeamStarters(buildTeamStartersFromGroups(normalized.groups));
+        setDriverQueue(groupsToDriverQueue(normalized.groups, 'endurance'));
+      } else {
+        setTargetLaps(String(normalized.targetLaps));
+        setFormationLaps(normalized.formationLaps);
+        setDriverQueue(groupsToDriverQueue(queueGroups, 'sprint'));
+        setTeamStarters({});
+      }
+
+      setShowProEventModal(false);
+      showAlert(isEndurance
+        ? t('admin_pro_event_applied_endurance', { teams: normalized.groups.length })
+        : t('admin_pro_event_applied_sprint', {
+          heat: activeSession?.name || sessions[0]?.name,
+          remaining: Math.max(0, sessions.length - 1),
+        }));
+    } finally {
+      setProEventSaving(false);
+    }
+  };
+
+  const loadNextSprintSession = () => {
+    if (!plannedRaceEvent || plannedRaceEvent.type !== 'sprint') return;
+    const sessions = plannedRaceEvent.sessions || buildSessionsFromGroups(plannedRaceEvent.groups);
+    const nextIndex = (plannedRaceEvent.activeSessionIndex || 0) + 1;
+    if (nextIndex >= sessions.length) {
+      showAlert(t('admin_pro_event_no_more_heats'));
+      return;
+    }
+    const session = sessions[nextIndex];
+    setPlannedRaceEvent((prev) => (prev ? { ...prev, activeSessionIndex: nextIndex } : prev));
+    setDriverQueue(groupsToDriverQueue([{ name: session.name, drivers: session.drivers }], 'sprint'));
+    showAlert(t('admin_pro_event_loaded_heat', { name: session.name, n: nextIndex + 1 }));
+  };
+
+  const sprintHeatsRemaining = useMemo(() => {
+    if (!plannedRaceEvent || plannedRaceEvent.type !== 'sprint') return 0;
+    const sessions = plannedRaceEvent.sessions || buildSessionsFromGroups(plannedRaceEvent.groups);
+    const idx = plannedRaceEvent.activeSessionIndex || 0;
+    return Math.max(0, sessions.length - idx - 1);
+  }, [plannedRaceEvent]);
 
   const addDriverToQueue = () => {
     if (!canAddDriver) { showAlert(t('admin_alert_name_required')); return; }
@@ -1471,6 +1574,17 @@ const AdminPanel = () => {
           setEnduranceRules={setEnduranceRules}
         />
       )}
+      {showProEventModal && (
+        <ProRaceEventModal
+          onClose={() => setShowProEventModal(false)}
+          t={t}
+          initialType={proEventModalType}
+          prepOnly={heatType === 'time'}
+          draft={plannedRaceEvent}
+          onApply={applyPlannedRaceEvent}
+          isSaving={proEventSaving}
+        />
+      )}
 
       <header className="admin-header">
         <div className="admin-header-brand">
@@ -1679,12 +1793,34 @@ const AdminPanel = () => {
               />
               {isBulkDrivers && <p className="bulk-hint">{t('admin_bulk_names_hint')} ({driverNames.length})</p>}
               {heatType === 'endurance' && (
-                <input
-                  type="text"
-                  value={drTeam}
-                  onChange={(e) => setDrTeam(e.target.value)}
-                  placeholder={t('admin_team_placeholder')}
-                />
+                <>
+                  <input
+                    type="text"
+                    value={drTeam}
+                    onChange={(e) => setDrTeam(e.target.value)}
+                    placeholder={t('admin_team_placeholder')}
+                  />
+                  <button
+                    type="button"
+                    className="btn-muted btn-pro-event-inline"
+                    onClick={() => openProEventModal('endurance')}
+                  >
+                    {t('admin_pro_event_open_endurance')}
+                  </button>
+                  <p className="pro-event-inline-hint">{t('admin_pro_event_endurance_hint')}</p>
+                </>
+              )}
+              {heatType === 'sprint' && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-muted btn-pro-event-inline"
+                    onClick={() => openProEventModal('sprint')}
+                  >
+                    {t('admin_pro_event_open_sprint')}
+                  </button>
+                  <p className="pro-event-inline-hint">{t('admin_pro_event_sprint_hint')}</p>
+                </>
               )}
             </div>
             <button type="button" className="btn-full btn-add-queue" onClick={addDriverToQueue} disabled={!canAddDriver}>{t('admin_btn_add_queue')}</button>
@@ -1765,9 +1901,34 @@ const AdminPanel = () => {
             >
               {t('admin_track_planner')}
             </button>
+            {heatType === 'time' && (
+              <button
+                type="button"
+                className="btn-muted btn-sidebar-tool"
+                data-tour="pro-event"
+                onClick={() => openProEventModal(plannedRaceEvent?.type || 'endurance')}
+              >
+                {t('admin_pro_event_prep_day')}
+              </button>
+            )}
             {heatType === 'endurance' && (
-              <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => setShowEnduranceModal(true)}>
-                {t('admin_open_endurance_tools')}
+              <>
+                <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => openProEventModal('endurance')}>
+                  {t('admin_pro_event_plan_endurance')}
+                </button>
+                <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => setShowEnduranceModal(true)}>
+                  {t('admin_open_endurance_tools')}
+                </button>
+              </>
+            )}
+            {heatType === 'sprint' && (
+              <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => openProEventModal('sprint')}>
+                {t('admin_pro_event_plan_sprint')}
+              </button>
+            )}
+            {heatType === 'sprint' && sprintHeatsRemaining > 0 && (
+              <button type="button" className="btn-muted btn-sidebar-tool" onClick={loadNextSprintSession}>
+                {t('admin_pro_event_next_heat', { n: sprintHeatsRemaining })}
               </button>
             )}
           </div>
@@ -1796,6 +1957,14 @@ const AdminPanel = () => {
             <p className="heat-mode-hint">
               {heatType === 'time' ? t('admin_heat_mode_session') : t('admin_heat_mode_competitive')}
             </p>
+            {heatType === 'time' && (
+              <p className="pro-event-day-banner">{t('admin_pro_event_day_banner')}</p>
+            )}
+            {plannedRaceEvent?.name && heatType === 'time' && (
+              <p className="pro-event-draft-badge">
+                {t('admin_pro_event_draft_ready', { name: plannedRaceEvent.name, type: t(plannedRaceEvent.type === 'sprint' ? 'heat_sprint' : 'heat_endurance') })}
+              </p>
+            )}
             {heatType === 'time' && (
               <>
                 <span className="duration-unit-label">{t('admin_duration_unit')}</span>
