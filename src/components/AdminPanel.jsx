@@ -1595,12 +1595,14 @@ const AdminPanel = () => {
           timingColumns={timingColumns}
           onToggleTimingColumn={(colId) => setTimingColumns((prev) => ({ ...prev, [colId]: !prev[colId] }))}
           onClose={() => setShowLivePreview(false)}
+          tourElevated={showWalkthrough}
         />
       )}
       {showWalkthrough && (
         <AdminWalkthrough
           trackSlug={trackSlug}
           isFirstRun={needsOnboarding}
+          activePanels={{ preview: showLivePreview, planner: showTrackPlannerModal }}
           onStepChange={handleWalkthroughStep}
           onComplete={handleWalkthroughComplete}
         />
@@ -1608,6 +1610,7 @@ const AdminPanel = () => {
       {showTrackPlannerModal && (
         <TrackPlannerModal
           onClose={() => setShowTrackPlannerModal(false)}
+          tourElevated={showWalkthrough}
           t={t}
           trackDisplayName={trackDisplayName}
           setTrackDisplayName={setTrackDisplayName}

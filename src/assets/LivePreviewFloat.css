@@ -16,6 +16,11 @@
   box-sizing: border-box;
 }
 
+.live-preview-float--tour {
+  z-index: 13002;
+  pointer-events: auto;
+}
+
 .live-preview-header {
   display: flex;
   align-items: center;

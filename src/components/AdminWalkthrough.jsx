@@ -68,9 +68,22 @@ function TourCutout({ rect, clickTarget = false }) {
   );
 }
 
+function resolveTourTargetIds(step, activePanels = {}) {
+  if (step.id === 'preview') {
+    return activePanels.preview ? ['preview'] : ['preview-trigger'];
+  }
+  if (step.id === 'planner') {
+    return activePanels.planner ? ['planner'] : ['planner-trigger'];
+  }
+  if (Array.isArray(step.targets) && step.targets.length) return step.targets;
+  if (step.target) return [step.target];
+  return [];
+}
+
 export default function AdminWalkthrough({
   trackSlug,
   isFirstRun = false,
+  activePanels = {},
   onStepChange,
   onComplete,
 }) {
@@ -88,11 +101,13 @@ export default function AdminWalkthrough({
   const step = steps[stepIndex];
   const stepId = step.id;
 
-  const tourTargetIds = useMemo(() => {
-    if (Array.isArray(step.targets) && step.targets.length) return step.targets;
-    if (step.target) return [step.target];
-    return [];
-  }, [step.target, step.targets]);
+  const tourTargetIds = useMemo(
+    () => resolveTourTargetIds(step, activePanels),
+    [step, activePanels],
+  );
+
+  const panelOpen = (stepId === 'preview' && activePanels.preview)
+    || (stepId === 'planner' && activePanels.planner);
 
   const updateSpotlight = useCallback(() => {
     if (!tourTargetIds.length) {
@@ -124,7 +139,7 @@ export default function AdminWalkthrough({
     onStepChange?.(stepId, stepIndex);
     const timer = window.setTimeout(updateSpotlight, 120);
     return () => window.clearTimeout(timer);
-  }, [stepId, stepIndex, onStepChange, updateSpotlight]);
+  }, [stepId, stepIndex, onStepChange, updateSpotlight, activePanels.preview, activePanels.planner]);
 
   useEffect(() => {
     window.addEventListener('resize', updateSpotlight);
@@ -217,7 +232,15 @@ export default function AdminWalkthrough({
   const hasSpotlight = Boolean(spotlight);
   const isInteractive = step.interactive && hasSpotlight;
   const isFormStep = stepId === 'security';
-  const isClickStep = Boolean(step.clickTarget && isInteractive);
+  const isClickStep = Boolean(step.clickTarget && isInteractive && !panelOpen);
+
+  const tryHintKey = panelOpen && stepId === 'preview'
+    ? 'admin_tour_preview_try_hint'
+    : panelOpen && stepId === 'planner'
+      ? 'admin_tour_planner_try_hint'
+      : isClickStep
+        ? 'admin_tour_click_hint'
+        : 'admin_tour_try_hint';
 
   const showPasswordWeak = enforceSecurity && password.length > 0 && !isStrongPassword(password);
   const showPasswordMismatch = enforceSecurity
@@ -309,7 +332,7 @@ export default function AdminWalkthrough({
 
         {isInteractive && (
           <p className={`admin-tour-try-hint${isClickStep ? ' is-click-step' : ''}`}>
-            {isClickStep ? t('admin_tour_click_hint') : t('admin_tour_try_hint')}
+            {t(tryHintKey)}
           </p>
         )}
         <div className="admin-tour-actions">

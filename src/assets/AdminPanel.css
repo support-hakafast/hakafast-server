@@ -1293,6 +1293,15 @@ html:has(.admin-no-scroll) body {
   padding: 16px;
 }
 
+.admin-modal-overlay--tour {
+  z-index: 13002;
+  pointer-events: none;
+}
+
+.admin-modal-overlay--tour .admin-modal {
+  pointer-events: auto;
+}
+
 .admin-modal {
   background: #fff;
   border-radius: 14px;

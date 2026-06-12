@@ -18,6 +18,7 @@ export default function LivePreviewFloat({
   trackSlug = 'kart-demo',
   timingColumns: timingColumnsProp,
   onToggleTimingColumn,
+  tourElevated = false,
 }) {
   const { t } = useLanguage();
   const [mode, setMode] = React.useState('assignments');
@@ -85,7 +86,11 @@ export default function LivePreviewFloat({
 
   return (
     <div
-      className={`live-preview-float${compact ? ' live-preview-float--compact' : ''}`}
+      className={[
+        'live-preview-float',
+        compact ? 'live-preview-float--compact' : '',
+        tourElevated ? 'live-preview-float--tour' : '',
+      ].filter(Boolean).join(' ')}
       data-tour="preview"
       style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
     >

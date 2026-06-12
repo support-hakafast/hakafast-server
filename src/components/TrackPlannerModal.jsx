@@ -24,9 +24,15 @@ export default function TrackPlannerModal({
   dayPlan,
   onSave,
   isSaving,
+  tourElevated = false,
 }) {
   return (
-    <div className="admin-modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
+    <div
+      className={`admin-modal-overlay${tourElevated ? ' admin-modal-overlay--tour' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
       <div
         className="admin-modal admin-modal-wide admin-modal-light track-planner-modal"
         data-tour="planner"
