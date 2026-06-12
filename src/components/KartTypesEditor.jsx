@@ -161,11 +161,13 @@ export default function KartTypesEditor({
 
   return (
     <div className={`kart-types-editor${compact ? ' kart-types-editor-compact' : ''}${showNumbers ? ' kart-types-editor-inventory' : ''}${inventoryCompact ? ' kart-types-editor-inventory-compact' : ''}`}>
-      <div className={`kart-types-editor-head${inventoryCompact ? ' kart-types-editor-head-compact' : ''}`}>
-        <p className="kart-types-editor-hint">
-          {showNumbers ? t('admin_kart_types_inventory_hint') : t('admin_kart_types_hint')}
-        </p>
-      </div>
+      {!inventoryCompact && (
+        <div className="kart-types-editor-head">
+          <p className="kart-types-editor-hint">
+            {showNumbers ? t('admin_kart_types_inventory_hint') : t('admin_kart_types_hint')}
+          </p>
+        </div>
+      )}
       <ul className="kart-types-list">
         {types.map((type, index) => (
           <li

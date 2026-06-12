@@ -311,74 +311,13 @@ html:has(.admin-no-scroll) body {
   animation: warehouse-pits-pulse 1.8s ease-in-out infinite;
 }
 
-.inventory-pits-connector-label {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-[dir="ltr"] .inventory-pits-connector-arrow,
-[dir="ltr"] .warehouse-to-pits-bridge-arrow {
-  transform: scaleX(-1);
-}
-
 @keyframes warehouse-pits-pulse {
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
 }
 
-.warehouse-flow-intro {
-  margin: 0 0 6px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #0f766e;
-  line-height: 1.35;
-}
-
-.warehouse-setup-steps {
-  list-style: none;
-  margin: 0 0 8px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.warehouse-setup-step {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: #475569;
-}
-
-.warehouse-setup-step-badge {
-  flex-shrink: 0;
-  width: 1.15rem;
-  height: 1.15rem;
-  border-radius: 999px;
-  background: var(--navy);
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 900;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.warehouse-setup-step-numbers .warehouse-setup-step-badge {
-  background: #0d9488;
-  box-shadow: 0 0 0 2px rgba(64, 224, 208, 0.45);
-}
-
-.warehouse-setup-step-drag {
-  color: #0f766e;
-  font-weight: 700;
+[dir="ltr"] .inventory-pits-connector-arrow {
+  transform: scaleX(-1);
 }
 
 .warehouse-numbers-zone {
@@ -415,26 +354,6 @@ html:has(.admin-no-scroll) body {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-.warehouse-to-pits-bridge {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 0.35rem 0 0.25rem;
-  padding: 0.35rem 0.5rem;
-  border-radius: 8px;
-  background: rgba(64, 224, 208, 0.1);
-  border: 1px dashed rgba(64, 224, 208, 0.4);
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #0f766e;
-}
-
-.warehouse-to-pits-bridge-arrow {
-  font-size: 1rem;
-  font-weight: 900;
 }
 
 .pits-zone {
@@ -3114,10 +3033,6 @@ html:has(.admin-no-scroll) body {
     display: none;
   }
 
-  .warehouse-to-pits-bridge {
-    display: flex;
-  }
-
   .warehouse-zone {
     min-height: 320px;
   }
@@ -3641,40 +3556,14 @@ html:has(.admin-no-scroll) body {
   box-shadow: none;
 }
 
-.admin-theme-dark .warehouse-flow-intro,
-.admin-theme-dark .warehouse-setup-step-drag,
 .admin-theme-dark .warehouse-numbers-field-label,
 .admin-theme-dark .kart-type-numbers-field-label {
   color: #5eead4;
 }
 
-.admin-theme-dark .warehouse-setup-step {
-  color: var(--admin-text-muted);
-}
-
-.admin-theme-dark .warehouse-setup-step-badge {
-  background: #334155;
-  color: #e2e8f0;
-}
-
-.admin-theme-dark .warehouse-setup-step-numbers .warehouse-setup-step-badge {
-  background: #0f766e;
-  box-shadow: 0 0 0 2px rgba(64, 224, 208, 0.35);
-}
-
 .admin-theme-dark .warehouse-numbers-zone {
   border-color: rgba(64, 224, 208, 0.4);
   background: rgba(64, 224, 208, 0.08);
-}
-
-.admin-theme-dark .inventory-pits-connector-label {
-  color: var(--admin-text-muted);
-}
-
-.admin-theme-dark .warehouse-to-pits-bridge {
-  background: rgba(64, 224, 208, 0.1);
-  border-color: rgba(64, 224, 208, 0.3);
-  color: #99f6e4;
 }
 
 .admin-tour-spotlight-target .warehouse-numbers-zone {

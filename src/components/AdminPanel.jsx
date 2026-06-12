@@ -1718,21 +1718,6 @@ const AdminPanel = () => {
                 <h2>{t('admin_warehouse')}</h2>
                 <span className="warehouse-kart-count">{poolKarts.length}</span>
               </div>
-              <p className="warehouse-flow-intro">{t('admin_warehouse_flow_intro')}</p>
-              <ol className="warehouse-setup-steps" aria-label={t('admin_warehouse_flow_intro')}>
-                <li className="warehouse-setup-step warehouse-setup-step-numbers">
-                  <span className="warehouse-setup-step-badge">1</span>
-                  <span>{t('admin_warehouse_flow_step_numbers')}</span>
-                </li>
-                <li className="warehouse-setup-step">
-                  <span className="warehouse-setup-step-badge">2</span>
-                  <span>{t('admin_warehouse_flow_step_pool')}</span>
-                </li>
-                <li className="warehouse-setup-step warehouse-setup-step-drag">
-                  <span className="warehouse-setup-step-badge">3</span>
-                  <span>{t('admin_warehouse_flow_step_drag')}</span>
-                </li>
-              </ol>
               <div className="security-toggle-row kart-types-toggle-row">
                 <span className="field-label">{t('admin_multiple_kart_types')}</span>
                 <button
@@ -1800,10 +1785,6 @@ const AdminPanel = () => {
                 </div>
               )}
               <div className="warehouse-pool-section" data-tour="warehouse-pool">
-              <div className="warehouse-to-pits-bridge" aria-hidden>
-                <span className="warehouse-to-pits-bridge-text">{t('admin_warehouse_drag_to_pits')}</span>
-                <span className="warehouse-to-pits-bridge-arrow">←</span>
-              </div>
               <div className="warehouse-pool-label">{t('admin_warehouse_pool')}</div>
               <div
                 className={`kart-pool warehouse-kart-pool${dragOverPool ? ' drag-over' : ''}`}
@@ -1828,7 +1809,6 @@ const AdminPanel = () => {
             </div>
             <div className="inventory-pits-connector" aria-hidden>
               <span className="inventory-pits-connector-arrow">←</span>
-              <span className="inventory-pits-connector-label">{t('admin_warehouse_drag_to_pits_short')}</span>
             </div>
             <div className="pits-zone" data-tour="pits">
               <div className="panel-head-row">
