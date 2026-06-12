@@ -1133,6 +1133,10 @@ html:has(.admin-no-scroll) body {
   padding-top: 8px;
 }
 
+.on-track-flow-top .on-track-strip-track {
+  flex-direction: row-reverse;
+}
+
 .on-track-strip-line {
   position: absolute;
   left: 0;

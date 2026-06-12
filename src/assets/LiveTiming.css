@@ -876,7 +876,7 @@
 .live-timing-driver-name {
   display: flex;
   align-items: center;
-  font-family: system-ui, -apple-system, 'Segoe UI', 'Arial Black', 'Helvetica Neue', sans-serif;
+  font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', 'Arial Black', 'Helvetica Neue', sans-serif;
   font-size: clamp(1.45rem, 4.5vw, 2.15rem);
   font-weight: 900;
   line-height: 1;

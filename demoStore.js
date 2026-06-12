@@ -853,7 +853,7 @@ function mergeClientPitLines(store, clientPitLines) {
     if (!laneId) return;
     if (!merged[laneId]) merged[laneId] = { active: true, karts: [] };
     if (!(merged[laneId].karts || []).some((k) => Number(k) === kartNum)) {
-      merged[laneId].karts.push(kartNum);
+      insertKartIntoWaitingLane(merged[laneId].karts, kartNum);
     }
   });
 
@@ -986,16 +986,13 @@ function maybeDrainFinishedHeat(store) {
   }
 }
 
-function resolveWaitingLaneInsertIndex(karts, pitExitPosition = 'bottom') {
+function resolveWaitingLaneInsertIndex(karts) {
   const len = karts?.length ?? 0;
-  if (pitExitPosition !== 'top') {
-    return len === 0 ? 0 : 1;
-  }
-  return len;
+  return len === 0 ? 0 : 1;
 }
 
-function insertKartIntoWaitingLane(karts, kartNumber, pitExitPosition) {
-  const idx = resolveWaitingLaneInsertIndex(karts, pitExitPosition);
+function insertKartIntoWaitingLane(karts, kartNumber) {
+  const idx = resolveWaitingLaneInsertIndex(karts);
   karts.splice(idx, 0, Number(kartNumber));
 }
 
@@ -1678,7 +1675,27 @@ function scanTransponderExits(store) {
 
   Object.entries(store.pitLines).forEach(([laneId, lane]) => {
     if (!lane?.karts?.length) return;
-    const kartNumber = Number(lane.karts[0]);
+    let kartNumber = Number(lane.karts[0]);
+
+    // If the kart sitting at the pit exit has no role in the heat that's
+    // launching (not in heatKarts) and isn't parked there waiting for a
+    // nextHeat promotion (not in nextHeatKarts), it's a stray kart left
+    // over from a previous heat. It would otherwise sit at the exit forever
+    // and block karts behind it that ARE part of this heat - move it to the
+    // back of the lane so the queue can keep moving.
+    let rotations = 0;
+    while (lane.karts.length
+      && !heatKarts.has(kartNumber)
+      && !(nextHeatKarts.has(kartNumber) && launchRows !== store.nextHeat)
+      && !onTrackKarts.has(kartNumber)
+      && rotations < lane.karts.length) {
+      const stray = lane.karts.shift();
+      lane.karts.push(stray);
+      rotations += 1;
+      kartNumber = Number(lane.karts[0]);
+    }
+    if (!lane.karts.length) return;
+
     if (!heatKarts.has(kartNumber) || onTrackKarts.has(kartNumber)) return;
     // A kart already reserved for nextHeat has finished its part in the
     // current heat (e.g. it just completed its cooldown lap and was assigned
@@ -1838,8 +1855,7 @@ function returnKart(store, kartNumber, laneId, options = {}) {
       if (reservedForNext) {
         moveKartToPitExit(store, n, lid);
       } else {
-        const pitExitPosition = store.levelSettings?.pitExitPosition || 'bottom';
-        insertKartIntoWaitingLane(store.pitLines[lid].karts, n, pitExitPosition);
+        insertKartIntoWaitingLane(store.pitLines[lid].karts, n);
       }
     } else if (reservedForNext) {
       moveKartToPitExit(store, n, lid);

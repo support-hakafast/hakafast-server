@@ -35,6 +35,7 @@ import {
   groupQueueByTeam,
   getExitKartNumber,
   getWaitingKartNumbers,
+  orderOnTrackKartsForPitEntry,
   resolveLaneInsertIndex,
   sanitizePitLines,
 } from '../utils/adminHelpers.js';
@@ -677,7 +678,7 @@ const AdminPanel = () => {
         const sameLane = fromLaneId != null && String(fromLaneId) === laneKey && fromLaneIndex >= 0;
         if (!onTrackNow && !alreadyInLane && !inOtherLane) {
           const karts = [...targetLane.karts];
-          let insertIndex = resolveLaneInsertIndex(karts, insertAt, pitExitPosition);
+          let insertIndex = resolveLaneInsertIndex(karts, insertAt);
           if (typeof insertAt === 'number' && sameLane && fromLaneIndex < insertIndex) {
             insertIndex -= 1;
           }
@@ -1911,7 +1912,7 @@ const AdminPanel = () => {
                   );
                 })}
               </div>
-              <div className="on-track-strip">
+              <div className={`on-track-strip on-track-flow-${pitExitPosition === 'top' ? 'top' : 'bottom'}`}>
                 <div className="on-track-strip-header">
                   <span className="on-track-strip-title">{t('admin_on_track')}</span>
                   <span className="on-track-strip-badge">{onTrack.length}</span>
@@ -1921,9 +1922,17 @@ const AdminPanel = () => {
                   {onTrack.length === 0 ? (
                     <p className="on-track-strip-empty">{t('admin_on_track_empty')}</p>
                   ) : (
-                    [...onTrack]
-                      .sort((a, b) => (a.launchedAt || 0) - (b.launchedAt || 0))
-                      .map((ot) => {
+                    (() => {
+                      const pitEntryOrder = orderOnTrackKartsForPitEntry(onTrack);
+                      const byKart = new Map(onTrack.map((ot) => [Number(ot.kart_number), ot]));
+                      const ordered = pitEntryOrder
+                        .map((n) => byKart.get(n))
+                        .filter(Boolean);
+                      onTrack.forEach((ot) => {
+                        if (!pitEntryOrder.includes(Number(ot.kart_number))) ordered.push(ot);
+                      });
+                      return ordered;
+                    })().map((ot) => {
                         const kart = allKarts[ot.kart_number] || allKarts[String(ot.kart_number)];
                         return (
                           <div
