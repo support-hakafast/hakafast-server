@@ -665,7 +665,10 @@ function tickHeatSimulation(store) {
   const now = Date.now();
   const avgLap = getAvgLapSec(store);
 
-  store.onTrack.forEach((ot) => {
+  // Iterate a snapshot: recordLapCrossing can remove karts from store.onTrack
+  // (cooldown lap completion -> returnKart), which would otherwise cause
+  // forEach to skip the kart that shifts into the removed kart's index.
+  [...store.onTrack].forEach((ot) => {
     const row = store.currentHeat.find((r) => Number(r.kart_number) === Number(ot.kart_number));
     if (!row) return;
 
@@ -1031,7 +1034,6 @@ function returnKartsNotInNextHeat(store) {
   }
 
   const nextSet = getNextHeatKartNumbers(store);
-  const pendingCount = countPendingNextHeatKarts(store);
   const snapshot = [...store.onTrack];
   const kept = [];
   const returned = [];
@@ -1044,7 +1046,7 @@ function returnKartsNotInNextHeat(store) {
     }
 
     const inCurrentHeat = store.currentHeat.some((r) => Number(r.kart_number) === n);
-    if (pendingCount > 0 && inCurrentHeat && store.heatCooldownPhase
+    if (inCurrentHeat && store.heatCooldownPhase
       && ot.cooldownLapPending && !ot.cooldownLapDone) {
       kept.push(n);
       return;
@@ -1648,8 +1650,22 @@ function processTransponderLap(store, transponderId, lapTimeSec = null) {
 }
 
 function scanTransponderExits(store) {
-  const launchRows = getLaunchHeatRows(store);
+  let launchRows = getLaunchHeatRows(store);
   if (!launchRows.length) return [];
+
+  // If the launch rows are the *next* heat (current heat timed out / has no
+  // active session), don't auto-launch them onto track until the current
+  // heat has actually finished draining: its on-track karts must have
+  // completed their cooldown lap, and (if export is pending) the operator
+  // must acknowledge the export before nextHeat is promoted. Otherwise this
+  // would prematurely promote nextHeat and skip the cooldown lap / auto-export
+  // flow for the heat that is still finishing.
+  if (launchRows === store.nextHeat
+    && (getCurrentHeatOnTrack(store).length > 0 || store.heatFrozen)) {
+    launchRows = store.currentHeat;
+    if (!launchRows.length) return [];
+  }
+
   const launched = [];
   const heatKarts = new Set(launchRows.map((r) => Number(r.kart_number)));
   const onTrackKarts = new Set(store.onTrack.map((k) => Number(k.kart_number)));

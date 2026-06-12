@@ -337,13 +337,18 @@ function testCooldownReturnsNonNextHeatKarts() {
 
   demoStore.getSessionState(store);
   assert(store.heatCooldownPhase, 'timed expiry should enter cooldown');
-  assert(store.onTrack.length === 1, 'non-next kart should return at cooldown start');
-  assert(Number(store.onTrack[0].kart_number) === 1, 'next-heat kart stays on track for cooldown lap');
-  assert(store.pitLines[1].karts.includes(2), 'other karts go to pits for staff');
+  assert(store.onTrack.length === 2, 'all karts stay on track for their cooldown lap');
+  assert(store.onTrack.every((ot) => ot.cooldownLapPending && !ot.cooldownLapDone), 'every on-track kart awaits a real cooldown lap');
 
   const blocked = demoStore.returnKart(store, 1, 1);
   assert(!blocked.success, 'next-heat kart should stay on track during cooldown');
   assert(blocked.error === 'keep_for_next_heat', `expected keep_for_next_heat, got ${blocked.error}`);
+
+  // Kart 2 (not reserved for next heat) completes its cooldown lap and returns to pits
+  demoStore.processTransponderLap(store, '2', 45);
+  assert(store.onTrack.length === 1, 'kart 2 returns to pits after completing its cooldown lap');
+  assert(Number(store.onTrack[0].kart_number) === 1, 'next-heat kart remains on track for its cooldown lap');
+  assert(store.pitLines[1].karts.includes(2), 'kart 2 goes to pits after its cooldown lap');
 }
 
 function testAutoFinishExportMetadata() {
