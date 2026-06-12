@@ -1889,6 +1889,7 @@ html:has(.admin-no-scroll) body {
 
 .lane-flow-bottom .lane-waiting-zone {
   margin-bottom: 8px;
+  justify-content: flex-end;
 }
 
 .on-track-laps {
