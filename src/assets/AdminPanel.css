@@ -1710,6 +1710,10 @@ html:has(.admin-no-scroll) body {
   background: #e6fffa;
 }
 
+.lane.lane-full {
+  border-style: solid;
+}
+
 .lane-header-input {
   background: transparent;
   border: none;
@@ -1718,6 +1722,56 @@ html:has(.admin-no-scroll) body {
   text-align: center;
   width: 100%;
   margin-bottom: 5px;
+}
+
+.lane-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.lane-color-picker input[type="color"] {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  cursor: pointer;
+  background: none;
+}
+
+.lane-max-karts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lane-max-karts input {
+  width: 44px;
+  padding: 2px 4px;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.lane-capacity-badge {
+  margin-inline-start: auto;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.lane-capacity-badge.is-full {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .lane-controls {

@@ -95,7 +95,13 @@ function normalizeLinesData(data) {
   if (Array.isArray(data)) {
     const obj = {};
     data.forEach((lane) => {
-      obj[lane.id] = { name: lane.name, active: lane.active, karts: lane.karts || [] };
+      obj[lane.id] = {
+        name: lane.name,
+        active: lane.active,
+        karts: lane.karts || [],
+        maxKarts: lane.maxKarts ?? null,
+        color: lane.color ?? null,
+      };
     });
     return Object.keys(obj).length ? obj : { ...DEFAULT_LINES };
   }
@@ -640,6 +646,17 @@ const AdminPanel = () => {
     let updatedLines = { ...linesData };
     const laneKey = laneNum != null ? String(laneNum) : null;
 
+    if (laneKey && linesData[laneKey]) {
+      const targetLane = linesData[laneKey];
+      const n = Number(num);
+      const alreadyInLane = targetLane.karts.some((k) => Number(k) === n);
+      const sameLane = fromLaneId != null && String(fromLaneId) === laneKey;
+      if (targetLane.maxKarts != null && !alreadyInLane && !sameLane && targetLane.karts.length >= targetLane.maxKarts) {
+        showAlert(t('admin_lane_full'));
+        return;
+      }
+    }
+
     if (fromLaneId != null && fromLaneIndex >= 0) {
       updatedLines = removeKartFromLaneAt(updatedLines, String(fromLaneId), fromLaneIndex, num);
     } else if (kart?.lane != null && updatedLines[String(kart.lane)]) {
@@ -657,9 +674,9 @@ const AdminPanel = () => {
         const inOtherLane = Object.entries(updatedLines).some(([id, lane]) => (
           id !== laneKey && (lane.karts || []).some((k) => Number(k) === n)
         ));
+        const sameLane = fromLaneId != null && String(fromLaneId) === laneKey && fromLaneIndex >= 0;
         if (!onTrackNow && !alreadyInLane && !inOtherLane) {
           const karts = [...targetLane.karts];
-          const sameLane = fromLaneId != null && String(fromLaneId) === laneKey && fromLaneIndex >= 0;
           let insertIndex = resolveLaneInsertIndex(karts, insertAt, pitExitPosition);
           if (typeof insertAt === 'number' && sameLane && fromLaneIndex < insertIndex) {
             insertIndex -= 1;
@@ -737,7 +754,7 @@ const AdminPanel = () => {
     setLinesData((lines) => {
       const ids = Object.keys(lines).map(Number);
       const newId = ids.length ? Math.max(...ids) + 1 : 1;
-      const updated = { ...lines, [newId]: { name: `${t('admin_lane_default')} ${newId}`, active: true, karts: [] } };
+      const updated = { ...lines, [newId]: { name: `${t('admin_lane_default')} ${newId}`, active: true, karts: [], maxKarts: null, color: null } };
       syncPitsWithServer(updated);
       return updated;
     });
@@ -760,6 +777,24 @@ const AdminPanel = () => {
   const changeLaneName = (laneId, newName) => {
     setLinesData((lines) => {
       const updated = { ...lines, [laneId]: { ...lines[laneId], name: newName.trim() || `${t('admin_lane_default')} ${laneId}` } };
+      syncPitsWithServer(updated);
+      return updated;
+    });
+  };
+
+  const changeLaneMaxKarts = (laneId, value) => {
+    setLinesData((lines) => {
+      const n = parseInt(value, 10);
+      const maxKarts = Number.isNaN(n) || n <= 0 ? null : n;
+      const updated = { ...lines, [laneId]: { ...lines[laneId], maxKarts } };
+      syncPitsWithServer(updated);
+      return updated;
+    });
+  };
+
+  const changeLaneColor = (laneId, color) => {
+    setLinesData((lines) => {
+      const updated = { ...lines, [laneId]: { ...lines[laneId], color: color || null } };
       syncPitsWithServer(updated);
       return updated;
     });
@@ -1820,15 +1855,41 @@ const AdminPanel = () => {
                   const exitKart = getExitKartNumber(lane);
                   const waitingKarts = getWaitingKartNumbers(lane);
                   const exitAtBottom = pitExitPosition !== 'top';
+                  const laneFull = lane.maxKarts != null && (lane.karts?.length || 0) >= lane.maxKarts;
                   return (
                     <div
                       key={laneId}
-                      className={`lane lane-flow-${exitAtBottom ? 'bottom' : 'top'}${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}`}
+                      className={`lane lane-flow-${exitAtBottom ? 'bottom' : 'top'}${!lane.active ? ' disabled-lane' : ''}${dragOverLane === laneId ? ' drag-over' : ''}${laneFull ? ' lane-full' : ''}`}
+                      style={lane.color ? { borderColor: lane.color } : undefined}
                       onDragOver={(e) => { e.preventDefault(); setDragOverLane(laneId); }}
                       onDragLeave={() => setDragOverLane(null)}
                       onDrop={(e) => handleDropToLane(e, laneId, 'append')}
                     >
                       <input type="text" className="lane-header-input" value={lane.name} onChange={(e) => changeLaneName(laneId, e.target.value)} />
+                      <div className="lane-meta-row">
+                        <label className="lane-color-picker" title={t('admin_lane_color')}>
+                          <input
+                            type="color"
+                            value={lane.color || '#cbd5e0'}
+                            onChange={(e) => changeLaneColor(laneId, e.target.value)}
+                          />
+                        </label>
+                        <label className="lane-max-karts">
+                          {t('admin_lane_max_karts')}
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="∞"
+                            value={lane.maxKarts ?? ''}
+                            onChange={(e) => changeLaneMaxKarts(laneId, e.target.value)}
+                          />
+                        </label>
+                        {lane.maxKarts != null && (
+                          <span className={`lane-capacity-badge${laneFull ? ' is-full' : ''}`}>
+                            {lane.karts?.length || 0}/{lane.maxKarts}
+                          </span>
+                        )}
+                      </div>
                       <div className="lane-controls">
                         <button type="button" className="btn-muted" onClick={() => handleToggleLane(laneId)}>
                           {lane.active ? t('admin_lane_disable') : t('admin_lane_enable')}

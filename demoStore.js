@@ -828,6 +828,8 @@ function mergeClientPitLines(store, clientPitLines) {
         name: clientLane.name,
         active: clientLane.active !== false,
         karts: [...(clientLane.karts || [])],
+        maxKarts: clientLane.maxKarts ?? null,
+        color: clientLane.color ?? null,
       };
       return;
     }
@@ -835,6 +837,8 @@ function mergeClientPitLines(store, clientPitLines) {
       ...merged[laneId],
       name: clientLane.name ?? merged[laneId].name,
       active: clientLane.active ?? merged[laneId].active,
+      maxKarts: clientLane.maxKarts ?? merged[laneId].maxKarts ?? null,
+      color: clientLane.color ?? merged[laneId].color ?? null,
     };
     const clientNums = (clientLane.karts || []).map(Number);
     const serverOnly = (merged[laneId].karts || []).map(Number).filter((k) => !clientNums.includes(k));
