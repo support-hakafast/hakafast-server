@@ -11,9 +11,9 @@ const CORE_STEPS = [
   { id: 'pits', target: 'pits', interactive: true },
   { id: 'heat-settings', target: 'heat-settings', interactive: true },
   { id: 'drivers', target: 'drivers', interactive: true },
-  { id: 'execute', target: 'drivers', interactive: true },
-  { id: 'preview', targets: ['preview-trigger', 'preview'], interactive: true },
-  { id: 'planner', target: 'planner', interactive: true },
+  { id: 'execute', target: 'execute', interactive: true, clickTarget: true },
+  { id: 'preview', target: 'preview-trigger', interactive: true, clickTarget: true },
+  { id: 'planner', target: 'planner-trigger', interactive: true, clickTarget: true },
 ];
 
 const TOUR_STORAGE_KEY = (slug) => `hf_admin_tour_v2_${slug}`;
@@ -47,7 +47,7 @@ export function markAdminTourDone(trackSlug) {
   }
 }
 
-function TourCutout({ rect }) {
+function TourCutout({ rect, clickTarget = false }) {
   const top = rect.top - SPOTLIGHT_PAD;
   const left = rect.left - SPOTLIGHT_PAD;
   const width = rect.width + SPOTLIGHT_PAD * 2;
@@ -59,7 +59,11 @@ function TourCutout({ rect }) {
       <div className="admin-tour-shade" style={{ top, left: 0, width: Math.max(0, left), height }} />
       <div className="admin-tour-shade" style={{ top, left: left + width, right: 0, height }} />
       <div className="admin-tour-shade" style={{ top: top + height, left: 0, right: 0, bottom: 0 }} />
-      <div className="admin-tour-spotlight-ring" style={{ top, left, width, height }} aria-hidden />
+      <div
+        className={`admin-tour-spotlight-ring${clickTarget ? ' is-click-target' : ''}`}
+        style={{ top, left, width, height }}
+        aria-hidden
+      />
     </>
   );
 }
@@ -119,13 +123,7 @@ export default function AdminWalkthrough({
   useLayoutEffect(() => {
     onStepChange?.(stepId, stepIndex);
     const timer = window.setTimeout(updateSpotlight, 120);
-    const retry = stepId === 'preview'
-      ? window.setTimeout(updateSpotlight, 450)
-      : null;
-    return () => {
-      window.clearTimeout(timer);
-      if (retry) window.clearTimeout(retry);
-    };
+    return () => window.clearTimeout(timer);
   }, [stepId, stepIndex, onStepChange, updateSpotlight]);
 
   useEffect(() => {
@@ -210,10 +208,16 @@ export default function AdminWalkthrough({
     setStepIndex((i) => i + 1);
   };
 
+  const back = () => {
+    if (stepIndex > 0 && !saving) setStepIndex((i) => i - 1);
+  };
+
   const isLast = stepIndex >= steps.length - 1;
+  const canGoBack = stepIndex > 0;
   const hasSpotlight = Boolean(spotlight);
   const isInteractive = step.interactive && hasSpotlight;
   const isFormStep = stepId === 'security';
+  const isClickStep = Boolean(step.clickTarget && isInteractive);
 
   const showPasswordWeak = enforceSecurity && password.length > 0 && !isStrongPassword(password);
   const showPasswordMismatch = enforceSecurity
@@ -223,7 +227,7 @@ export default function AdminWalkthrough({
   return (
     <div className="admin-tour-root" dir={dir} role="dialog" aria-modal="true" aria-labelledby="admin-tour-title">
       {isInteractive ? (
-        <TourCutout rect={spotlight} />
+        <TourCutout rect={spotlight} clickTarget={step.clickTarget} />
       ) : (
         <div className="admin-tour-overlay" aria-hidden />
       )}
@@ -232,8 +236,20 @@ export default function AdminWalkthrough({
           'admin-tour-card',
           hasSpotlight ? 'has-spotlight' : 'is-centered',
           isFormStep ? 'has-form' : '',
+          canGoBack ? 'has-back' : '',
         ].filter(Boolean).join(' ')}
       >
+        {canGoBack && (
+          <button
+            type="button"
+            className="admin-tour-back"
+            onClick={back}
+            disabled={saving}
+            aria-label={t('admin_tour_back')}
+          >
+            {t('admin_tour_back')}
+          </button>
+        )}
         <p className="admin-tour-step-label">
           {t('admin_tour_step_of', { current: stepIndex + 1, total: steps.length })}
         </p>
@@ -292,7 +308,9 @@ export default function AdminWalkthrough({
         )}
 
         {isInteractive && (
-          <p className="admin-tour-try-hint">{t('admin_tour_try_hint')}</p>
+          <p className={`admin-tour-try-hint${isClickStep ? ' is-click-step' : ''}`}>
+            {isClickStep ? t('admin_tour_click_hint') : t('admin_tour_try_hint')}
+          </p>
         )}
         <div className="admin-tour-actions">
           <button type="button" className="admin-tour-btn admin-tour-btn-skip" onClick={() => finish(true)} disabled={saving}>

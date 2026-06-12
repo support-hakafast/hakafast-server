@@ -5,6 +5,7 @@ const DEFAULT_TRACK_PROFILE = {
   sessionDurationMin: 10,
   competitiveBlockMin: 45,
   turnoverMin: 5,
+  avgDriversPerSession: 8,
   pricePerSession: 0,
   currency: 'ILS',
   multipleKartTypes: false,
@@ -52,6 +53,9 @@ function normalizeTrackProfile(raw, trackSlug = '') {
   if (raw.sessionDurationMin != null) base.sessionDurationMin = Math.max(1, Number(raw.sessionDurationMin) || 10);
   if (raw.competitiveBlockMin != null) base.competitiveBlockMin = Math.max(1, Number(raw.competitiveBlockMin) || 45);
   if (raw.turnoverMin != null) base.turnoverMin = Math.max(0, Number(raw.turnoverMin) || 0);
+  if (raw.avgDriversPerSession != null) {
+    base.avgDriversPerSession = Math.max(1, Number(raw.avgDriversPerSession) || 8);
+  }
   if (raw.pricePerSession != null) base.pricePerSession = Math.max(0, Number(raw.pricePerSession) || 0);
   if (typeof raw.currency === 'string' && raw.currency.trim()) base.currency = raw.currency.trim();
   if (typeof raw.multipleKartTypes === 'boolean') base.multipleKartTypes = raw.multipleKartTypes;
@@ -94,6 +98,8 @@ function calculateDayPlan(profile, options = {}) {
       maxSessionHeatsAfterCompetitive: 0,
       estimatedRevenue: 0,
       estimatedRevenueAfterCompetitive: 0,
+      estimatedRiders: 0,
+      estimatedRidersAfterCompetitive: 0,
     };
   }
 
@@ -104,6 +110,8 @@ function calculateDayPlan(profile, options = {}) {
   const competitiveReserveMin = competitiveHeats * competitiveSlotMin;
   const remainingForSessionsMin = Math.max(0, openMinutes - competitiveReserveMin);
   const maxSessionHeatsAfterCompetitive = Math.floor(remainingForSessionsMin / sessionSlotMin);
+  const avgDrivers = Math.max(1, Number(p.avgDriversPerSession) || 8);
+  const heatPrice = Math.max(0, Number(p.pricePerSession) || 0);
 
   return {
     openMinutes,
@@ -113,8 +121,11 @@ function calculateDayPlan(profile, options = {}) {
     competitiveReserveMin,
     remainingForSessionsMin,
     maxSessionHeatsAfterCompetitive,
-    estimatedRevenue: maxSessionHeats * p.pricePerSession,
-    estimatedRevenueAfterCompetitive: maxSessionHeatsAfterCompetitive * p.pricePerSession,
+    avgDriversPerSession: avgDrivers,
+    estimatedRiders: maxSessionHeats * avgDrivers,
+    estimatedRidersAfterCompetitive: maxSessionHeatsAfterCompetitive * avgDrivers,
+    estimatedRevenue: maxSessionHeats * heatPrice,
+    estimatedRevenueAfterCompetitive: maxSessionHeatsAfterCompetitive * heatPrice,
   };
 }
 

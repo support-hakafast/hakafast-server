@@ -142,6 +142,7 @@ const AdminPanel = () => {
   const [sessionDurationPlan, setSessionDurationPlan] = useState(10);
   const [competitiveBlockMin, setCompetitiveBlockMin] = useState(45);
   const [turnoverMin, setTurnoverMin] = useState(5);
+  const [avgDriversPerSession, setAvgDriversPerSession] = useState(8);
   const [pricePerSession, setPricePerSession] = useState(0);
   const [competitiveHeatsPlanned, setCompetitiveHeatsPlanned] = useState(0);
   const [multipleKartTypes, setMultipleKartTypes] = useState(false);
@@ -252,6 +253,7 @@ const AdminPanel = () => {
       if (p.sessionDurationMin != null) setSessionDurationPlan(Number(p.sessionDurationMin) || 10);
       if (p.competitiveBlockMin != null) setCompetitiveBlockMin(Number(p.competitiveBlockMin) || 45);
       if (p.turnoverMin != null) setTurnoverMin(Number(p.turnoverMin) || 0);
+      if (p.avgDriversPerSession != null) setAvgDriversPerSession(Math.max(1, Number(p.avgDriversPerSession) || 8));
       if (p.pricePerSession != null) setPricePerSession(Number(p.pricePerSession) || 0);
       if (typeof p.multipleKartTypes === 'boolean') setMultipleKartTypes(p.multipleKartTypes);
       if (Array.isArray(p.kartTypes)) {
@@ -373,6 +375,7 @@ const AdminPanel = () => {
           sessionDurationMin: Number(sessionDurationPlan) || 10,
           competitiveBlockMin: Number(competitiveBlockMin) || 45,
           turnoverMin: Number(turnoverMin) || 0,
+          avgDriversPerSession: Math.max(1, Number(avgDriversPerSession) || 8),
           pricePerSession: Number(pricePerSession) || 0,
           multipleKartTypes,
           kartTypes: multipleKartTypes ? normalizeKartTypes(kartTypes) : [],
@@ -388,6 +391,7 @@ const AdminPanel = () => {
     sessionDurationPlan,
     competitiveBlockMin,
     turnoverMin,
+    avgDriversPerSession,
     pricePerSession,
     multipleKartTypes,
     kartTypes,
@@ -402,6 +406,7 @@ const AdminPanel = () => {
       sessionDurationMin: sessionDurationPlan,
       competitiveBlockMin,
       turnoverMin,
+      avgDriversPerSession,
       pricePerSession,
     }, { competitiveHeats: competitiveHeatsPlanned }),
     [
@@ -1270,8 +1275,8 @@ const AdminPanel = () => {
   }, []);
 
   const handleWalkthroughStep = useCallback((stepId) => {
-    setShowLivePreview(stepId === 'preview');
-    setShowTrackPlannerModal(stepId === 'planner');
+    if (stepId !== 'preview') setShowLivePreview(false);
+    if (stepId !== 'planner') setShowTrackPlannerModal(false);
   }, []);
 
   const toggleAdminTheme = useCallback(() => {
@@ -1299,6 +1304,7 @@ const AdminPanel = () => {
         sessionDurationMin: duration,
           competitiveBlockMin: Number(competitiveBlockMin) || 45,
           turnoverMin: Number(turnoverMin) || 0,
+          avgDriversPerSession: Math.max(1, Number(avgDriversPerSession) || 8),
           pricePerSession: Number(pricePerSession) || 0,
           multipleKartTypes,
           kartTypes: multipleKartTypes ? normalizeKartTypes(kartTypes) : [],
@@ -1619,6 +1625,8 @@ const AdminPanel = () => {
           setTurnoverMin={setTurnoverMin}
           competitiveBlockMin={competitiveBlockMin}
           setCompetitiveBlockMin={setCompetitiveBlockMin}
+          avgDriversPerSession={avgDriversPerSession}
+          setAvgDriversPerSession={setAvgDriversPerSession}
           pricePerSession={pricePerSession}
           setPricePerSession={setPricePerSession}
           competitiveHeatsPlanned={competitiveHeatsPlanned}
@@ -2085,6 +2093,7 @@ const AdminPanel = () => {
             <button
               type="button"
               className="btn-muted btn-sidebar-tool"
+              data-tour="planner-trigger"
               onClick={() => setShowTrackPlannerModal(true)}
             >
               {t('admin_track_planner')}

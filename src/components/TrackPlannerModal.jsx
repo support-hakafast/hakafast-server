@@ -15,6 +15,8 @@ export default function TrackPlannerModal({
   setTurnoverMin,
   competitiveBlockMin,
   setCompetitiveBlockMin,
+  avgDriversPerSession,
+  setAvgDriversPerSession,
   pricePerSession,
   setPricePerSession,
   competitiveHeatsPlanned,
@@ -69,20 +71,26 @@ export default function TrackPlannerModal({
               <input type="number" min="1" value={competitiveBlockMin} onChange={(e) => setCompetitiveBlockMin(e.target.value)} />
             </label>
             <label className="planner-field">
+              <span>{t('admin_avg_drivers_per_session')}</span>
+              <input type="number" min="1" value={avgDriversPerSession} onChange={(e) => setAvgDriversPerSession(e.target.value)} />
+            </label>
+          </div>
+          <div className="planner-row">
+            <label className="planner-field">
               <span>{t('admin_price_per_session')}</span>
               <input type="number" min="0" value={pricePerSession} onChange={(e) => setPricePerSession(e.target.value)} />
             </label>
+            <label className="planner-field">
+              <span>{t('admin_competitive_heats_planned')}</span>
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={competitiveHeatsPlanned}
+                onChange={(e) => setCompetitiveHeatsPlanned(e.target.value)}
+              />
+            </label>
           </div>
-          <label className="planner-field">
-            <span>{t('admin_competitive_heats_planned')}</span>
-            <input
-              type="number"
-              min="0"
-              max="20"
-              value={competitiveHeatsPlanned}
-              onChange={(e) => setCompetitiveHeatsPlanned(e.target.value)}
-            />
-          </label>
           <div className="planner-stats planner-stats-modal">
             <div className="planner-stat-card">
               <strong>{dayPlan.maxSessionHeats}</strong>
@@ -91,6 +99,10 @@ export default function TrackPlannerModal({
             <div className="planner-stat-card">
               <strong>{dayPlan.maxSessionHeatsAfterCompetitive}</strong>
               <span>{t('admin_plan_after_competitive')}</span>
+            </div>
+            <div className="planner-stat-card">
+              <strong>{dayPlan.estimatedRidersAfterCompetitive}</strong>
+              <span>{t('admin_plan_estimated_riders')}</span>
             </div>
             <div className="planner-stat-card planner-stat-revenue">
               <strong>{dayPlan.estimatedRevenueAfterCompetitive}</strong>

@@ -43,6 +43,35 @@
   overflow: hidden;
 }
 
+.admin-tour-back {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.75rem;
+  z-index: 1;
+  padding: 0.2rem 0.45rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-tour-back:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.admin-tour-back:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-tour-card.has-back {
+  padding-top: 2rem;
+}
+
 .admin-tour-card.is-centered {
   top: 50%;
   left: 50%;
@@ -138,6 +167,27 @@
   color: #334155;
 }
 
+.admin-tour-spotlight-ring.is-click-target {
+  border-color: #f59e0b;
+  box-shadow:
+    0 0 0 1px rgba(245, 158, 11, 0.45),
+    0 0 28px rgba(245, 158, 11, 0.35);
+  animation: admin-tour-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes admin-tour-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(245, 158, 11, 0.45),
+      0 0 16px rgba(245, 158, 11, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(245, 158, 11, 0.35),
+      0 0 32px rgba(245, 158, 11, 0.45);
+  }
+}
+
 .admin-tour-try-hint {
   margin: 0 0 0.85rem;
   padding: 0.45rem 0.6rem;
@@ -148,6 +198,12 @@
   background: rgba(64, 224, 208, 0.14);
   border: 1px solid rgba(64, 224, 208, 0.35);
   border-radius: 8px;
+}
+
+.admin-tour-try-hint.is-click-step {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .admin-tour-actions {

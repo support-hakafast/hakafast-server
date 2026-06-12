@@ -12,7 +12,8 @@ export function calculateDayPlan(profile, options = {}) {
   const sessionDurationMin = Math.max(1, Number(p.sessionDurationMin) || 10);
   const competitiveBlockMin = Math.max(1, Number(p.competitiveBlockMin) || 45);
   const turnoverMin = Math.max(0, Number(p.turnoverMin) || 0);
-  const pricePerSession = Math.max(0, Number(p.pricePerSession) || 0);
+  const avgDrivers = Math.max(1, Number(p.avgDriversPerSession) || 8);
+  const heatPrice = Math.max(0, Number(p.pricePerSession) || 0);
   const competitiveHeats = Math.max(0, Number(options.competitiveHeats) || 0);
 
   if (openMin == null || closeMin == null || closeMin <= openMin) {
@@ -20,6 +21,9 @@ export function calculateDayPlan(profile, options = {}) {
       openMinutes: 0,
       maxSessionHeats: 0,
       maxSessionHeatsAfterCompetitive: 0,
+      avgDriversPerSession: avgDrivers,
+      estimatedRiders: 0,
+      estimatedRidersAfterCompetitive: 0,
       estimatedRevenue: 0,
       estimatedRevenueAfterCompetitive: 0,
     };
@@ -41,7 +45,10 @@ export function calculateDayPlan(profile, options = {}) {
     competitiveReserveMin,
     remainingForSessionsMin,
     maxSessionHeatsAfterCompetitive,
-    estimatedRevenue: maxSessionHeats * pricePerSession,
-    estimatedRevenueAfterCompetitive: maxSessionHeatsAfterCompetitive * pricePerSession,
+    avgDriversPerSession: avgDrivers,
+    estimatedRiders: maxSessionHeats * avgDrivers,
+    estimatedRidersAfterCompetitive: maxSessionHeatsAfterCompetitive * avgDrivers,
+    estimatedRevenue: maxSessionHeats * heatPrice,
+    estimatedRevenueAfterCompetitive: maxSessionHeatsAfterCompetitive * heatPrice,
   };
 }
