@@ -830,6 +830,34 @@ function testEvenPitLaneSpreadOnReturn() {
   assert(store.pitLines[2].karts.length === 2, 'lane 2 gets two karts evenly');
 }
 
+async function testBottomExitWaitingInsertOrder() {
+  const { resolveLaneInsertIndex } = await import('../src/utils/adminHelpers.js');
+  assert(resolveLaneInsertIndex([], 'append', 'bottom') === 0, 'empty lane uses exit slot');
+  assert(resolveLaneInsertIndex([5], 'append', 'bottom') === 1, 'waiting insert next to exit');
+  assert(resolveLaneInsertIndex([5, 7], 'append', 'bottom') === 1, 'new kart stacks at index 1');
+  assert(resolveLaneInsertIndex([5, 7], 'append', 'top') === 2, 'top exit keeps tail append');
+
+  const wsId = 'verify-bottom-exit-insert';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.levelSettings = { pitExitPosition: 'bottom' };
+  store.pitLines = { 1: { active: true, karts: [10] } };
+  store.onTrack = [
+    { kart_number: 1, originLaneId: 1 },
+    { kart_number: 2, originLaneId: 1 },
+  ];
+  demoStore.returnKart(store, 1, 1);
+  assert(
+    JSON.stringify(store.pitLines[1].karts) === JSON.stringify([10, 1]),
+    'first return sits just above exit',
+  );
+  demoStore.returnKart(store, 2, 1);
+  assert(
+    JSON.stringify(store.pitLines[1].karts) === JSON.stringify([10, 2, 1]),
+    'each new return stacks above the previous waiting kart',
+  );
+}
+
 function testCooldownAutoReturnWithoutNextHeat() {
   const wsId = 'verify-cooldown-auto-return';
   demoStore.resetStore('kart-demo', wsId);
@@ -1326,6 +1354,7 @@ async function main() {
   await run('finish without next heat returns karts to pits', () => testFinishWithoutNextHeatReturnsKartsToPits());
   await run('merge client pit lines preserves server karts', () => testMergeClientPitLinesPreservesServerKarts());
   await run('even pit lane spread on return', () => testEvenPitLaneSpreadOnReturn());
+  await run('bottom exit waiting insert order', testBottomExitWaitingInsertOrder);
   await run('cooldown auto-return without next heat', () => testCooldownAutoReturnWithoutNextHeat());
   await run('overlap assignment during drain', testOverlapAssignmentDuringDrain);
   await run('pending slots filled on pit return', () => testPendingFilledOnPitReturn());

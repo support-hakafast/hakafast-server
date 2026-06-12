@@ -35,6 +35,7 @@ import {
   groupQueueByTeam,
   getExitKartNumber,
   getWaitingKartNumbers,
+  resolveLaneInsertIndex,
   sanitizePitLines,
 } from '../utils/adminHelpers.js';
 import {
@@ -659,12 +660,9 @@ const AdminPanel = () => {
         if (!onTrackNow && !alreadyInLane && !inOtherLane) {
           const karts = [...targetLane.karts];
           const sameLane = fromLaneId != null && String(fromLaneId) === laneKey && fromLaneIndex >= 0;
-          let insertIndex = karts.length;
-          if (typeof insertAt === 'number') {
-            insertIndex = Math.max(0, Math.min(insertAt, karts.length));
-            if (sameLane && fromLaneIndex < insertIndex) insertIndex -= 1;
-          } else if (insertAt === 'front') {
-            insertIndex = 0;
+          let insertIndex = resolveLaneInsertIndex(karts, insertAt, pitExitPosition);
+          if (typeof insertAt === 'number' && sameLane && fromLaneIndex < insertIndex) {
+            insertIndex -= 1;
           }
           karts.splice(insertIndex, 0, n);
           updatedLines[laneKey] = { ...targetLane, karts };

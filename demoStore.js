@@ -979,6 +979,19 @@ function maybeDrainFinishedHeat(store) {
   }
 }
 
+function resolveWaitingLaneInsertIndex(karts, pitExitPosition = 'bottom') {
+  const len = karts?.length ?? 0;
+  if (pitExitPosition !== 'top') {
+    return len === 0 ? 0 : 1;
+  }
+  return len;
+}
+
+function insertKartIntoWaitingLane(karts, kartNumber, pitExitPosition) {
+  const idx = resolveWaitingLaneInsertIndex(karts, pitExitPosition);
+  karts.splice(idx, 0, Number(kartNumber));
+}
+
 function moveKartToPitExit(store, kartNumber, laneId) {
   const n = Number(kartNumber);
   const lid = String(laneId);
@@ -1793,7 +1806,8 @@ function returnKart(store, kartNumber, laneId, options = {}) {
       if (reservedForNext) {
         moveKartToPitExit(store, n, lid);
       } else {
-        store.pitLines[lid].karts.push(n);
+        const pitExitPosition = store.levelSettings?.pitExitPosition || 'bottom';
+        insertKartIntoWaitingLane(store.pitLines[lid].karts, n, pitExitPosition);
       }
     } else if (reservedForNext) {
       moveKartToPitExit(store, n, lid);

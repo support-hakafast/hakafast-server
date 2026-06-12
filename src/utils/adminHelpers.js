@@ -158,6 +158,21 @@ export function getWaitingKartNumbers(lane) {
   return lane.karts.slice(1).map(Number);
 }
 
+/** Where to insert into lane.karts (index 0 = pit exit). Bottom exit: waiting drops stack just above exit. */
+export function resolveLaneInsertIndex(karts, insertAt = 'append', pitExitPosition = 'bottom') {
+  const len = karts?.length ?? 0;
+  if (typeof insertAt === 'number') {
+    return Math.max(0, Math.min(insertAt, len));
+  }
+  if (insertAt === 'front') {
+    return 0;
+  }
+  if (pitExitPosition !== 'top') {
+    return len === 0 ? 0 : 1;
+  }
+  return len;
+}
+
 /** Reorder a kart within a lane array (exit = index 0). */
 export function reorderKartsInLaneArray(karts, fromIndex, toIndex) {
   if (!Array.isArray(karts) || fromIndex === toIndex) return karts;
