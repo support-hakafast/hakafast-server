@@ -133,7 +133,7 @@ html:has(.admin-no-scroll) body {
   min-height: 0;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 54%) minmax(240px, 320px) minmax(220px, 280px);
+  grid-template-columns: minmax(0, 40%) minmax(0, 1fr) minmax(220px, 280px);
   gap: clamp(8px, 1vw, 14px);
   overflow: hidden;
 }
@@ -161,7 +161,8 @@ html:has(.admin-no-scroll) body {
 .admin-sidebar {
   min-height: 0;
   min-width: 0;
-  max-width: 100%;
+  max-width: 280px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -375,17 +376,6 @@ html:has(.admin-no-scroll) body {
   flex: 1;
   min-height: 180px;
   max-height: none;
-  overflow-y: auto;
-}
-
-.admin-sidebar {
-  min-height: 0;
-  min-width: 0;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -2469,7 +2459,11 @@ html:has(.admin-no-scroll) body {
 
 @media (min-width: 1600px) {
   .admin-workspace {
-    grid-template-columns: minmax(0, 46%) minmax(280px, 340px) minmax(260px, 320px);
+    grid-template-columns: minmax(0, 38%) minmax(0, 1fr) minmax(260px, 320px);
+  }
+
+  .admin-sidebar {
+    max-width: 320px;
   }
 
   .pit-lanes-board {
@@ -2506,6 +2500,7 @@ html:has(.admin-no-scroll) body {
     flex-wrap: nowrap;
     overflow-y: visible;
     min-width: 0;
+    max-width: none;
   }
 
   .admin-sidebar .btn-preview,
@@ -2683,25 +2678,13 @@ html:has(.admin-no-scroll) body {
   min-width: 0;
 }
 
-.kart-type-add-compact {
-  flex-shrink: 0;
-  width: 1.75rem;
-  height: 1.75rem;
-  min-width: 1.75rem;
-  padding: 0;
-  border: 1px dashed #94a3b8;
-  border-radius: 8px;
-  background: #fff;
-  color: #0f766e;
-  font-size: 1.1rem;
-  font-weight: 900;
-  line-height: 1;
-  cursor: pointer;
+.kart-types-editor-footer-compact {
+  margin-top: 0.35rem;
 }
 
-.kart-type-add-compact:hover {
-  border-color: #40e0d0;
-  background: #f0fdfa;
+.kart-types-editor-footer-compact .kart-type-add {
+  width: 100%;
+  text-align: center;
 }
 
 .kart-types-editor-inventory-compact .kart-types-list {
