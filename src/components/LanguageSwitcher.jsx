@@ -7,8 +7,27 @@ const OPTIONS = [
   { code: 'ar', labelKey: 'lang_ar' },
 ];
 
-export default function LanguageSwitcher({ className = '' }) {
+const SHORT_LABELS = { he: 'עב', en: 'EN', ar: 'ع' };
+
+export default function LanguageSwitcher({ className = '', compact = false }) {
   const { lang, setLang, t } = useLanguage();
+
+  if (compact) {
+    return (
+      <select
+        className={`hf-lang-select ${className}`.trim()}
+        value={lang}
+        onChange={(e) => setLang(e.target.value)}
+        aria-label="Language"
+      >
+        {OPTIONS.map(({ code, labelKey }) => (
+          <option key={code} value={code}>
+            {SHORT_LABELS[code] || t(labelKey)}
+          </option>
+        ))}
+      </select>
+    );
+  }
 
   return (
     <div className={`hf-lang-switch ${className}`.trim()} role="group" aria-label="Language">

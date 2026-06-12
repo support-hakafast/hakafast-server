@@ -270,6 +270,156 @@
   border-bottom: 3px solid var(--hf-turquoise);
 }
 
+/* Compact mobile header (≤900px via is-compact class) */
+.live-timing-header.is-compact {
+  gap: 0.2rem;
+  padding: 0.28rem 0.45rem 0.32rem;
+  padding-inline-start: 1.65rem;
+  position: relative;
+}
+
+.live-header-compact-top {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.5rem;
+  min-width: 0;
+}
+
+.live-header-home {
+  position: absolute;
+  left: 0.35rem;
+  top: 0.32rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.live-header-home:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.live-header-compact-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.22rem;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.live-header-compact-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.92;
+}
+
+.live-timing-header.is-compact .live-session-badge,
+.live-timing-header.is-compact .live-heat-number-badge,
+.live-timing-header.is-compact .live-preview-badge {
+  font-size: 0.52rem;
+  padding: 0.08rem 0.28rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.live-header-compact-util {
+  display: flex;
+  align-items: center;
+  gap: 0.22rem;
+  flex-shrink: 0;
+}
+
+.live-timing-header.is-compact .live-theme-toggle {
+  padding: 0.18rem 0.32rem;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}
+
+.live-header-compact-bottom {
+  display: flex;
+  align-items: stretch;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.live-race-clock-compact {
+  min-width: 0;
+  max-width: 4.2rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.78rem;
+  border-width: 1px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.live-race-clock-compact.is-last-lap,
+.live-race-clock-compact.is-formation {
+  max-width: none;
+  font-size: 0.62rem;
+  padding: 0.15rem 0.3rem;
+}
+
+.live-race-clock-compact.is-checkered {
+  max-width: 2.5rem;
+  font-size: 1rem;
+  padding: 0.1rem 0.25rem;
+}
+
+.live-mode-tabs-compact {
+  flex: 1;
+  min-width: 0;
+  padding: 0.12rem;
+  border-radius: 8px;
+}
+
+.live-mode-tabs-compact button {
+  flex: 1;
+  padding: 0.28rem 0.35rem;
+  font-size: 0.68rem;
+  min-height: 1.65rem;
+  border-radius: 6px;
+}
+
+.live-mode-tabs-compact button.active {
+  transform: none;
+  box-shadow: 0 1px 6px rgba(64, 224, 208, 0.3);
+}
+
+.live-timing-header.is-compact .hf-lang-select {
+  height: 1.55rem;
+  padding: 0 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  cursor: pointer;
+  max-width: 2.6rem;
+}
+
+.live-timing-header.is-compact .hf-lang-select option {
+  color: #0f172a;
+  background: #fff;
+}
+
 .live-header-row {
   display: flex;
   align-items: center;

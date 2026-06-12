@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import '../assets/LiveTiming.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
@@ -125,8 +125,13 @@ const LiveTiming = () => {
   const displayHeatClock = useTickingHeatClock(heatClock);
 
   const layoutTier = useLiveLayoutTier();
+  const isCompact = layoutTier === 'compact';
   const isWide = layoutTier === 'wide' || layoutTier === 'ultra';
-  const layoutClass = layoutTier === 'ultra' ? ' is-wide is-ultra' : (isWide ? ' is-wide' : '');
+  const layoutClass = [
+    layoutTier === 'ultra' ? ' is-wide is-ultra' : (isWide ? ' is-wide' : ''),
+    isCompact ? ' is-compact' : '',
+  ].join('');
+  const clockNotStartedLabel = isCompact ? t('live_clock_not_started_short') : t('admin_heat_not_started');
   const [statsOpen, setStatsOpen] = useState(false);
 
   useEffect(() => {
@@ -141,44 +146,87 @@ const LiveTiming = () => {
   return (
     <div className={`live-timing theme-${theme}`}>
       <header className={`live-timing-header${layoutClass}`}>
-        <div className="live-header-row live-header-row-main">
-          <h1>{t(titleKey)}</h1>
-          <div className="live-header-badges">
-            <span className="live-session-badge">{sessionLabel}</span>
-            {isolated && (
-              <span className="live-demo-badge">{t('demo_workspace_badge', { id: getWorkspaceLabel(trackSlug) })}</span>
-            )}
-            <span className="live-ws-badge">{t('live_ws_realtime')}</span>
-            {heatNumber ? (
-              <span className="live-heat-number-badge">{t('live_heat_number', { n: heatNumber })}</span>
-            ) : null}
-            {hasPreparedHeat && mode === 'assignments' && (
-              <span className="live-preview-badge">{t('live_next_heat_ready')}</span>
-            )}
-          </div>
-        </div>
-        <div className="live-header-row live-header-row-actions">
-          {displayHeatClock ? (
-            <div className={`live-race-clock${getHeatClockClassName(displayHeatClock)}`} aria-live="polite">
-              {formatHeatClock(displayHeatClock, t('admin_heat_not_started'), '00:00', clockPhaseLabels)}
+        {isCompact ? (
+          <>
+            <div className="live-header-compact-top">
+              <Link to="/" className="live-header-home" aria-label={t('nav_home')}>
+                ←
+              </Link>
+              <div className="live-header-compact-meta">
+                <span className="live-header-compact-title">{t(titleKey)}</span>
+                <span className="live-session-badge">{sessionLabel}</span>
+                {heatNumber ? (
+                  <span className="live-heat-number-badge">{t('live_heat_number', { n: heatNumber })}</span>
+                ) : null}
+                {hasPreparedHeat && mode === 'assignments' && (
+                  <span className="live-preview-badge">{t('live_next_heat_ready')}</span>
+                )}
+              </div>
+              <div className="live-header-compact-util">
+                <button type="button" className="live-theme-toggle" onClick={toggle} aria-label={t('live_theme_toggle')}>
+                  {isDark ? '☀️' : '🌙'}
+                </button>
+                <LanguageSwitcher compact className="live-lang-compact" />
+              </div>
             </div>
-          ) : null}
-          <div className="live-header-actions">
-            <div className="live-mode-tabs">
-              <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => switchMode('assignments')}>
-                {t('live_mode_assignments')}
-              </button>
-              <button type="button" className={mode === 'timing' ? 'active' : ''} onClick={() => switchMode('timing')}>
-                {t('live_mode_timing')}
-              </button>
+            <div className="live-header-compact-bottom">
+              {displayHeatClock ? (
+                <div className={`live-race-clock live-race-clock-compact${getHeatClockClassName(displayHeatClock)}`} aria-live="polite">
+                  {formatHeatClock(displayHeatClock, clockNotStartedLabel, '00:00', clockPhaseLabels)}
+                </div>
+              ) : null}
+              <div className="live-mode-tabs live-mode-tabs-compact">
+                <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => switchMode('assignments')}>
+                  {t('live_mode_assignments')}
+                </button>
+                <button type="button" className={mode === 'timing' ? 'active' : ''} onClick={() => switchMode('timing')}>
+                  {t('live_mode_timing')}
+                </button>
+              </div>
             </div>
-            <button type="button" className="live-theme-toggle" onClick={toggle} aria-label={t('live_theme_toggle')}>
-              {isDark ? '☀️' : '🌙'}
-            </button>
-            <HakafastLogo to="/" className="live-header-logo" />
-            <LanguageSwitcher />
-          </div>
-        </div>
+          </>
+        ) : (
+          <>
+            <div className="live-header-row live-header-row-main">
+              <h1>{t(titleKey)}</h1>
+              <div className="live-header-badges">
+                <span className="live-session-badge">{sessionLabel}</span>
+                {isolated && (
+                  <span className="live-demo-badge">{t('demo_workspace_badge', { id: getWorkspaceLabel(trackSlug) })}</span>
+                )}
+                <span className="live-ws-badge">{t('live_ws_realtime')}</span>
+                {heatNumber ? (
+                  <span className="live-heat-number-badge">{t('live_heat_number', { n: heatNumber })}</span>
+                ) : null}
+                {hasPreparedHeat && mode === 'assignments' && (
+                  <span className="live-preview-badge">{t('live_next_heat_ready')}</span>
+                )}
+              </div>
+            </div>
+            <div className="live-header-row live-header-row-actions">
+              {displayHeatClock ? (
+                <div className={`live-race-clock${getHeatClockClassName(displayHeatClock)}`} aria-live="polite">
+                  {formatHeatClock(displayHeatClock, t('admin_heat_not_started'), '00:00', clockPhaseLabels)}
+                </div>
+              ) : null}
+              <div className="live-header-actions">
+                <div className="live-mode-tabs">
+                  <button type="button" className={mode === 'assignments' ? 'active' : ''} onClick={() => switchMode('assignments')}>
+                    {t('live_mode_assignments')}
+                  </button>
+                  <button type="button" className={mode === 'timing' ? 'active' : ''} onClick={() => switchMode('timing')}>
+                    {t('live_mode_timing')}
+                  </button>
+                </div>
+                <button type="button" className="live-theme-toggle" onClick={toggle} aria-label={t('live_theme_toggle')}>
+                  {isDark ? '☀️' : '🌙'}
+                </button>
+                <HakafastLogo to="/" className="live-header-logo" />
+                <LanguageSwitcher />
+              </div>
+            </div>
+          </>
+        )}
       </header>
 
       <div className="live-display">
