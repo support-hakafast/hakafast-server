@@ -81,13 +81,21 @@ function isCompetitiveHeatType(type) {
   return type === 'sprint' || type === 'endurance';
 }
 
+function getOperatingWindowMinutes(openMin, closeMin) {
+  if (openMin == null || closeMin == null) return null;
+  if (closeMin > openMin) return closeMin - openMin;
+  if (closeMin === openMin) return 24 * 60;
+  return (24 * 60 - openMin) + closeMin;
+}
+
 function calculateDayPlan(profile, options = {}) {
   const p = normalizeTrackProfile(profile);
   const openMin = parseTimeToMinutes(p.openingTime);
   const closeMin = parseTimeToMinutes(p.closingTime);
   const competitiveHeats = Math.max(0, Number(options.competitiveHeats) || 0);
 
-  if (openMin == null || closeMin == null || closeMin <= openMin) {
+  const openMinutes = getOperatingWindowMinutes(openMin, closeMin);
+  if (openMinutes == null) {
     return {
       openMinutes: 0,
       sessionSlotMin: p.sessionDurationMin + p.turnoverMin,
@@ -103,7 +111,6 @@ function calculateDayPlan(profile, options = {}) {
     };
   }
 
-  const openMinutes = closeMin - openMin;
   const sessionSlotMin = p.sessionDurationMin + p.turnoverMin;
   const competitiveSlotMin = p.competitiveBlockMin + p.turnoverMin;
   const maxSessionHeats = Math.floor(openMinutes / sessionSlotMin);

@@ -677,7 +677,7 @@ html:has(.admin-no-scroll) body {
 .endurance-members-head,
 .endurance-member-row {
   display: grid;
-  grid-template-columns: 1fr 4.5rem 4.2rem 1.6rem;
+  grid-template-columns: minmax(0, 1fr) minmax(3.25rem, 4.5rem) minmax(3.25rem, 4.2rem) 1.6rem;
   gap: 0.3rem;
   align-items: center;
 }
@@ -746,13 +746,13 @@ html:has(.admin-no-scroll) body {
 
 .pro-event-settings-compact .pro-event-settings-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   gap: 0.45rem;
   margin-bottom: 0.45rem;
 }
 
 .pro-event-settings-compact .pro-event-settings-row:last-of-type {
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
 }
 
 .pro-event-settings-compact .endurance-field-grow {
@@ -2979,8 +2979,34 @@ html:has(.admin-no-scroll) body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: min(70vh, 640px);
+  max-height: min(72vh, 680px);
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.pro-race-event-modal.admin-modal-wide {
+  width: min(720px, calc(100vw - 24px));
+}
+
+.pro-race-event-modal .endurance-teams-list {
+  max-height: min(36vh, 320px);
+}
+
+.pro-race-event-modal .endurance-team-card {
+  background: #fff;
+  border-color: #e2e8f0;
+}
+
+.pro-race-event-modal .endurance-field-label,
+.pro-race-event-modal .pro-event-groups-hint {
+  line-height: 1.35;
+}
+
+.pro-race-event-modal .endurance-field input,
+.pro-race-event-modal .endurance-field select,
+.pro-race-event-modal .endurance-team-name-input,
+.pro-race-event-modal .endurance-member-row input {
+  min-width: 0;
 }
 
 .pro-event-prep-banner {
@@ -3281,4 +3307,137 @@ html:has(.admin-no-scroll) body {
 
 .admin-theme-dark .timing-order-row-draggable.is-drop-target {
   background: rgba(64, 224, 208, 0.12);
+}
+
+/* Dark mode — surfaces that stayed light */
+.admin-theme-dark .warehouse-kart-pool,
+.admin-theme-dark .warehouse-zone .kart-pool {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+}
+
+.admin-theme-dark .timing-columns-bar {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+.admin-theme-dark .timing-column-group-session {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+.admin-theme-dark .timing-column-group-race {
+  background: rgba(124, 58, 237, 0.14);
+  border-color: rgba(167, 139, 250, 0.28);
+}
+
+.admin-theme-dark .timing-group-label {
+  color: #e2e8f0;
+}
+
+.admin-theme-dark .timing-column-order {
+  border-top-color: var(--admin-border);
+}
+
+.admin-theme-dark .kart-type-add {
+  background: var(--admin-surface-raised);
+  border-color: #5eead4;
+  color: #99f6e4;
+}
+
+.admin-theme-dark .kart-types-editor-footer-compact .kart-type-add {
+  border-style: solid;
+}
+
+.admin-theme-dark .endurance-team-card {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+.admin-theme-dark .endurance-team-add-btn,
+.admin-theme-dark .endurance-member-add {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+  color: #5eead4;
+}
+
+.admin-theme-dark .endurance-members-head {
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark .endurance-starter-mark {
+  color: var(--admin-text-muted);
+}
+
+/* Light modals on dark admin — keep readable form controls */
+.admin-theme-dark .admin-modal-light input,
+.admin-theme-dark .admin-modal-light select,
+.admin-theme-dark .admin-modal-light textarea,
+.admin-theme-dark .admin-modal-light .endurance-team-name-input,
+.admin-theme-dark .admin-modal-light .endurance-member-row input {
+  background: #fff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.admin-theme-dark .admin-modal-light input::placeholder,
+.admin-theme-dark .admin-modal-light textarea::placeholder {
+  color: #94a3b8;
+}
+
+.admin-theme-dark .admin-modal-light .endurance-team-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.admin-theme-dark .admin-modal-light .field-label,
+.admin-theme-dark .admin-modal-light .endurance-field-label,
+.admin-theme-dark .admin-modal-light .pro-event-groups-hint,
+.admin-theme-dark .admin-modal-light .endurance-members-head {
+  color: #475569;
+}
+
+.admin-theme-dark .admin-modal-light .endurance-starter-mark {
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .pro-race-event-modal .pro-race-event-panel,
+  .pro-event-prep-banner,
+  .pro-event-type-tabs {
+    padding-inline: 14px;
+  }
+
+  .pro-race-event-modal .endurance-members-head {
+    display: none;
+  }
+
+  .pro-race-event-modal .endurance-member-row {
+    grid-template-columns: minmax(0, 1fr) minmax(3rem, 4rem);
+    grid-template-areas:
+      "name name"
+      "weight starter"
+      "remove remove";
+    gap: 0.35rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px dashed #e2e8f0;
+  }
+
+  .pro-race-event-modal .endurance-member-row input[type='text'] {
+    grid-area: name;
+  }
+
+  .pro-race-event-modal .endurance-member-row input[type='number'] {
+    grid-area: weight;
+  }
+
+  .pro-race-event-modal .endurance-starter-mark {
+    grid-area: starter;
+    justify-self: start;
+  }
+
+  .pro-race-event-modal .endurance-member-remove {
+    grid-area: remove;
+    justify-self: end;
+  }
 }

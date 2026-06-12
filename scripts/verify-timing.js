@@ -1272,6 +1272,19 @@ function testDayPlanCapacity() {
   assert(plan.maxSessionHeats === 48, `expected 48 session heats, got ${plan.maxSessionHeats}`);
   assert(plan.maxSessionHeatsAfterCompetitive === 41, `expected 41 after competitive, got ${plan.maxSessionHeatsAfterCompetitive}`);
   assert(plan.estimatedRevenueAfterCompetitive === 4100, 'revenue estimate');
+
+  const overnight = calculateDayPlan({
+    openingTime: '08:00',
+    closingTime: '00:00',
+    sessionDurationMin: 10,
+    turnoverMin: 5,
+    avgDriversPerSession: 7,
+    pricePerSession: 300,
+    competitiveBlockMin: 45,
+  }, { competitiveHeats: 0 });
+  assert(overnight.maxSessionHeats === 64, `overnight max heats expected 64, got ${overnight.maxSessionHeats}`);
+  assert(overnight.estimatedRidersAfterCompetitive === 448, 'overnight riders');
+  assert(overnight.estimatedRevenueAfterCompetitive === 19200, 'overnight revenue');
 }
 
 async function main() {

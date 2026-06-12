@@ -5,6 +5,14 @@ export function parseTimeToMinutes(value) {
   return h * 60 + m;
 }
 
+/** Minutes the track is open; supports closing after midnight (e.g. 08:00 → 00:00). */
+export function getOperatingWindowMinutes(openMin, closeMin) {
+  if (openMin == null || closeMin == null) return null;
+  if (closeMin > openMin) return closeMin - openMin;
+  if (closeMin === openMin) return 24 * 60;
+  return (24 * 60 - openMin) + closeMin;
+}
+
 export function calculateDayPlan(profile, options = {}) {
   const p = profile || {};
   const openMin = parseTimeToMinutes(p.openingTime);
@@ -16,7 +24,8 @@ export function calculateDayPlan(profile, options = {}) {
   const heatPrice = Math.max(0, Number(p.pricePerSession) || 0);
   const competitiveHeats = Math.max(0, Number(options.competitiveHeats) || 0);
 
-  if (openMin == null || closeMin == null || closeMin <= openMin) {
+  const openMinutes = getOperatingWindowMinutes(openMin, closeMin);
+  if (openMinutes == null) {
     return {
       openMinutes: 0,
       maxSessionHeats: 0,
@@ -29,7 +38,6 @@ export function calculateDayPlan(profile, options = {}) {
     };
   }
 
-  const openMinutes = closeMin - openMin;
   const sessionSlotMin = sessionDurationMin + turnoverMin;
   const competitiveSlotMin = competitiveBlockMin + turnoverMin;
   const maxSessionHeats = Math.floor(openMinutes / sessionSlotMin);

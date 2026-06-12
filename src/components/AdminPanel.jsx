@@ -414,6 +414,7 @@ const AdminPanel = () => {
       sessionDurationPlan,
       competitiveBlockMin,
       turnoverMin,
+      avgDriversPerSession,
       pricePerSession,
       competitiveHeatsPlanned,
     ],
