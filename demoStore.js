@@ -1650,18 +1650,23 @@ function processTransponderLap(store, transponderId, lapTimeSec = null) {
 }
 
 function scanTransponderExits(store) {
+  // Once the current heat is frozen (finished, awaiting export ack / drain
+  // and promotion of nextHeat), don't auto-launch anything: launching a
+  // current-heat kart that has already been reassigned to a nextHeat slot
+  // would resolve to kartHeatTarget==='next' and trigger a premature
+  // promoteNextHeat (wiping onTrack and skipping the export/drain flow).
+  if (store.heatFrozen) return [];
+
   let launchRows = getLaunchHeatRows(store);
   if (!launchRows.length) return [];
 
   // If the launch rows are the *next* heat (current heat timed out / has no
   // active session), don't auto-launch them onto track until the current
   // heat has actually finished draining: its on-track karts must have
-  // completed their cooldown lap, and (if export is pending) the operator
-  // must acknowledge the export before nextHeat is promoted. Otherwise this
+  // completed their cooldown lap before nextHeat is promoted. Otherwise this
   // would prematurely promote nextHeat and skip the cooldown lap / auto-export
   // flow for the heat that is still finishing.
-  if (launchRows === store.nextHeat
-    && (getCurrentHeatOnTrack(store).length > 0 || store.heatFrozen)) {
+  if (launchRows === store.nextHeat && getCurrentHeatOnTrack(store).length > 0) {
     launchRows = store.currentHeat;
     if (!launchRows.length) return [];
   }
@@ -1669,11 +1674,18 @@ function scanTransponderExits(store) {
   const launched = [];
   const heatKarts = new Set(launchRows.map((r) => Number(r.kart_number)));
   const onTrackKarts = new Set(store.onTrack.map((k) => Number(k.kart_number)));
+  const nextHeatKarts = getNextHeatKartNumbers(store);
 
   Object.entries(store.pitLines).forEach(([laneId, lane]) => {
     if (!lane?.karts?.length) return;
     const kartNumber = Number(lane.karts[0]);
     if (!heatKarts.has(kartNumber) || onTrackKarts.has(kartNumber)) return;
+    // A kart already reserved for nextHeat has finished its part in the
+    // current heat (e.g. it just completed its cooldown lap and was assigned
+    // to fill a pending nextHeat slot) and is parked at the pit exit waiting
+    // for promotion. Don't relaunch it for the current/finishing heat -
+    // that would trigger a premature promoteNextHeat.
+    if (nextHeatKarts.has(kartNumber) && launchRows !== store.nextHeat) return;
     const result = launchKartByTransponder(store, kartNumber, laneId);
     if (result.success) {
       launched.push(kartNumber);
