@@ -578,6 +578,215 @@ html:has(.admin-no-scroll) body {
   margin-top: 8px;
 }
 
+.heat-competitive-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+}
+
+.heat-competitive-grid-sprint {
+  grid-template-columns: 1.4fr 1fr;
+}
+
+.heat-compact-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.heat-compact-field span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.heat-compact-field input,
+.heat-compact-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.82rem;
+}
+
+.heat-compact-field-grow {
+  grid-column: span 1;
+}
+
+.endurance-teams-editor {
+  margin-bottom: 0.65rem;
+}
+
+.endurance-teams-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.endurance-team-add-btn,
+.endurance-member-add {
+  border: 1px dashed #94a3b8;
+  background: #fff;
+  color: #0f766e;
+  border-radius: 6px;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.endurance-teams-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.endurance-team-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.5rem;
+  background: #f8fafc;
+}
+
+.endurance-team-card-head {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.endurance-team-name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.endurance-team-remove,
+.endurance-member-remove {
+  width: 1.6rem;
+  height: 1.6rem;
+  border: none;
+  border-radius: 6px;
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.endurance-members-head,
+.endurance-member-row {
+  display: grid;
+  grid-template-columns: 1fr 4.5rem 4.2rem 1.6rem;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.endurance-members-head {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.endurance-members-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.endurance-member-row input[type='text'],
+.endurance-member-row input[type='number'] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.3rem 0.35rem;
+  font-size: 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.endurance-starter-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.endurance-starter-mark input {
+  margin: 0;
+}
+
+.endurance-member-add {
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+.endurance-bulk-import {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.endurance-bulk-import summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #475569;
+}
+
+.endurance-bulk-apply {
+  margin-top: 0.35rem;
+}
+
+.pro-event-settings-compact .pro-event-settings-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+.pro-event-settings-compact .pro-event-settings-row:last-of-type {
+  grid-template-columns: 1fr 2fr;
+}
+
+.pro-event-settings-compact .endurance-field-grow {
+  grid-column: span 1;
+}
+
+.planner-field-compact {
+  margin-bottom: 0.45rem;
+}
+
+.timing-columns-picker-compact .timing-column-group {
+  margin-bottom: 0.35rem;
+  padding: 0.35rem;
+}
+
+.timing-columns-picker-compact .timing-columns-chips {
+  gap: 0.25rem;
+}
+
+.timing-columns-picker-compact .timing-chip {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.65rem;
+}
+
 .duration-unit-label {
   display: block;
   font-size: 0.75rem;

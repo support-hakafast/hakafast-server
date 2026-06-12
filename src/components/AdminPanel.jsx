@@ -10,6 +10,7 @@ import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
 import ProRaceEventModal from './ProRaceEventModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
+import TimingColumnsPicker from './TimingColumnsPicker.jsx';
 import AdminWalkthrough, { isAdminTourDone } from './AdminWalkthrough.jsx';
 import LivePreviewFloat from './LivePreviewFloat.jsx';
 import TimingColumnOrderList from './TimingColumnOrderList.jsx';
@@ -39,13 +40,10 @@ import {
 import {
   DEFAULT_TIMING_COLUMNS,
   ENDURANCE_DEFAULT_COLUMNS,
-  OPTIONAL_TIMING_COLUMNS,
-  TIMING_COLUMN_GROUPS,
   DEFAULT_TIMING_COLUMN_ORDER,
   normalizeTimingColumns,
   normalizeTimingColumnOrder,
   getReorderableTimingColumns,
-  getVisibleTimingColumnGroupIds,
   reorderColumnOrder,
 } from '../utils/liveTimingColumns.js';
 import { calculateDayPlan } from '../utils/trackProfileClient.js';
@@ -70,6 +68,7 @@ import {
   appendStintRulesToEnduranceRules,
   buildSessionsFromGroups,
   buildTeamStartersFromGroups,
+  normalizeGroupDrivers,
   groupsToDriverQueue,
   normalizePlannedRaceEvent,
 } from '../utils/raceEventHelpers.js';
@@ -433,11 +432,6 @@ const AdminPanel = () => {
     }, 1200);
     return () => clearTimeout(timer);
   }, [allKarts, trackSlug]);
-
-  const visibleColumnGroups = useMemo(
-    () => TIMING_COLUMN_GROUPS.filter((g) => getVisibleTimingColumnGroupIds(heatType).includes(g.id)),
-    [heatType],
-  );
 
   const reorderableColumns = useMemo(
     () => getReorderableTimingColumns(timingColumns, timingColumnOrder, heatType === 'endurance'),
@@ -830,7 +824,7 @@ const AdminPanel = () => {
 
       const isEndurance = normalized.type === 'endurance';
       const activeSession = isEndurance
-        ? { name: normalized.name || 'Endurance', drivers: normalized.groups.flatMap((g) => g.drivers) }
+        ? { name: normalized.name || 'Endurance', drivers: normalized.groups.flatMap((g) => normalizeGroupDrivers(g.drivers).map((d) => d.name)) }
         : sessions[0];
       const queueGroups = isEndurance
         ? normalized.groups
@@ -1598,6 +1592,8 @@ const AdminPanel = () => {
         <LivePreviewFloat
           trackSlug={trackSlug}
           heatType={heatType}
+          timingColumns={timingColumns}
+          onToggleTimingColumn={(colId) => setTimingColumns((prev) => ({ ...prev, [colId]: !prev[colId] }))}
           onClose={() => setShowLivePreview(false)}
         />
       )}
@@ -1927,41 +1923,39 @@ const AdminPanel = () => {
                   </>
                 )}
                 {heatType === 'endurance' && (
-                  <div className="endurance-row endurance-row-compact">
-                    <label className="endurance-field">
-                      <span className="endurance-field-label">{t('admin_hours_placeholder')}</span>
+                  <div className="heat-competitive-grid">
+                    <label className="heat-compact-field">
+                      <span>{t('admin_hours_placeholder')}</span>
                       <input type="number" min="0" value={enduranceHours} onChange={(e) => setEnduranceHours(e.target.value)} />
                     </label>
-                    <label className="endurance-field">
-                      <span className="endurance-field-label">{t('admin_minutes_placeholder')}</span>
+                    <label className="heat-compact-field">
+                      <span>{t('admin_minutes_placeholder')}</span>
                       <input type="number" min="0" max="59" value={enduranceMinutes} onChange={(e) => setEnduranceMinutes(e.target.value)} />
+                    </label>
+                    <label className="heat-compact-field">
+                      <span>{t('admin_formation_laps')}</span>
+                      <input type="number" min="0" max="5" value={formationLaps} onChange={(e) => setFormationLaps(e.target.value)} />
+                    </label>
+                    <label className="heat-compact-field heat-compact-field-grow">
+                      <span>{t('admin_start_mode')}</span>
+                      <select value={startMode} onChange={(e) => setStartMode(e.target.value)}>
+                        <option value="grid">{t('admin_start_grid')}</option>
+                        <option value="le_mans">{t('admin_start_le_mans')}</option>
+                      </select>
                     </label>
                   </div>
                 )}
                 {heatType === 'sprint' && (
-                  <input type="number" value={targetLaps} onChange={(e) => setTargetLaps(e.target.value)} placeholder={t('admin_laps_placeholder')} />
-                )}
-                {(heatType === 'sprint' || heatType === 'endurance') && (
-                  <label className="formation-laps-field">
-                    <span className="field-label">{t('admin_formation_laps')}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="5"
-                      value={formationLaps}
-                      onChange={(e) => setFormationLaps(e.target.value)}
-                      placeholder="0"
-                    />
-                  </label>
-                )}
-                {heatType === 'endurance' && (
-                  <label className="start-mode-field">
-                    <span className="field-label">{t('admin_start_mode')}</span>
-                    <select value={startMode} onChange={(e) => setStartMode(e.target.value)}>
-                      <option value="grid">{t('admin_start_grid')}</option>
-                      <option value="le_mans">{t('admin_start_le_mans')}</option>
-                    </select>
-                  </label>
+                  <div className="heat-competitive-grid heat-competitive-grid-sprint">
+                    <label className="heat-compact-field heat-compact-field-grow">
+                      <span>{t('admin_laps_placeholder')}</span>
+                      <input type="number" min="1" value={targetLaps} onChange={(e) => setTargetLaps(e.target.value)} />
+                    </label>
+                    <label className="heat-compact-field">
+                      <span>{t('admin_formation_laps')}</span>
+                      <input type="number" min="0" max="5" value={formationLaps} onChange={(e) => setFormationLaps(e.target.value)} />
+                    </label>
+                  </div>
                 )}
                 {heatType === 'endurance' && startMode === 'le_mans' && (
                   <div className="le-mans-panel le-mans-panel-embedded">
@@ -2145,28 +2139,12 @@ const AdminPanel = () => {
           </div>
 
           <div className="timing-columns-bar">
-            <span className="field-label">{t('admin_timing_columns')}</span>
-            <p className="timing-columns-intro">{t('admin_timing_columns_hint')}</p>
-            {visibleColumnGroups.map((group) => (
-              <div key={group.id} className={`timing-column-group timing-column-group-${group.id}`}>
-                <div className="timing-group-head">
-                  <span className="timing-group-label">{t(group.labelKey)}</span>
-                  <span className="timing-group-hint">{t(group.descriptionKey)}</span>
-                </div>
-                <div className="timing-columns-chips">
-                  {OPTIONAL_TIMING_COLUMNS.filter((col) => col.group === group.id && !col.alwaysOn).map((col) => (
-                    <button
-                      key={col.id}
-                      type="button"
-                      className={`timing-chip timing-chip-${group.id}${timingColumns[col.id] ? ' active' : ''}`}
-                      onClick={() => setTimingColumns((prev) => ({ ...prev, [col.id]: !prev[col.id] }))}
-                    >
-                      {t(col.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <TimingColumnsPicker
+              t={t}
+              heatType={heatType}
+              timingColumns={timingColumns}
+              onToggleColumn={(colId) => setTimingColumns((prev) => ({ ...prev, [colId]: !prev[colId] }))}
+            />
             {reorderableColumns.length > 0 && (
               <div className="timing-column-order">
                 <span className="field-label">{t('admin_timing_column_order')}</span>

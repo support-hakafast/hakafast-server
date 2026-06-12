@@ -9,11 +9,19 @@ import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useDraggableResizable, getPreviewWindowDefaults } from '../hooks/useDraggableResizable.js';
 import LiveTimingTable from './LiveTimingTable.jsx';
 import LiveAssignmentsBoard from './LiveAssignmentsBoard.jsx';
+import TimingColumnsPicker from './TimingColumnsPicker.jsx';
 import { normalizeTimingColumns, normalizeTimingColumnOrder } from '../utils/liveTimingColumns.js';
 
-export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-demo' }) {
+export default function LivePreviewFloat({
+  onClose,
+  heatType,
+  trackSlug = 'kart-demo',
+  timingColumns: timingColumnsProp,
+  onToggleTimingColumn,
+}) {
   const { t } = useLanguage();
   const [mode, setMode] = React.useState('assignments');
+  const [showColumnPicker, setShowColumnPicker] = React.useState(false);
   const trackId = resolveTrackId(trackSlug);
 
   const [compact, setCompact] = React.useState(
@@ -58,8 +66,9 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
     fetchFallback,
   });
 
-  const cols = normalizeTimingColumns(timingColumns);
+  const cols = normalizeTimingColumns(timingColumnsProp ?? timingColumns);
   const columnOrder = normalizeTimingColumnOrder(timingColumnOrder);
+  const canPickColumns = mode === 'timing' && timingColumnsProp && onToggleTimingColumn;
 
   const flashingKeys = useRowFlash(
     rows,
@@ -94,10 +103,31 @@ export default function LivePreviewFloat({ onClose, heatType, trackSlug = 'kart-
           >
             {t('live_mode_timing')}
           </button>
+          {canPickColumns && (
+            <button
+              type="button"
+              className={`live-preview-cols-btn${showColumnPicker ? ' active' : ''}`}
+              onClick={() => setShowColumnPicker((v) => !v)}
+              title={t('admin_timing_columns')}
+            >
+              ▦
+            </button>
+          )}
         </div>
         <button type="button" className="live-preview-close" onClick={onClose} onPointerDown={(e) => e.stopPropagation()}>×</button>
       </div>
       <div className="live-preview-body live-display theme-dark">
+        {canPickColumns && showColumnPicker && (
+          <div className="live-preview-columns-picker">
+            <TimingColumnsPicker
+              t={t}
+              compact
+              heatType={heatType}
+              timingColumns={timingColumnsProp}
+              onToggleColumn={onToggleTimingColumn}
+            />
+          </div>
+        )}
         <div key={mode} className="live-content-panel">
           {rows.length === 0 ? (
             <p className="live-preview-empty">{t('live_waiting')}</p>

@@ -1,8 +1,12 @@
 import React, { useMemo, useState } from 'react';
+import EnduranceTeamsEditor from './EnduranceTeamsEditor.jsx';
 import {
+  driverDisplayName,
+  normalizeGroupDrivers,
   parseRaceGroupsText,
   serializeGroupsText,
   summarizeRaceEvent,
+  teamRecordsToGroups,
 } from '../utils/raceEventHelpers.js';
 
 export default function ProRaceEventModal({
@@ -16,7 +20,11 @@ export default function ProRaceEventModal({
 }) {
   const [eventType, setEventType] = useState(initialType === 'sprint' ? 'sprint' : 'endurance');
   const [eventName, setEventName] = useState(draft?.name || '');
+  const [groups, setGroups] = useState(() => (
+    draft?.groups?.length ? draft.groups : [{ name: '', drivers: [{ name: '', starter: true }] }]
+  ));
   const [groupsText, setGroupsText] = useState(draft?.groupsText || '');
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [enduranceHours, setEnduranceHours] = useState(String(draft?.enduranceHours ?? 1));
   const [enduranceMinutes, setEnduranceMinutes] = useState(String(draft?.enduranceMinutes ?? 0));
   const [stintMinutes, setStintMinutes] = useState(String(draft?.stintMinutes ?? 45));
@@ -27,30 +35,43 @@ export default function ProRaceEventModal({
   const [turnoverSec, setTurnoverSec] = useState(String(draft?.turnoverSec ?? 120));
   const [enduranceRules, setEnduranceRules] = useState(draft?.enduranceRules || '');
 
-  const parsed = useMemo(
-    () => parseRaceGroupsText(groupsText, { mode: eventType }),
-    [groupsText, eventType],
+  const sprintParsed = useMemo(
+    () => parseRaceGroupsText(groupsText, { mode: 'sprint' }),
+    [groupsText],
   );
+
+  const normalizedGroups = useMemo(() => {
+    if (eventType === 'endurance') return teamRecordsToGroups(groups);
+    return sprintParsed.groups;
+  }, [eventType, groups, sprintParsed.groups]);
 
   const preview = useMemo(() => summarizeRaceEvent({
     type: eventType,
-    groups: parsed.groups,
+    groups: normalizedGroups,
     stintMinutes,
     driverChangeSec,
     turnoverSec,
-  }), [eventType, parsed.groups, stintMinutes, driverChangeSec, turnoverSec]);
+  }), [eventType, normalizedGroups, stintMinutes, driverChangeSec, turnoverSec]);
+
+  const importBulkText = () => {
+    const parsed = parseRaceGroupsText(groupsText, { mode: 'endurance' });
+    if (parsed.groups.length) {
+      setGroups(parsed.groups);
+      setShowBulkImport(false);
+    }
+  };
 
   const handleApply = () => {
-    if (!parsed.groups.length) return;
+    if (!normalizedGroups.length) return;
     onApply({
       type: eventType,
       name: eventName.trim(),
-      groupsText: serializeGroupsText(parsed.groups),
-      groups: parsed.groups,
+      groupsText: serializeGroupsText(normalizedGroups),
+      groups: normalizedGroups,
       enduranceHours: parseInt(enduranceHours, 10) || 0,
       enduranceMinutes: parseInt(enduranceMinutes, 10) || 0,
-      stintMinutes: parseInt(stintMinutes, 10) || 45,
-      driverChangeSec: parseInt(driverChangeSec, 10) || 90,
+      stintMinutes: parseInt(stintMinutes, 10) || 0,
+      driverChangeSec: parseInt(driverChangeSec, 10) || 0,
       targetLaps: parseInt(targetLaps, 10) || 12,
       formationLaps: parseInt(formationLaps, 10) || 0,
       startMode,
@@ -62,7 +83,7 @@ export default function ProRaceEventModal({
   };
 
   const isEndurance = eventType === 'endurance';
-  const canApply = parsed.groups.length > 0 && !isSaving;
+  const canApply = normalizedGroups.length > 0 && !isSaving;
 
   return (
     <div className="admin-modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
@@ -107,7 +128,7 @@ export default function ProRaceEventModal({
         </div>
 
         <div className="pro-race-event-panel">
-          <label className="planner-field">
+          <label className="planner-field planner-field-compact">
             <span>{t('admin_pro_event_name')}</span>
             <input
               type="text"
@@ -117,32 +138,57 @@ export default function ProRaceEventModal({
             />
           </label>
 
-          <label className="planner-field">
-            <span>{isEndurance ? t('admin_pro_event_groups_endurance') : t('admin_pro_event_groups_sprint')}</span>
-            <textarea
-              className="pro-event-groups-text"
-              rows={8}
-              value={groupsText}
-              onChange={(e) => setGroupsText(e.target.value)}
-              placeholder={isEndurance ? t('admin_pro_event_groups_endurance_ph') : t('admin_pro_event_groups_sprint_ph')}
-            />
-          </label>
-          <p className="pro-event-groups-hint">
-            {isEndurance ? t('admin_pro_event_groups_endurance_hint') : t('admin_pro_event_groups_sprint_hint')}
-          </p>
+          {isEndurance ? (
+            <>
+              <EnduranceTeamsEditor t={t} groups={groups} onChange={setGroups} showBulkImport={false} />
+              <details className="endurance-bulk-import" open={showBulkImport} onToggle={(e) => setShowBulkImport(e.target.open)}>
+                <summary>{t('admin_endurance_bulk_import')}</summary>
+                <textarea
+                  className="pro-event-groups-text"
+                  rows={4}
+                  value={groupsText}
+                  onChange={(e) => setGroupsText(e.target.value)}
+                  placeholder={t('admin_pro_event_groups_endurance_ph')}
+                />
+                <p className="pro-event-groups-hint">{t('admin_pro_event_groups_endurance_hint')}</p>
+                <button type="button" className="btn-muted endurance-bulk-apply" onClick={importBulkText}>
+                  {t('admin_endurance_bulk_apply')}
+                </button>
+              </details>
+            </>
+          ) : (
+            <>
+              <label className="planner-field">
+                <span>{t('admin_pro_event_groups_sprint')}</span>
+                <textarea
+                  className="pro-event-groups-text"
+                  rows={6}
+                  value={groupsText}
+                  onChange={(e) => setGroupsText(e.target.value)}
+                  placeholder={t('admin_pro_event_groups_sprint_ph')}
+                />
+              </label>
+              <p className="pro-event-groups-hint">{t('admin_pro_event_groups_sprint_hint')}</p>
+            </>
+          )}
 
-          {parsed.errors.length > 0 && (
+          {!isEndurance && sprintParsed.errors.length > 0 && (
             <p className="pro-event-parse-warning">{t('admin_pro_event_parse_warning')}</p>
           )}
 
-          {preview && parsed.groups.length > 0 && (
+          {preview && normalizedGroups.length > 0 && (
             <div className="pro-event-preview">
               <span className="field-label">{t('admin_pro_event_preview')}</span>
               <ul className="pro-event-preview-list">
-                {parsed.groups.map((g) => (
+                {normalizedGroups.map((g) => (
                   <li key={g.name}>
                     <strong>{g.name}</strong>
-                    <span>{g.drivers.join(' · ')}</span>
+                    <span>
+                      {normalizeGroupDrivers(g.drivers).map((d) => {
+                        const label = driverDisplayName(d);
+                        return d.starter ? `${label} ★` : label;
+                      }).join(' · ')}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -164,8 +210,8 @@ export default function ProRaceEventModal({
           )}
 
           {isEndurance ? (
-            <div className="pro-event-settings-grid">
-              <div className="endurance-row">
+            <div className="pro-event-settings-grid pro-event-settings-compact">
+              <div className="pro-event-settings-row">
                 <label className="endurance-field">
                   <span className="endurance-field-label">{t('admin_hours_placeholder')}</span>
                   <input type="number" min="0" value={enduranceHours} onChange={(e) => setEnduranceHours(e.target.value)} />
@@ -174,45 +220,49 @@ export default function ProRaceEventModal({
                   <span className="endurance-field-label">{t('admin_minutes_placeholder')}</span>
                   <input type="number" min="0" max="59" value={enduranceMinutes} onChange={(e) => setEnduranceMinutes(e.target.value)} />
                 </label>
+                <label className="endurance-field">
+                  <span className="endurance-field-label">{t('admin_pro_event_stint_min')}</span>
+                  <input type="number" min="0" value={stintMinutes} onChange={(e) => setStintMinutes(e.target.value)} />
+                </label>
+                <label className="endurance-field">
+                  <span className="endurance-field-label">{t('admin_pro_event_driver_change_sec')}</span>
+                  <input type="number" min="0" value={driverChangeSec} onChange={(e) => setDriverChangeSec(e.target.value)} />
+                </label>
               </div>
-              <label className="planner-field">
-                <span>{t('admin_pro_event_stint_min')}</span>
-                <input type="number" min="1" value={stintMinutes} onChange={(e) => setStintMinutes(e.target.value)} />
-              </label>
-              <label className="planner-field">
-                <span>{t('admin_pro_event_driver_change_sec')}</span>
-                <input type="number" min="15" value={driverChangeSec} onChange={(e) => setDriverChangeSec(e.target.value)} />
-              </label>
-              <label className="planner-field">
-                <span>{t('admin_formation_laps')}</span>
-                <input type="number" min="0" max="5" value={formationLaps} onChange={(e) => setFormationLaps(e.target.value)} />
-              </label>
-              <label className="planner-field">
-                <span>{t('admin_start_mode')}</span>
-                <select value={startMode} onChange={(e) => setStartMode(e.target.value)}>
-                  <option value="grid">{t('admin_start_grid')}</option>
-                  <option value="le_mans">{t('admin_start_le_mans')}</option>
-                </select>
-              </label>
-              <label className="planner-field">
+              <div className="pro-event-settings-row">
+                <label className="endurance-field">
+                  <span className="endurance-field-label">{t('admin_formation_laps')}</span>
+                  <input type="number" min="0" max="5" value={formationLaps} onChange={(e) => setFormationLaps(e.target.value)} />
+                </label>
+                <label className="endurance-field endurance-field-grow">
+                  <span className="endurance-field-label">{t('admin_start_mode')}</span>
+                  <select value={startMode} onChange={(e) => setStartMode(e.target.value)}>
+                    <option value="grid">{t('admin_start_grid')}</option>
+                    <option value="le_mans">{t('admin_start_le_mans')}</option>
+                  </select>
+                </label>
+              </div>
+              <label className="planner-field planner-field-compact">
                 <span>{t('admin_endurance_rules')}</span>
-                <textarea rows={3} value={enduranceRules} onChange={(e) => setEnduranceRules(e.target.value)} />
+                <textarea rows={2} value={enduranceRules} onChange={(e) => setEnduranceRules(e.target.value)} />
               </label>
             </div>
           ) : (
-            <div className="pro-event-settings-grid">
-              <label className="planner-field">
-                <span>{t('admin_laps_placeholder')}</span>
-                <input type="number" min="1" value={targetLaps} onChange={(e) => setTargetLaps(e.target.value)} />
-              </label>
-              <label className="planner-field">
-                <span>{t('admin_formation_laps')}</span>
-                <input type="number" min="0" max="5" value={formationLaps} onChange={(e) => setFormationLaps(e.target.value)} />
-              </label>
-              <label className="planner-field">
-                <span>{t('admin_pro_event_turnover_sec')}</span>
-                <input type="number" min="0" value={turnoverSec} onChange={(e) => setTurnoverSec(e.target.value)} />
-              </label>
+            <div className="pro-event-settings-grid pro-event-settings-compact">
+              <div className="pro-event-settings-row">
+                <label className="endurance-field">
+                  <span className="endurance-field-label">{t('admin_laps_placeholder')}</span>
+                  <input type="number" min="1" value={targetLaps} onChange={(e) => setTargetLaps(e.target.value)} />
+                </label>
+                <label className="endurance-field">
+                  <span className="endurance-field-label">{t('admin_formation_laps')}</span>
+                  <input type="number" min="0" max="5" value={formationLaps} onChange={(e) => setFormationLaps(e.target.value)} />
+                </label>
+                <label className="endurance-field">
+                  <span className="endurance-field-label">{t('admin_pro_event_turnover_sec')}</span>
+                  <input type="number" min="0" value={turnoverSec} onChange={(e) => setTurnoverSec(e.target.value)} />
+                </label>
+              </div>
             </div>
           )}
         </div>

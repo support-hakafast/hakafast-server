@@ -73,6 +73,43 @@
   color: #000080;
 }
 
+.live-preview-cols-btn {
+  flex: 0 0 auto;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.live-preview-cols-btn.active {
+  background: #40e0d0;
+  color: #000080;
+}
+
+.live-preview-columns-picker {
+  flex-shrink: 0;
+  padding: 0.45rem 0.55rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.live-preview-columns-picker .timing-chip {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.live-preview-columns-picker .timing-chip.active {
+  background: #40e0d0;
+  color: #000080;
+}
+
 .live-preview-close {
   border: none;
   background: transparent;
