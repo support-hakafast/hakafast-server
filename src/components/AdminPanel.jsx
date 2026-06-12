@@ -1983,7 +1983,7 @@ const AdminPanel = () => {
                 )}
               </div>
 
-              <div className="heat-session-drivers">
+              <div className="heat-session-drivers" data-tour="driver-register">
                 <h2>{t('admin_register_title')}</h2>
                 <div className="section-box">
                   <label>{t('admin_req_label')}</label>

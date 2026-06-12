@@ -10,7 +10,7 @@ const CORE_STEPS = [
   { id: 'warehouse', targets: ['warehouse-numbers', 'warehouse-single-numbers'], interactive: true },
   { id: 'pits', targets: ['inventory-pits-flow'], interactive: true },
   { id: 'heat-settings', target: 'heat-settings', interactive: true },
-  { id: 'drivers', target: 'drivers', interactive: true },
+  { id: 'drivers', target: 'driver-register', interactive: true },
   { id: 'execute', target: 'execute', interactive: true, clickTarget: true },
   { id: 'preview', target: 'preview-trigger', interactive: true, clickTarget: true },
   { id: 'planner', target: 'planner-trigger', interactive: true, clickTarget: true },
@@ -264,6 +264,14 @@ export default function AdminWalkthrough({
     && confirmPassword.length > 0
     && password !== confirmPassword;
 
+  const cardPlacementClass = useMemo(() => {
+    if (!spotlight) return 'is-centered';
+    const cardReserve = 260;
+    const bottom = spotlight.top + spotlight.height;
+    if (bottom > window.innerHeight - cardReserve) return 'has-spotlight-top';
+    return 'has-spotlight';
+  }, [spotlight]);
+
   return (
     <div className="admin-tour-root" dir={dir} role="dialog" aria-modal="true" aria-labelledby="admin-tour-title">
       {showCutout ? (
@@ -274,7 +282,7 @@ export default function AdminWalkthrough({
       <div
         className={[
           'admin-tour-card',
-          hasSpotlight ? 'has-spotlight' : 'is-centered',
+          cardPlacementClass,
           isFormStep ? 'has-form' : '',
           canGoBack ? 'has-back' : '',
         ].filter(Boolean).join(' ')}

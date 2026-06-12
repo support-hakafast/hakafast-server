@@ -63,12 +63,23 @@ export function normalizeKartTypes(raw) {
     .filter((t) => t.name);
 }
 
-export function createEmptyKartType(index = 0) {
+export function pickDefaultKartColor(existingTypes = [], index = 0) {
+  const used = new Set(
+    existingTypes
+      .map((t) => (t?.color || '').toLowerCase())
+      .filter((c) => /^#[0-9a-f]{6}$/.test(c)),
+  );
+  const preset = KART_COLOR_PRESETS.find((hex) => !used.has(hex.toLowerCase()));
+  if (preset) return preset.toLowerCase();
+  return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+}
+
+export function createEmptyKartType(index = 0, existingTypes = []) {
   return {
     id: `kart-type-${Date.now()}-${index}`,
     name: '',
     engineCc: '',
-    color: sanitizeKartColor('', index),
+    color: pickDefaultKartColor(existingTypes, index),
   };
 }
 

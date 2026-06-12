@@ -1359,7 +1359,7 @@ html:has(.admin-no-scroll) body {
 }
 
 .admin-modal-overlay--tour {
-  z-index: 13002;
+  z-index: 13205;
   pointer-events: none;
 }
 
@@ -2787,7 +2787,7 @@ html:has(.admin-no-scroll) body {
 .kart-type-mini-overlay {
   position: fixed;
   inset: 0;
-  z-index: 13150;
+  z-index: 13300;
   pointer-events: auto;
   display: grid;
   place-items: center;
@@ -2845,6 +2845,29 @@ html:has(.admin-no-scroll) body {
 .kart-color-swatch-btn.is-selected {
   border-color: var(--navy);
   box-shadow: 0 0 0 2px #40e0d0;
+}
+
+.kart-color-swatch-btn.is-taken {
+  opacity: 0.35;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.kart-color-swatch-btn.is-taken::after {
+  content: '×';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.85);
+}
+
+.kart-color-apply-btn {
+  margin-top: 0.45rem;
+  width: 100%;
 }
 
 .kart-color-custom-input {

@@ -1,11 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useDialog } from '../i18n/DialogContext.jsx';
 import {
   createEmptyKartType,
   formatKartTypeLabel,
   KART_COLOR_PRESETS,
-  sanitizeKartColor,
 } from '../utils/kartTypes.js';
+
+function normalizeHexColor(hex) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex || '')) return null;
+  return hex.toLowerCase();
+}
+
+function isKartColorUsedByOther(types, index, hex) {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) return false;
+  return types.some((row, i) => i !== index && (row.color || '').toLowerCase() === normalized);
+}
 
 function KartTypeMiniModal({ title, onClose, children }) {
   useEffect(() => {
@@ -31,35 +42,59 @@ function KartTypeMiniModal({ title, onClose, children }) {
   );
 }
 
-function ColorPickerModal({ t, type, index, onPick, onClose }) {
+function ColorPickerModal({ t, type, index, types, onPick, onClose, onDuplicateColor }) {
   const customInputRef = useRef(null);
   const label = formatKartTypeLabel(type) || t('admin_kart_type_color');
+  const normalizedCurrent = (type.color || '').toLowerCase();
+
+  const tryApply = (hex) => {
+    if (isKartColorUsedByOther(types, index, hex)) {
+      onDuplicateColor?.();
+      return;
+    }
+    onPick(index, hex);
+    onClose();
+  };
 
   return (
     <KartTypeMiniModal title={t('admin_kart_type_color_pick', { label })} onClose={onClose}>
       <div className="kart-color-palette" role="listbox" aria-label={t('admin_kart_type_color')}>
-        {KART_COLOR_PRESETS.map((hex) => (
+        {KART_COLOR_PRESETS.map((hex) => {
+          const normalized = hex.toLowerCase();
+          const taken = isKartColorUsedByOther(types, index, hex);
+          return (
           <button
             key={hex}
             type="button"
             role="option"
-            aria-selected={type.color === hex}
-            className={`kart-color-swatch-btn${type.color === hex ? ' is-selected' : ''}`}
+            aria-selected={normalizedCurrent === normalized}
+            aria-disabled={taken || undefined}
+            disabled={taken}
+            className={[
+              'kart-color-swatch-btn',
+              normalizedCurrent === normalized ? 'is-selected' : '',
+              taken ? 'is-taken' : '',
+            ].filter(Boolean).join(' ')}
             style={{ backgroundColor: hex }}
-            title={hex}
-            onClick={() => {
-              onPick(index, hex);
-              onClose();
-            }}
+            title={taken ? t('admin_kart_color_already_used') : hex}
+            onClick={() => tryApply(hex)}
           />
-        ))}
+          );
+        })}
       </div>
       <input
         ref={customInputRef}
         type="color"
         className="kart-color-custom-input"
         value={type.color}
-        onChange={(e) => onPick(index, e.target.value)}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (isKartColorUsedByOther(types, index, next)) {
+            onDuplicateColor?.();
+            return;
+          }
+          onPick(index, next);
+        }}
         aria-hidden
         tabIndex={-1}
       />
@@ -69,6 +104,13 @@ function ColorPickerModal({ t, type, index, onPick, onClose }) {
         onClick={() => customInputRef.current?.click()}
       >
         {t('admin_kart_type_color_custom')}
+      </button>
+      <button
+        type="button"
+        className="kart-type-mini-submit kart-color-apply-btn"
+        onClick={onClose}
+      >
+        {t('modal_ok')}
       </button>
     </KartTypeMiniModal>
   );
@@ -131,6 +173,7 @@ export default function KartTypesEditor({
   onNumbersChange,
   onAddModel,
 }) {
+  const { showAlert } = useDialog();
   const [colorModalIndex, setColorModalIndex] = useState(null);
   const [addModalTypeId, setAddModalTypeId] = useState(null);
 
@@ -144,13 +187,19 @@ export default function KartTypesEditor({
   };
 
   const addType = () => {
-    const draft = createEmptyKartType(types.length);
+    const draft = createEmptyKartType(types.length, types);
     draft.name = t('admin_kart_type_new_default', { n: types.length + 1 });
     onChange([...types, draft]);
   };
 
   const handleColorChange = (index, rawColor) => {
-    updateType(index, { color: sanitizeKartColor(rawColor, index) });
+    const hex = normalizeHexColor(rawColor);
+    if (!hex) return;
+    if (isKartColorUsedByOther(types, index, hex)) {
+      showAlert(t('admin_kart_color_already_used'));
+      return;
+    }
+    updateType(index, { color: hex });
   };
 
   const addModalType = addModalTypeId
@@ -259,7 +308,9 @@ export default function KartTypesEditor({
           t={t}
           type={types[colorModalIndex]}
           index={colorModalIndex}
+          types={types}
           onPick={handleColorChange}
+          onDuplicateColor={() => showAlert(t('admin_kart_color_already_used'))}
           onClose={() => setColorModalIndex(null)}
         />,
         document.body,
