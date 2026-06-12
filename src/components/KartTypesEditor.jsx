@@ -203,19 +203,22 @@ export default function KartTypesEditor({
                 />
               </div>
               {showNumbers && (
-                <input
-                  type="text"
-                  className={`kart-type-numbers-input${inventoryCompact ? ' kart-type-numbers-input-compact' : ''}`}
-                  value={numbersByType[type.id] || ''}
-                  onChange={(e) => onNumbersChange?.(type.id, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      onAddModel?.(type.id);
-                    }
-                  }}
-                  placeholder={t('admin_kart_type_numbers_ph')}
-                />
+                <label className="kart-type-numbers-field">
+                  <span className="kart-type-numbers-field-label">{t('admin_kart_numbers_by_model')}</span>
+                  <input
+                    type="text"
+                    className={`kart-type-numbers-input${inventoryCompact ? ' kart-type-numbers-input-compact' : ''}`}
+                    value={numbersByType[type.id] || ''}
+                    onChange={(e) => onNumbersChange?.(type.id, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        onAddModel?.(type.id);
+                      }
+                    }}
+                    placeholder={t('admin_kart_type_numbers_ph')}
+                  />
+                </label>
               )}
             </div>
             <div className="kart-type-row-actions">

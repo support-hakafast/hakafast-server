@@ -7,8 +7,8 @@ import '../assets/AdminWalkthrough.css';
 
 const CORE_STEPS = [
   { id: 'welcome', target: null, interactive: false },
-  { id: 'warehouse', target: 'warehouse', interactive: true },
-  { id: 'pits', target: 'pits', interactive: true },
+  { id: 'warehouse', targets: ['warehouse-numbers', 'warehouse-single-numbers'], interactive: true },
+  { id: 'pits', targets: ['inventory-pits-flow'], interactive: true },
   { id: 'heat-settings', target: 'heat-settings', interactive: true },
   { id: 'drivers', target: 'drivers', interactive: true },
   { id: 'execute', target: 'execute', interactive: true, clickTarget: true },
