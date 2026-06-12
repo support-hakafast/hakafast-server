@@ -1712,7 +1712,7 @@ const AdminPanel = () => {
 
       <div className="admin-workspace">
         <section className="admin-pits-column">
-          <div className="inventory-pits-panel" data-tour="pits">
+          <div className="inventory-pits-panel">
             <div className="warehouse-zone" data-tour="warehouse">
               <div className="warehouse-zone-head">
                 <h2>{t('admin_warehouse')}</h2>
@@ -1797,7 +1797,7 @@ const AdminPanel = () => {
                 ))}
               </div>
             </div>
-            <div className="pits-zone">
+            <div className="pits-zone" data-tour="pits">
               <div className="panel-head-row">
                 <h2>{t('admin_pits_title')}</h2>
                 <button type="button" className="btn-purple" onClick={addNewLane}>{t('admin_add_lane')}</button>

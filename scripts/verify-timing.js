@@ -1271,7 +1271,7 @@ function testDayPlanCapacity() {
   }, { competitiveHeats: 2 });
   assert(plan.maxSessionHeats === 48, `expected 48 session heats, got ${plan.maxSessionHeats}`);
   assert(plan.maxSessionHeatsAfterCompetitive === 41, `expected 41 after competitive, got ${plan.maxSessionHeatsAfterCompetitive}`);
-  assert(plan.estimatedRevenueAfterCompetitive === 4100, 'revenue estimate');
+  assert(plan.estimatedRevenueAfterCompetitive === 32800, 'revenue estimate');
 
   const overnight = calculateDayPlan({
     openingTime: '08:00',
@@ -1284,7 +1284,7 @@ function testDayPlanCapacity() {
   }, { competitiveHeats: 0 });
   assert(overnight.maxSessionHeats === 64, `overnight max heats expected 64, got ${overnight.maxSessionHeats}`);
   assert(overnight.estimatedRidersAfterCompetitive === 448, 'overnight riders');
-  assert(overnight.estimatedRevenueAfterCompetitive === 19200, 'overnight revenue');
+  assert(overnight.estimatedRevenueAfterCompetitive === 134400, 'overnight revenue');
 }
 
 async function main() {

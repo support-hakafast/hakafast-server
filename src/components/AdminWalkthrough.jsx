@@ -150,6 +150,22 @@ export default function AdminWalkthrough({
     };
   }, [updateSpotlight]);
 
+  useEffect(() => {
+    document.querySelectorAll('.admin-tour-spotlight-target').forEach((el) => {
+      el.classList.remove('admin-tour-spotlight-target');
+    });
+    if (step.interactive && tourTargetIds.length) {
+      tourTargetIds.forEach((id) => {
+        document.querySelector(`[data-tour="${id}"]`)?.classList.add('admin-tour-spotlight-target');
+      });
+    }
+    return () => {
+      document.querySelectorAll('.admin-tour-spotlight-target').forEach((el) => {
+        el.classList.remove('admin-tour-spotlight-target');
+      });
+    };
+  }, [step.interactive, tourTargetIds, stepId]);
+
   const submitFirstRunSetup = async (skipped = false) => {
     setSaving(true);
     try {
@@ -230,7 +246,8 @@ export default function AdminWalkthrough({
   const isLast = stepIndex >= steps.length - 1;
   const canGoBack = stepIndex > 0;
   const hasSpotlight = Boolean(spotlight);
-  const isInteractive = step.interactive && hasSpotlight;
+  const isInteractive = Boolean(step.interactive && tourTargetIds.length);
+  const showCutout = isInteractive && hasSpotlight;
   const isFormStep = stepId === 'security';
   const isClickStep = Boolean(step.clickTarget && isInteractive && !panelOpen);
 
@@ -249,11 +266,11 @@ export default function AdminWalkthrough({
 
   return (
     <div className="admin-tour-root" dir={dir} role="dialog" aria-modal="true" aria-labelledby="admin-tour-title">
-      {isInteractive ? (
+      {showCutout ? (
         <TourCutout rect={spotlight} clickTarget={step.clickTarget} />
-      ) : (
+      ) : !isInteractive ? (
         <div className="admin-tour-overlay" aria-hidden />
-      )}
+      ) : null}
       <div
         className={[
           'admin-tour-card',

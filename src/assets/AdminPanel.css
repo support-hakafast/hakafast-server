@@ -2713,6 +2713,12 @@ html:has(.admin-no-scroll) body {
   font-size: 1rem;
 }
 
+.kart-types-editor-inventory-compact .kart-type-numbers-input-compact {
+  width: 100%;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.35rem;
+}
+
 .kart-type-mini-overlay {
   position: fixed;
   inset: 0;
@@ -3399,6 +3405,155 @@ html:has(.admin-no-scroll) body {
 
 .admin-theme-dark .admin-modal-light .endurance-starter-mark {
   color: #64748b;
+}
+
+/* Dark mode — pit lanes (waiting / exit zones stayed white) */
+.admin-theme-dark .lane-waiting-zone {
+  background: var(--admin-surface-raised);
+  border: 1px solid var(--admin-border);
+}
+
+.admin-theme-dark .lane-exit-zone {
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.28) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border-color: rgba(64, 224, 208, 0.35);
+}
+
+.admin-theme-dark .lane.drag-over,
+.admin-theme-dark .lane.disabled-lane.drag-over {
+  background: rgba(64, 224, 208, 0.12);
+  border-color: var(--turquoise);
+}
+
+.admin-theme-dark .lane-kart-grip {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark .lane-kart-slot.is-drop-target {
+  background: rgba(64, 224, 208, 0.16);
+}
+
+.admin-theme-dark .lane-zone-label,
+.admin-theme-dark .lane-empty-hint,
+.admin-theme-dark .on-track-laps {
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark .lane-header-input {
+  color: #f1f5f9;
+}
+
+.admin-theme-dark .pits-zone {
+  background: transparent;
+}
+
+.admin-theme-dark .security-toggle-row,
+.admin-theme-dark .kart-types-toggle-row {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+}
+
+.admin-theme-dark .kart-type-row-inventory {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+}
+
+.admin-theme-dark .kart-types-editor {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+.admin-theme-dark .kart-type-add-one,
+.admin-theme-dark .kart-type-remove {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: #99f6e4;
+}
+
+.admin-theme-dark .kart-type-add-one:hover:not(:disabled),
+.admin-theme-dark .kart-type-remove:hover:not(:disabled) {
+  background: rgba(64, 224, 208, 0.12);
+}
+
+.admin-theme-dark .panel-head-row .btn-purple,
+.admin-theme-dark .btn-purple {
+  color: #e9d5ff;
+}
+
+.admin-theme-dark .inventory-pits-panel {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  box-shadow: none;
+}
+
+.admin-theme-dark .kart-pool.drag-over,
+.admin-theme-dark .warehouse-kart-pool.drag-over {
+  outline-color: var(--turquoise);
+  background: rgba(64, 224, 208, 0.08);
+}
+
+.admin-theme-dark .kart-type-mini-modal,
+.admin-theme-dark .kart-type-mini-overlay .kart-type-mini-modal {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.admin-theme-dark .kart-type-mini-title {
+  color: #f1f5f9;
+}
+
+.admin-theme-dark .kart-type-mini-close {
+  background: var(--admin-surface-raised);
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark .kart-type-mini-cancel {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-theme-dark .kart-type-add-modal-hint {
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark .kart-types-editor-inventory-compact .kart-type-numbers-input-compact {
+  font-size: 0.72rem;
+  padding: 0.25rem 0.35rem;
+}
+
+.admin-theme-dark .admin-tour-card {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+.admin-theme-dark .admin-tour-card h2 {
+  color: #99f6e4;
+}
+
+.admin-theme-dark .admin-tour-body,
+.admin-theme-dark .admin-tour-step-label,
+.admin-theme-dark .admin-tour-field span,
+.admin-theme-dark .admin-tour-field-hint {
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark .admin-tour-back {
+  color: var(--admin-text-muted);
+}
+
+.admin-theme-dark .admin-tour-back:hover:not(:disabled) {
+  background: var(--admin-surface-raised);
+  color: var(--admin-text);
+}
+
+.admin-theme-dark .admin-tour-field input {
+  background: var(--admin-surface-raised);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
 }
 
 @media (max-width: 640px) {

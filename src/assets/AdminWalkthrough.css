@@ -13,6 +13,11 @@
   z-index: 13001;
 }
 
+.admin-tour-spotlight-target {
+  position: relative;
+  z-index: 13002;
+}
+
 .admin-tour-overlay {
   inset: 0;
 }

@@ -202,10 +202,10 @@ export default function KartTypesEditor({
                   title={t('admin_kart_type_engine_hint')}
                 />
               </div>
-              {showNumbers && !inventoryCompact && (
+              {showNumbers && (
                 <input
                   type="text"
-                  className="kart-type-numbers-input"
+                  className={`kart-type-numbers-input${inventoryCompact ? ' kart-type-numbers-input-compact' : ''}`}
                   value={numbersByType[type.id] || ''}
                   onChange={(e) => onNumbersChange?.(type.id, e.target.value)}
                   onKeyDown={(e) => {
@@ -223,7 +223,7 @@ export default function KartTypesEditor({
                 <button
                   type="button"
                   className="kart-type-add-one"
-                  onClick={() => (inventoryCompact ? setAddModalTypeId(type.id) : onAddModel?.(type.id))}
+                  onClick={() => onAddModel?.(type.id)}
                   title={t('admin_add_inventory')}
                   aria-label={t('admin_add_inventory')}
                 >

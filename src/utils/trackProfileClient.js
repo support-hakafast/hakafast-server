@@ -21,7 +21,7 @@ export function calculateDayPlan(profile, options = {}) {
   const competitiveBlockMin = Math.max(1, Number(p.competitiveBlockMin) || 45);
   const turnoverMin = Math.max(0, Number(p.turnoverMin) || 0);
   const avgDrivers = Math.max(1, Number(p.avgDriversPerSession) || 8);
-  const heatPrice = Math.max(0, Number(p.pricePerSession) || 0);
+  const pricePerDriver = Math.max(0, Number(p.pricePerSession) || 0);
   const competitiveHeats = Math.max(0, Number(options.competitiveHeats) || 0);
 
   const openMinutes = getOperatingWindowMinutes(openMin, closeMin);
@@ -56,7 +56,7 @@ export function calculateDayPlan(profile, options = {}) {
     avgDriversPerSession: avgDrivers,
     estimatedRiders: maxSessionHeats * avgDrivers,
     estimatedRidersAfterCompetitive: maxSessionHeatsAfterCompetitive * avgDrivers,
-    estimatedRevenue: maxSessionHeats * heatPrice,
-    estimatedRevenueAfterCompetitive: maxSessionHeatsAfterCompetitive * heatPrice,
+    estimatedRevenue: maxSessionHeats * avgDrivers * pricePerDriver,
+    estimatedRevenueAfterCompetitive: maxSessionHeatsAfterCompetitive * avgDrivers * pricePerDriver,
   };
 }
