@@ -274,22 +274,24 @@
 .live-timing-header.is-compact {
   gap: 0.2rem;
   padding: 0.28rem 0.45rem 0.32rem;
-  padding-inline-start: 1.65rem;
-  position: relative;
 }
 
 .live-header-compact-top {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "home meta util";
   align-items: center;
   gap: 0.35rem;
   min-height: 1.5rem;
   min-width: 0;
 }
 
+[dir="rtl"] .live-header-compact-top {
+  grid-template-areas: "util meta home";
+}
+
 .live-header-home {
-  position: absolute;
-  left: 0.35rem;
-  top: 0.32rem;
+  grid-area: home;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -305,16 +307,20 @@
   flex-shrink: 0;
 }
 
+[dir="rtl"] .live-header-home {
+  transform: scaleX(-1);
+}
+
 .live-header-home:hover {
   background: rgba(255, 255, 255, 0.22);
 }
 
 .live-header-compact-meta {
+  grid-area: meta;
   display: flex;
   align-items: center;
   gap: 0.22rem;
   min-width: 0;
-  flex: 1;
   overflow: hidden;
 }
 
@@ -337,10 +343,16 @@
 }
 
 .live-header-compact-util {
+  grid-area: util;
   display: flex;
   align-items: center;
   gap: 0.22rem;
   flex-shrink: 0;
+  justify-self: end;
+}
+
+[dir="rtl"] .live-header-compact-util {
+  justify-self: start;
 }
 
 .live-timing-header.is-compact .live-theme-toggle {
