@@ -2125,6 +2125,7 @@ const AdminPanel = () => {
                   <label>{t('admin_req_label')}</label>
                   <input
                     type="text"
+                    dir="auto"
                     value={drName}
                     onChange={(e) => setDrName(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && canAddDriver) { e.preventDefault(); addDriverToQueue(); } }}
@@ -2135,6 +2136,7 @@ const AdminPanel = () => {
                     <>
                       <input
                         type="text"
+                        dir="auto"
                         value={drTeam}
                         onChange={(e) => setDrTeam(e.target.value)}
                         placeholder={t('admin_team_placeholder')}

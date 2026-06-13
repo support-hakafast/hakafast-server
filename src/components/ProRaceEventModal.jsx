@@ -153,6 +153,7 @@ export default function ProRaceEventModal({
             <span>{t('admin_pro_event_name')}</span>
             <input
               type="text"
+              dir="auto"
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               placeholder={t('admin_pro_event_name_ph')}
@@ -176,6 +177,7 @@ export default function ProRaceEventModal({
             <summary>{t('admin_endurance_bulk_import')}</summary>
             <textarea
               className="pro-event-groups-text"
+              dir="auto"
               rows={4}
               value={groupsText}
               onChange={(e) => setGroupsText(e.target.value)}

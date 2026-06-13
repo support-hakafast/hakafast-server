@@ -156,6 +156,7 @@ export default function EnduranceTeamsEditor({
                 <input
                   type="text"
                   className="endurance-team-name-input"
+                  dir="auto"
                   value={team.name}
                   onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
                   placeholder={t(nameLabelKey)}
@@ -164,6 +165,7 @@ export default function EnduranceTeamsEditor({
                 <input
                   type="text"
                   className="endurance-drivers-line-input"
+                  dir="auto"
                   value={team.driversLine}
                   onChange={(e) => updateTeam(teamIndex, { driversLine: e.target.value })}
                   placeholder={t('admin_endurance_drivers_line_ph')}
