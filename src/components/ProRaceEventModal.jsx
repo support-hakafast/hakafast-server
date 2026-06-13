@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import EnduranceTeamsEditor from './EnduranceTeamsEditor.jsx';
+import RaceEventSchedule from './RaceEventSchedule.jsx';
 import {
-  driverDisplayName,
-  normalizeGroupDrivers,
+  buildRaceSchedulePreview,
   parseRaceGroupsText,
   serializeGroupsText,
   summarizeRaceEvent,
@@ -25,7 +25,7 @@ export default function ProRaceEventModal({
     draft?.groups?.length ? draft.groups : [{ name: '', drivers: [{ name: '', starter: true }] }]
   ));
   const [groupsText, setGroupsText] = useState(draft?.groupsText || '');
-  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [importMessage, setImportMessage] = useState('');
   const [enduranceHours, setEnduranceHours] = useState(String(draft?.enduranceHours ?? 1));
   const [enduranceMinutes, setEnduranceMinutes] = useState(String(draft?.enduranceMinutes ?? 0));
   const [stintMinutes, setStintMinutes] = useState(String(draft?.stintMinutes ?? 45));
@@ -41,10 +41,7 @@ export default function ProRaceEventModal({
     [groupsText],
   );
 
-  const normalizedGroups = useMemo(() => {
-    if (eventType === 'endurance') return teamRecordsToGroups(groups);
-    return sprintParsed.groups;
-  }, [eventType, groups, sprintParsed.groups]);
+  const normalizedGroups = useMemo(() => teamRecordsToGroups(groups), [groups]);
 
   const modalThemeClass = darkMode ? 'admin-modal-dark' : 'admin-modal-light';
   const headerThemeClass = darkMode ? 'admin-modal-header-dark' : 'admin-modal-header-light';
@@ -57,12 +54,30 @@ export default function ProRaceEventModal({
     turnoverSec,
   }), [eventType, normalizedGroups, stintMinutes, driverChangeSec, turnoverSec]);
 
+  const scheduleItems = useMemo(() => buildRaceSchedulePreview({
+    type: eventType,
+    name: eventName,
+    groups: normalizedGroups,
+    enduranceHours,
+    enduranceMinutes,
+    stintMinutes,
+    turnoverSec,
+  }), [eventType, eventName, normalizedGroups, enduranceHours, enduranceMinutes, stintMinutes, turnoverSec]);
+
   const importBulkText = () => {
-    const parsed = parseRaceGroupsText(groupsText, { mode: 'endurance' });
+    const parsed = parseRaceGroupsText(groupsText, { mode: eventType });
     if (parsed.groups.length) {
       setGroups(parsed.groups);
-      setShowBulkImport(false);
+      setImportMessage('');
+    } else {
+      setImportMessage(t('admin_pro_event_parse_warning'));
     }
+  };
+
+  const handleGroupsChange = (nextGroups) => {
+    setGroups(nextGroups);
+    setGroupsText(serializeGroupsText(teamRecordsToGroups(nextGroups, { preserveEmpty: true })));
+    setImportMessage('');
   };
 
   const handleApply = () => {
@@ -142,60 +157,43 @@ export default function ProRaceEventModal({
             />
           </label>
 
-          {isEndurance ? (
-            <>
-              <EnduranceTeamsEditor t={t} groups={groups} onChange={setGroups} showBulkImport={false} />
-              <details className="endurance-bulk-import" open={showBulkImport} onToggle={(e) => setShowBulkImport(e.target.open)}>
-                <summary>{t('admin_endurance_bulk_import')}</summary>
-                <textarea
-                  className="pro-event-groups-text"
-                  rows={4}
-                  value={groupsText}
-                  onChange={(e) => setGroupsText(e.target.value)}
-                  placeholder={t('admin_pro_event_groups_endurance_ph')}
-                />
-                <p className="pro-event-groups-hint">{t('admin_pro_event_groups_endurance_hint')}</p>
-                <button type="button" className="btn-muted endurance-bulk-apply" onClick={importBulkText}>
-                  {t('admin_endurance_bulk_apply')}
-                </button>
-              </details>
-            </>
-          ) : (
-            <>
-              <label className="planner-field">
-                <span>{t('admin_pro_event_groups_sprint')}</span>
-                <textarea
-                  className="pro-event-groups-text"
-                  rows={6}
-                  value={groupsText}
-                  onChange={(e) => setGroupsText(e.target.value)}
-                  placeholder={t('admin_pro_event_groups_sprint_ph')}
-                />
-              </label>
-              <p className="pro-event-groups-hint">{t('admin_pro_event_groups_sprint_hint')}</p>
-            </>
+          <EnduranceTeamsEditor
+            t={t}
+            groups={groups}
+            eventType={eventType}
+            groupsLabelKey={isEndurance ? 'admin_pro_event_groups_endurance' : 'admin_pro_event_groups_sprint'}
+            onChange={handleGroupsChange}
+            onImportError={(msg) => setImportMessage(msg)}
+          />
+
+          {importMessage && (
+            <p className="pro-event-import-msg" role="status">{importMessage}</p>
           )}
 
-          {!isEndurance && sprintParsed.errors.length > 0 && (
+          <details className="endurance-bulk-import">
+            <summary>{t('admin_endurance_bulk_import')}</summary>
+            <textarea
+              className="pro-event-groups-text"
+              rows={4}
+              value={groupsText}
+              onChange={(e) => setGroupsText(e.target.value)}
+              placeholder={isEndurance ? t('admin_pro_event_groups_endurance_ph') : t('admin_pro_event_groups_sprint_ph')}
+            />
+            <p className="pro-event-groups-hint">
+              {isEndurance ? t('admin_pro_event_groups_endurance_hint') : t('admin_pro_event_groups_sprint_hint')}
+            </p>
+            <button type="button" className="btn-muted endurance-bulk-apply" onClick={importBulkText}>
+              {t('admin_endurance_bulk_apply')}
+            </button>
+          </details>
+
+          {!isEndurance && sprintParsed.errors.length > 0 && groupsText.trim() && (
             <p className="pro-event-parse-warning">{t('admin_pro_event_parse_warning')}</p>
           )}
 
           {preview && normalizedGroups.length > 0 && (
             <div className="pro-event-preview">
               <span className="field-label">{t('admin_pro_event_preview')}</span>
-              <ul className="pro-event-preview-list">
-                {normalizedGroups.map((g) => (
-                  <li key={g.name}>
-                    <strong>{g.name}</strong>
-                    <span>
-                      {normalizeGroupDrivers(g.drivers).map((d) => {
-                        const label = driverDisplayName(d);
-                        return d.starter ? `${label} ★` : label;
-                      }).join(' · ')}
-                    </span>
-                  </li>
-                ))}
-              </ul>
               <p className="pro-event-preview-stats">
                 {isEndurance
                   ? t('admin_pro_event_preview_endurance', {
@@ -212,6 +210,13 @@ export default function ProRaceEventModal({
               </p>
             </div>
           )}
+
+          <RaceEventSchedule
+            t={t}
+            items={scheduleItems}
+            eventType={eventType}
+            turnoverSec={parseInt(turnoverSec, 10) || 0}
+          />
 
           {isEndurance ? (
             <div className="pro-event-settings-grid pro-event-settings-compact">

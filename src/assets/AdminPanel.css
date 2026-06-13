@@ -789,6 +789,128 @@ html:has(.admin-no-scroll) body {
   margin: 0;
 }
 
+/* Simplified teams/heats table */
+.endurance-teams-simple .endurance-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.endurance-csv-input {
+  display: none;
+}
+
+.endurance-simple-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.endurance-simple-head,
+.endurance-simple-row {
+  display: grid;
+  grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr) 2rem;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.endurance-simple-head {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  padding: 0 0.15rem;
+}
+
+.endurance-simple-row {
+  padding: 0.35rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.endurance-drivers-line-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.race-event-schedule {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.race-event-schedule-list {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.race-event-schedule-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.race-event-schedule-order {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.race-event-schedule-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.race-event-schedule-body strong {
+  font-size: 0.88rem;
+  color: #1e293b;
+}
+
+.race-event-schedule-drivers {
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.race-event-schedule-note {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.pro-event-import-msg {
+  color: #b91c1c;
+  font-size: 0.82rem;
+  margin: 0.35rem 0;
+}
+
 .endurance-member-add {
   margin-top: 0.35rem;
   width: 100%;
@@ -2334,7 +2456,8 @@ html:has(.admin-no-scroll) body {
 .admin-modal-dark .field-label,
 .admin-modal-dark .planner-field span,
 .admin-modal-dark .endurance-field-label {
-  color: var(--admin-text-muted, #94a3b8);
+  color: #cbd5e1;
+  font-weight: 600;
 }
 
 .admin-modal-dark .planner-field input,
@@ -2345,7 +2468,8 @@ html:has(.admin-no-scroll) body {
 .admin-modal-dark select,
 .admin-modal-dark textarea,
 .admin-modal-dark .endurance-team-name-input,
-.admin-modal-dark .endurance-member-row input {
+.admin-modal-dark .endurance-member-row input,
+.admin-modal-dark .endurance-drivers-line-input {
   color: var(--admin-text, #e2e8f0);
   background: var(--admin-surface-raised, #1e293b);
   border: 1px solid var(--admin-border, #334155);
@@ -2405,9 +2529,17 @@ html:has(.admin-no-scroll) body {
   color: #fff;
 }
 
+.admin-modal-dark .race-event-schedule-body strong {
+  color: #e2e8f0;
+}
+
+.admin-modal-dark .race-event-schedule-drivers {
+  color: #94a3b8;
+}
+
 .admin-modal-dark .pro-event-groups-hint,
 .admin-modal-dark .pro-event-inline-hint {
-  color: var(--admin-text-muted, #94a3b8);
+  color: #a8b4c4;
 }
 
 .admin-modal-dark .pro-event-preview {
@@ -2446,7 +2578,80 @@ html:has(.admin-no-scroll) body {
 }
 
 .admin-modal-dark .endurance-members-head {
-  color: var(--admin-text-muted, #94a3b8);
+  color: #cbd5e1;
+}
+
+.admin-modal-dark .btn-muted {
+  background: #334155;
+  border: 1px solid #475569;
+  color: #e2e8f0;
+}
+
+.admin-modal-dark .btn-muted:hover:not(:disabled) {
+  background: #475569;
+  color: #fff;
+}
+
+.admin-modal-dark.track-planner-modal .planner-stat-card,
+.track-planner-modal.admin-modal-dark .planner-stat-card {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.admin-modal-dark.track-planner-modal .planner-stat-card strong,
+.track-planner-modal.admin-modal-dark .planner-stat-card strong {
+  color: #5eead4;
+}
+
+.admin-modal-dark.track-planner-modal .planner-stat-card span,
+.track-planner-modal.admin-modal-dark .planner-stat-card span {
+  color: #cbd5e1;
+}
+
+.admin-modal-dark.track-planner-modal .planner-stat-revenue strong,
+.track-planner-modal.admin-modal-dark .planner-stat-revenue strong {
+  color: #6ee7b7;
+}
+
+.admin-modal-dark.track-planner-modal .admin-modal-footer,
+.admin-modal-dark.track-planner-modal .track-planner-footer {
+  background: var(--admin-surface, #111827);
+  border-top-color: var(--admin-border, #334155);
+}
+
+.admin-modal-dark.track-planner-modal .track-planner-cancel,
+.track-planner-modal.admin-modal-dark .track-planner-cancel {
+  background: #475569;
+  color: #f8fafc;
+}
+
+.admin-modal-dark .pro-event-import-msg {
+  color: #fca5a5;
+  font-size: 0.82rem;
+  margin: 0.35rem 0;
+}
+
+.admin-modal-dark .race-event-schedule {
+  border-color: #334155;
+  background: #1e293b;
+}
+
+.admin-modal-dark .race-event-schedule-item {
+  border-color: #334155;
+}
+
+.admin-modal-dark .race-event-schedule-order {
+  background: #0f766e;
+  color: #fff;
+}
+
+.admin-modal-dark .endurance-simple-head {
+  color: #cbd5e1;
+}
+
+.admin-modal-dark .endurance-simple-row {
+  background: #1e293b;
+  border-color: #334155;
 }
 
 .admin-advanced-modal {

@@ -205,6 +205,183 @@ export function serializeGroupsText(groups) {
     .join('\n');
 }
 
+/** Parse "Yossi*, Dan (75), Mike" into driver entries. */
+export function parseDriversLine(text) {
+  return normalizeGroupDrivers(parseDriverNames(String(text || '')));
+}
+
+export function formatDriversLine(drivers) {
+  return normalizeGroupDrivers(drivers).map((d) => {
+    let part = d.name;
+    if (d.weightKg != null && d.weightKg > 0) part += `(${d.weightKg})`;
+    if (d.starter) part += '*';
+    return part;
+  }).join(', ');
+}
+
+function splitCsvRow(line) {
+  const cells = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if ((ch === ',' || ch === ';') && !inQuotes) {
+      cells.push(cur.trim());
+      cur = '';
+      continue;
+    }
+    cur += ch;
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+function normalizeCsvHeader(cell) {
+  return String(cell || '').trim().toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^\w\u0590-\u05ff]/g, '');
+}
+
+/** Parse CSV for teams/heats: wide (team,driver,weight,starter) or compact (team,drivers). */
+export function parseRaceGroupsCsv(text, options = {}) {
+  const mode = options.mode || 'endurance';
+  const rawLines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const groups = [];
+  const errors = [];
+  if (!rawLines.length) return { groups, errors };
+
+  const headerCells = splitCsvRow(rawLines[0]).map(normalizeCsvHeader);
+  const hasHeader = headerCells.some((h) => (
+    h.includes('team') || h.includes('קבוצה') || h.includes('heat') || h.includes('מקצה') || h.includes('driver') || h.includes('נהג')
+  ));
+  const dataLines = hasHeader ? rawLines.slice(1) : rawLines;
+  const headers = hasHeader ? headerCells : [];
+
+  const teamIdx = headers.findIndex((h) => h.includes('team') || h.includes('קבוצה') || h.includes('heat') || h.includes('מקצה'));
+  const driversIdx = headers.findIndex((h) => h.includes('drivers') || h.includes('נהגים') || h === 'driver_list');
+  const driverIdx = headers.findIndex((h) => h === 'driver' || h.includes('נהג') || h.includes('name'));
+  const weightIdx = headers.findIndex((h) => h.includes('weight') || h.includes('משקל') || h === 'kg');
+  const starterIdx = headers.findIndex((h) => h.includes('starter') || h.includes('מזנק') || h === 'start');
+
+  const teamMap = new Map();
+  let autoTeam = 1;
+
+  dataLines.forEach((line, lineIndex) => {
+    const cells = splitCsvRow(line);
+    if (!cells.some(Boolean)) return;
+
+    let teamName = '';
+    if (teamIdx >= 0) teamName = cells[teamIdx] || '';
+    else if (cells.length >= 2 && driverIdx < 0 && driversIdx < 0) teamName = cells[0];
+    else if (cells.length === 1) teamName = '';
+    else teamName = cells[0];
+
+    teamName = String(teamName || '').trim();
+    if (!teamName) {
+      teamName = mode === 'sprint' ? `Heat ${autoTeam}` : `Team ${autoTeam}`;
+      autoTeam += 1;
+    }
+
+    if (!teamMap.has(teamName)) {
+      teamMap.set(teamName, { name: teamName, drivers: [] });
+    }
+    const group = teamMap.get(teamName);
+
+    if (driversIdx >= 0 && cells[driversIdx]) {
+      parseDriversLine(cells[driversIdx]).forEach((d) => group.drivers.push(d));
+      return;
+    }
+
+    if (driverIdx >= 0 && cells[driverIdx]) {
+      const name = cells[driverIdx].trim();
+      const weightRaw = weightIdx >= 0 ? cells[weightIdx] : '';
+      const starterRaw = starterIdx >= 0 ? cells[starterIdx] : '';
+      const starter = /^(1|true|yes|y|★|\*|כן)$/i.test(String(starterRaw).trim()) || name.endsWith('*');
+      group.drivers.push({
+        name: name.replace(/\*$/, '').trim(),
+        weightKg: weightRaw === '' ? null : Math.max(0, Number(weightRaw) || 0),
+        starter,
+      });
+      return;
+    }
+
+    if (cells.length >= 2) {
+      parseDriversLine(cells.slice(1).join(',')).forEach((d) => group.drivers.push(d));
+      return;
+    }
+
+    const parsed = splitGroupLine(line);
+    if (parsed) {
+      if (teamMap.has(parsed.name) && parsed.name) {
+        parsed.drivers.forEach((d) => teamMap.get(parsed.name).drivers.push(d));
+      } else {
+        teamMap.set(parsed.name || teamName, { name: parsed.name || teamName, drivers: parsed.drivers });
+      }
+      return;
+    }
+
+    errors.push({ line: lineIndex + 1, message: 'bad_csv_row' });
+  });
+
+  teamMap.forEach((group) => {
+    group.drivers = normalizeGroupDrivers(group.drivers);
+    if (group.drivers.length) groups.push(group);
+  });
+
+  return { groups, errors };
+}
+
+export function buildRaceSchedulePreview(event) {
+  const normalized = normalizePlannedRaceEvent({
+    ...event,
+    groups: event?.groups || [],
+  });
+  if (!normalized?.groups?.length) return [];
+
+  if (normalized.type === 'sprint') {
+    const sessions = buildSessionsFromGroups(normalized.groups);
+    return sessions.map((session, index) => ({
+      order: index + 1,
+      title: session.name,
+      drivers: session.drivers,
+      note: index < sessions.length - 1
+        ? { turnoverSec: normalized.turnoverSec }
+        : null,
+    }));
+  }
+
+  const durationLabel = [
+    normalized.enduranceHours > 0 ? `${normalized.enduranceHours}h` : '',
+    normalized.enduranceMinutes > 0 ? `${normalized.enduranceMinutes}m` : '',
+  ].filter(Boolean).join(' ') || null;
+
+  return normalized.groups.map((group, index) => {
+    const drivers = normalizeGroupDrivers(group.drivers);
+    return {
+      order: index + 1,
+      title: group.name,
+      drivers: drivers.map((d) => ({
+        name: driverDisplayName(d),
+        starter: Boolean(d.starter),
+      })),
+      note: index === 0 && durationLabel
+        ? { duration: durationLabel, stintMin: normalized.stintMinutes }
+        : null,
+    };
+  });
+}
+
+export function raceGroupsCsvTemplate(mode = 'endurance') {
+  if (mode === 'sprint') {
+    return 'heat,drivers\nHeat 1,"Yossi*, Dani, Mike, Sara"\nHeat 2,"Oren, Noa, Gil"';
+  }
+  return 'team,driver,weight,starter\nTeam Alpha,Yossi,75,1\nTeam Alpha,Dani,80,0\nTeam Beta,Sara,65,1';
+}
+
 export function createEmptyRaceEvent(type = 'endurance') {
   return {
     type,
