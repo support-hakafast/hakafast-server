@@ -572,7 +572,8 @@
     "results_loading": "טוען…",
     "results_live": "מקצה פעיל — תוצאות ביניים",
     "results_not_found": "מקצה לא נמצא",
-    "results_back": "← כל המקצים"
+    "results_back": "← כל המקצים",
+    "admin_sprint_heat_name_ph": "שם מקצה"
   },
   "en": {
     "title": "HAKAFAST",
@@ -1147,7 +1148,8 @@
     "results_loading": "Loading…",
     "results_live": "Live heat — provisional results",
     "results_not_found": "Heat not found",
-    "results_back": "← All heats"
+    "results_back": "← All heats",
+    "admin_sprint_heat_name_ph": "Heat name"
   },
   "ar": {
     "title": "HAKAFAST",
@@ -1711,6 +1713,7 @@
     "results_loading": "جاري التحميل…",
     "results_live": "جولة مباشرة — نتائج مؤقتة",
     "results_not_found": "الجولة غير موجودة",
-    "results_back": "← كل الجولات"
+    "results_back": "← كل الجولات",
+    "admin_sprint_heat_name_ph": "اسم الجولة"
   }
 }

@@ -46,6 +46,7 @@ export default function EnduranceTeamsEditor({
 }) {
   const fileRef = useRef(null);
   const teams = groupsToTeamRecords(groups).map(teamToSimpleRecord);
+  const nameLabelKey = eventType === 'sprint' ? 'admin_sprint_heat_name_ph' : 'admin_endurance_team_name_ph';
 
   const updateTeams = (nextSimple) => {
     onChange(teamRecordsToGroups(
@@ -56,6 +57,12 @@ export default function EnduranceTeamsEditor({
 
   const updateTeam = (index, patch) => {
     updateTeams(teams.map((team, i) => (i === index ? { ...team, ...patch } : team)));
+  };
+
+  const setStarter = (teamIndex, starterName) => {
+    const drivers = parseDriversLine(teams[teamIndex].driversLine);
+    const driversLine = formatDriversLine(drivers.map((d) => ({ ...d, starter: d.name === starterName })));
+    updateTeam(teamIndex, { driversLine });
   };
 
   const addTeam = () => {
@@ -136,39 +143,61 @@ export default function EnduranceTeamsEditor({
 
       <div className="endurance-simple-table" role="table">
         <div className="endurance-simple-head" role="row">
-          <span role="columnheader">{t('admin_endurance_team_name_ph')}</span>
+          <span role="columnheader">{t(nameLabelKey)}</span>
           <span role="columnheader">{t('admin_endurance_drivers_line')}</span>
           <span role="columnheader" aria-hidden />
         </div>
-        {teams.map((team, teamIndex) => (
-          <div key={`team-${teamIndex}`} className="endurance-simple-row" role="row">
-            <input
-              type="text"
-              className="endurance-team-name-input"
-              value={team.name}
-              onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
-              placeholder={t('admin_endurance_team_name_ph')}
-              aria-label={t('admin_endurance_team_name_ph')}
-            />
-            <input
-              type="text"
-              className="endurance-drivers-line-input"
-              value={team.driversLine}
-              onChange={(e) => updateTeam(teamIndex, { driversLine: e.target.value })}
-              placeholder={t('admin_endurance_drivers_line_ph')}
-              aria-label={t('admin_endurance_drivers_line')}
-            />
-            <button
-              type="button"
-              className="endurance-team-remove"
-              onClick={() => removeTeam(teamIndex)}
-              disabled={teams.length <= 1}
-              aria-label={t('admin_endurance_remove_team')}
-            >
-              ×
-            </button>
-          </div>
-        ))}
+        {teams.map((team, teamIndex) => {
+          const drivers = eventType === 'endurance' ? parseDriversLine(team.driversLine) : [];
+          const starterName = drivers.find((d) => d.starter)?.name || drivers[0]?.name;
+          return (
+            <div key={`team-${teamIndex}`} className="endurance-simple-row-wrap">
+              <div className="endurance-simple-row" role="row">
+                <input
+                  type="text"
+                  className="endurance-team-name-input"
+                  value={team.name}
+                  onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
+                  placeholder={t(nameLabelKey)}
+                  aria-label={t(nameLabelKey)}
+                />
+                <input
+                  type="text"
+                  className="endurance-drivers-line-input"
+                  value={team.driversLine}
+                  onChange={(e) => updateTeam(teamIndex, { driversLine: e.target.value })}
+                  placeholder={t('admin_endurance_drivers_line_ph')}
+                  aria-label={t('admin_endurance_drivers_line')}
+                />
+                <button
+                  type="button"
+                  className="endurance-team-remove"
+                  onClick={() => removeTeam(teamIndex)}
+                  disabled={teams.length <= 1}
+                  aria-label={t('admin_endurance_remove_team')}
+                >
+                  ×
+                </button>
+              </div>
+              {eventType === 'endurance' && drivers.length > 1 && (
+                <div className="endurance-starter-picker">
+                  <span className="endurance-starter-picker-label">{t('admin_starter_drivers')}:</span>
+                  {drivers.map((d) => (
+                    <label key={d.name} className="endurance-starter-option">
+                      <input
+                        type="radio"
+                        name={`starter-${teamIndex}`}
+                        checked={starterName === d.name}
+                        onChange={() => setStarter(teamIndex, d.name)}
+                      />
+                      {d.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
