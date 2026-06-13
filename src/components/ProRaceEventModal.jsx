@@ -35,6 +35,7 @@ export default function ProRaceEventModal({
   const [startMode, setStartMode] = useState(draft?.startMode === 'le_mans' ? 'le_mans' : 'grid');
   const [turnoverSec, setTurnoverSec] = useState(String(draft?.turnoverSec ?? 120));
   const [enduranceRules, setEnduranceRules] = useState(draft?.enduranceRules || '');
+  const [advanceCount, setAdvanceCount] = useState(String(draft?.advanceCount ?? 2));
 
   const sprintParsed = useMemo(
     () => parseRaceGroupsText(groupsText, { mode: 'sprint' }),
@@ -96,6 +97,7 @@ export default function ProRaceEventModal({
       startMode,
       turnoverSec: parseInt(turnoverSec, 10) || 120,
       enduranceRules,
+      advanceCount: parseInt(advanceCount, 10) || 2,
       prepOnly,
       updatedAt: Date.now(),
     });
@@ -271,7 +273,14 @@ export default function ProRaceEventModal({
                   <span className="endurance-field-label">{t('admin_pro_event_turnover_sec')}</span>
                   <input type="number" min="0" value={turnoverSec} onChange={(e) => setTurnoverSec(e.target.value)} />
                 </label>
+                <label className="endurance-field">
+                  <span className="endurance-field-label">{t('admin_pro_event_advance_count')}</span>
+                  <input type="number" min="1" value={advanceCount} onChange={(e) => setAdvanceCount(e.target.value)} />
+                </label>
               </div>
+              {normalizedGroups.length > 1 && (
+                <p className="pro-event-groups-hint">{t('admin_pro_event_advance_count_hint')}</p>
+              )}
             </div>
           )}
         </div>

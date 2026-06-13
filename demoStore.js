@@ -2014,6 +2014,7 @@ function getTimingData(store) {
         active_driver: r.active_driver || null,
         team_drivers: normalizeTeamDrivers(r.team_drivers)?.map((d) => d.name) || null,
         track_position: ot?.trackPosition ?? 0,
+        last_lap_at: ot?.lastLapAt ?? null,
         is_session_fastest: isSessionFastest,
         lap_times: r.lap_times || [],
         unserved_penalty_sec: r.unserved_penalty_sec || 0,

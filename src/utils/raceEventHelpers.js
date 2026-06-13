@@ -1,4 +1,5 @@
 import { parseDriverNames } from './adminHelpers.js';
+import { lapToSeconds } from './liveTimingColumns.js';
 
 const GROUP_SEPARATORS = ['|', ':', '—', '–', '-'];
 
@@ -399,6 +400,10 @@ export function createEmptyRaceEvent(type = 'endurance') {
     startMode: 'grid',
     turnoverSec: 120,
     enduranceRules: '',
+    advanceCount: 2,
+    round: 1,
+    roundHistory: [],
+    heatNumbers: [],
     updatedAt: Date.now(),
   };
 }
@@ -432,6 +437,10 @@ export function normalizePlannedRaceEvent(raw) {
     startMode: raw.startMode === 'le_mans' ? 'le_mans' : 'grid',
     turnoverSec: Math.max(0, Number(raw.turnoverSec) || 120),
     enduranceRules: String(raw.enduranceRules || ''),
+    advanceCount: Math.max(1, Number(raw.advanceCount) || 2),
+    round: Math.max(1, Number(raw.round) || 1),
+    roundHistory: Array.isArray(raw.roundHistory) ? raw.roundHistory : [],
+    heatNumbers: Array.isArray(raw.heatNumbers) ? raw.heatNumbers.map((n) => Number(n)).filter((n) => !Number.isNaN(n)) : [],
     updatedAt: Number(raw.updatedAt) || Date.now(),
   };
 }
@@ -442,6 +451,51 @@ export function buildSessionsFromGroups(groups) {
     name: g.name,
     drivers: normalizeGroupDrivers(g.drivers).map((d) => d.name),
   }));
+}
+
+/** Sort a finished heat's results the way a sprint classification is decided: most laps, then best lap time. */
+function sortSprintResults(results) {
+  return [...(results || [])].sort((a, b) => {
+    const lapDiff = (b.lap_count || 0) - (a.lap_count || 0);
+    if (lapDiff !== 0) return lapDiff;
+    return lapToSeconds(a.best_lap_time) - lapToSeconds(b.best_lap_time);
+  });
+}
+
+const ROUND_NAMES = {
+  2: 'admin_pro_event_round_semifinal',
+  3: 'admin_pro_event_round_final',
+};
+
+/** Label for the Nth round of a sprint progression (heats -> semifinal -> final). */
+export function sprintRoundLabelKey(round) {
+  return ROUND_NAMES[round] || 'admin_pro_event_round_n';
+}
+
+/**
+ * Build the next round's groups from the current round's heat results.
+ * Takes the top `advanceCount` finishers from each heat (in classification
+ * order) and combines them into a single group for the next round - mirrors
+ * how karting/F1-style sprint formats funnel heats into a semifinal/final.
+ *
+ * `resultsByHeat` maps heat_number -> results array (as stored in heatHistory).
+ * `roundName` is the already-translated display name for the new group (e.g. "Semifinal").
+ */
+export function buildAdvancementGroups(sessions, heatNumbers, resultsByHeat, advanceCount, roundName) {
+  const qualifiers = [];
+  (sessions || []).forEach((session, i) => {
+    const heatNumber = heatNumbers?.[i];
+    const results = resultsByHeat?.[heatNumber];
+    if (!results?.length) return;
+    sortSprintResults(results)
+      .slice(0, Math.max(1, Number(advanceCount) || 1))
+      .forEach((r) => {
+        qualifiers.push({ name: r.driver_name, weightKg: null, starter: false });
+      });
+  });
+  if (!qualifiers.length) return [];
+  qualifiers[0].starter = true;
+  return [{ name: roundName, drivers: qualifiers }];
 }
 
 export function appendStintRulesToEnduranceRules(rules, stintMinutes, driverChangeSec) {

@@ -237,6 +237,27 @@ function trackGapSeconds(row, ahead, lapToSec) {
   return estSec;
 }
 
+/**
+ * Gap measured by timing-line crossing order: once both karts have crossed
+ * the line for the same lap count, the gap is simply the difference between
+ * their crossing timestamps - this mirrors how a real race timing system
+ * reports the interval, and stays correct through mid-lap overtakes since
+ * whichever kart crosses the line first is the one currently ahead.
+ */
+function crossingGapSeconds(row, ahead) {
+  const aheadLaps = ahead.lap_count || 0;
+  const rowLaps = row.lap_count || 0;
+  if (aheadLaps !== rowLaps) return null;
+
+  const aheadAt = ahead.last_lap_at;
+  const rowAt = row.last_lap_at;
+  if (!aheadAt || !rowAt) return null;
+
+  const gap = (rowAt - aheadAt) / 1000;
+  if (gap <= 0.001) return null;
+  return gap;
+}
+
 /** Gap to session leader by best lap (time / best-lap mode only). P1 shows —. */
 export function gapToLeaderBestLap(row, leader, lapToSecondsFn = lapToSeconds) {
   if (!row) return '--.---';
@@ -271,14 +292,14 @@ export function gapToCarAhead(row, ahead, heatType, lapToSecondsFn = lapToSecond
     if (rowPen > aheadPen) return `+${rowPen - aheadPen}s`;
   }
 
+  // Once both karts have crossed the line for this lap, the crossing-order
+  // gap is the authoritative value. Until then, fall back to a live estimate
+  // based on track position so the gap doesn't sit frozen mid-lap.
+  const crossingSec = crossingGapSeconds(row, ahead);
+  if (crossingSec != null) return `+${crossingSec.toFixed(3)}`;
+
   const estSec = trackGapSeconds(row, ahead, lapToSecondsFn);
   if (estSec != null) return `+${estSec.toFixed(3)}`;
-
-  const aheadLast = lapToSecondsFn(ahead.last_lap_time);
-  const rowLast = lapToSecondsFn(row.last_lap_time);
-  if (aheadLast !== Infinity && rowLast !== Infinity && rowLast > aheadLast + 0.001) {
-    return `+${(rowLast - aheadLast).toFixed(3)}`;
-  }
 
   return '—';
 }

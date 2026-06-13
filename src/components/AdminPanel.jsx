@@ -70,9 +70,13 @@ import {
   appendStintRulesToEnduranceRules,
   buildSessionsFromGroups,
   buildTeamStartersFromGroups,
+  buildAdvancementGroups,
+  sprintRoundLabelKey,
   normalizeGroupDrivers,
   groupsToDriverQueue,
   normalizePlannedRaceEvent,
+  parseDriversLine,
+  serializeGroupsText,
 } from '../utils/raceEventHelpers.js';
 
 const DEFAULT_LINES = {
@@ -900,13 +904,19 @@ const AdminPanel = () => {
   const loadNextSprintSession = () => {
     if (!plannedRaceEvent || plannedRaceEvent.type !== 'sprint') return;
     const sessions = plannedRaceEvent.sessions || buildSessionsFromGroups(plannedRaceEvent.groups);
-    const nextIndex = (plannedRaceEvent.activeSessionIndex || 0) + 1;
+    const currentIndex = plannedRaceEvent.activeSessionIndex || 0;
+    const nextIndex = currentIndex + 1;
     if (nextIndex >= sessions.length) {
       showAlert(t('admin_pro_event_no_more_heats'));
       return;
     }
     const session = sessions[nextIndex];
-    setPlannedRaceEvent((prev) => (prev ? { ...prev, activeSessionIndex: nextIndex } : prev));
+    setPlannedRaceEvent((prev) => {
+      if (!prev) return prev;
+      const heatNumbers = [...(prev.heatNumbers || [])];
+      if (heatNumber != null) heatNumbers[currentIndex] = heatNumber;
+      return { ...prev, activeSessionIndex: nextIndex, heatNumbers };
+    });
     setDriverQueue(groupsToDriverQueue([{ name: session.name, drivers: session.drivers }], 'sprint'));
     showAlert(t('admin_pro_event_loaded_heat', { name: session.name, n: nextIndex + 1 }));
   };
@@ -918,10 +928,69 @@ const AdminPanel = () => {
     return Math.max(0, sessions.length - idx - 1);
   }, [plannedRaceEvent]);
 
+  const generateNextSprintRound = async () => {
+    if (!plannedRaceEvent || plannedRaceEvent.type !== 'sprint') return;
+    const sessions = plannedRaceEvent.sessions || buildSessionsFromGroups(plannedRaceEvent.groups);
+    const currentIndex = plannedRaceEvent.activeSessionIndex || 0;
+    const heatNumbers = [...(plannedRaceEvent.heatNumbers || [])];
+    if (heatNumber != null) heatNumbers[currentIndex] = heatNumber;
+
+    if (heatNumbers.length < sessions.length || heatNumbers.some((n) => n == null)) {
+      showAlert(t('admin_pro_event_generate_round_no_results'));
+      return;
+    }
+
+    const resultsByHeat = {};
+    for (const n of heatNumbers) {
+      try {
+        const res = await apiFetch(`/api/results/${n}`);
+        const data = await res.json();
+        if (data?.results?.length) resultsByHeat[n] = data.results;
+      } catch { /* skip missing heat results */ }
+    }
+
+    const nextRound = (plannedRaceEvent.round || 1) + 1;
+    const roundName = t(sprintRoundLabelKey(nextRound), { round: nextRound });
+    const groups = buildAdvancementGroups(sessions, heatNumbers, resultsByHeat, plannedRaceEvent.advanceCount, roundName);
+    if (!groups.length) {
+      showAlert(t('admin_pro_event_generate_round_no_results'));
+      return;
+    }
+
+    const newSessions = buildSessionsFromGroups(groups);
+    setPlannedRaceEvent((prev) => (prev ? {
+      ...prev,
+      groups,
+      groupsText: serializeGroupsText(groups),
+      sessions: newSessions,
+      activeSessionIndex: 0,
+      round: nextRound,
+      heatNumbers: [],
+      roundHistory: [...(prev.roundHistory || []), heatNumbers],
+    } : prev));
+    setDriverQueue(groupsToDriverQueue([{ name: newSessions[0].name, drivers: newSessions[0].drivers }], 'sprint'));
+    showAlert(t('admin_pro_event_round_generated', { round: roundName, drivers: groups[0].drivers.length }));
+  };
+
   const addDriverToQueue = () => {
     if (!canAddDriver) { showAlert(t('admin_alert_name_required')); return; }
     const team = heatType === 'endurance' ? (drTeam.trim() || null) : null;
     if (isBulkDrivers) {
+      if (heatType === 'endurance') {
+        // Support "Avi(80)*, Baruch(70), Kobi(65)" - per-driver weight in kg
+        // and a "*" marker for the team's starting driver.
+        const parsed = parseDriversLine(drName);
+        setDriverQueue((q) => [...q, ...parsed.map((d) => ({
+          name: d.name, team, phone: null, email: null, level: null, saved: false,
+          weightKg: d.weightKg,
+        }))]);
+        if (team) {
+          const starter = parsed.find((d) => d.starter) || parsed[0];
+          if (starter) setTeamStarters((prev) => ({ ...prev, [team]: starter.name }));
+        }
+        setDrName('');
+        return;
+      }
       setDriverQueue((q) => [...q, ...driverNames.map((name) => ({
         name, team, phone: null, email: null, level: null, saved: false,
       }))]);
@@ -2148,7 +2217,8 @@ const AdminPanel = () => {
                   <span className="queue-name">
                     {d.saved && <span className="saved-badge">★</span>}
                     {d.team && <span className="queue-team">{d.team} — </span>}
-                    {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}
+                    {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}{d.weightKg ? ` (${d.weightKg}kg)` : ''}
+                    {d.team && teamStarters[d.team] === d.name && <span className="starter-badge"> *</span>}
                   </span>
                   <button type="button" className="btn-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>X</button>
                 </li>
@@ -2204,6 +2274,14 @@ const AdminPanel = () => {
             {heatType === 'sprint' && sprintHeatsRemaining > 0 && (
               <button type="button" className="btn-muted btn-sidebar-tool" onClick={loadNextSprintSession}>
                 {t('admin_pro_event_next_heat', { n: sprintHeatsRemaining })}
+              </button>
+            )}
+            {heatType === 'sprint' && sprintHeatsRemaining === 0
+              && plannedRaceEvent?.type === 'sprint'
+              && (plannedRaceEvent?.sessions?.length || 0) > 1
+              && heatNumber != null && (
+              <button type="button" className="btn-muted btn-sidebar-tool" onClick={generateNextSprintRound}>
+                {t('admin_pro_event_generate_next_round')}
               </button>
             )}
           </div>
