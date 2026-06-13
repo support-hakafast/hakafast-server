@@ -25,7 +25,11 @@ export default function TrackPlannerModal({
   onSave,
   isSaving,
   tourElevated = false,
+  darkMode = false,
 }) {
+  const modalThemeClass = darkMode ? 'admin-modal-dark' : 'admin-modal-light';
+  const headerThemeClass = darkMode ? 'admin-modal-header-dark' : 'admin-modal-header-light';
+
   return (
     <div
       className={`admin-modal-overlay${tourElevated ? ' admin-modal-overlay--tour' : ''}`}
@@ -34,11 +38,11 @@ export default function TrackPlannerModal({
       onClick={onClose}
     >
       <div
-        className="admin-modal admin-modal-wide admin-modal-light track-planner-modal"
+        className={`admin-modal admin-modal-wide ${modalThemeClass} track-planner-modal`}
         data-tour="planner"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="admin-modal-header admin-modal-header-light">
+        <header className={`admin-modal-header ${headerThemeClass}`}>
           <div>
             <h2>{t('admin_track_planner')}</h2>
             <p className="admin-modal-subtitle">{t('admin_track_planner_hint')}</p>

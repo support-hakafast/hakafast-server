@@ -1646,6 +1646,7 @@ const AdminPanel = () => {
         <TrackPlannerModal
           onClose={() => setShowTrackPlannerModal(false)}
           tourElevated={showWalkthrough}
+          darkMode={adminTheme === 'dark'}
           t={t}
           trackDisplayName={trackDisplayName}
           setTrackDisplayName={setTrackDisplayName}
@@ -1693,6 +1694,7 @@ const AdminPanel = () => {
       {showProEventModal && (
         <ProRaceEventModal
           onClose={() => setShowProEventModal(false)}
+          darkMode={adminTheme === 'dark'}
           t={t}
           initialType={proEventModalType}
           prepOnly={heatType === 'time'}
@@ -1981,9 +1983,6 @@ const AdminPanel = () => {
                 <p className="heat-mode-hint">
                   {heatType === 'time' ? t('admin_heat_mode_session') : t('admin_heat_mode_competitive')}
                 </p>
-                {heatType === 'time' && (
-                  <p className="pro-event-day-banner">{t('admin_pro_event_day_banner')}</p>
-                )}
                 {plannedRaceEvent?.name && heatType === 'time' && (
                   <p className="pro-event-draft-badge">
                     {t('admin_pro_event_draft_ready', { name: plannedRaceEvent.name, type: t(plannedRaceEvent.type === 'sprint' ? 'heat_sprint' : 'heat_endurance') })}

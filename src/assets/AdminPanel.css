@@ -721,10 +721,11 @@ html:has(.admin-no-scroll) body {
 .endurance-team-name-input {
   flex: 1;
   min-width: 0;
-  padding: 0.4rem 0.5rem;
+  padding: 0.5rem 0.6rem;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .endurance-team-remove,
@@ -742,8 +743,8 @@ html:has(.admin-no-scroll) body {
 .endurance-members-head,
 .endurance-member-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(3.25rem, 4.5rem) minmax(3.25rem, 4.2rem) 1.6rem;
-  gap: 0.3rem;
+  grid-template-columns: minmax(0, 1fr) minmax(3.5rem, 4.5rem) 1.75rem 1.75rem;
+  gap: 0.4rem;
   align-items: center;
 }
 
@@ -767,9 +768,10 @@ html:has(.admin-no-scroll) body {
 .endurance-member-row input[type='text'],
 .endurance-member-row input[type='number'] {
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
-  padding: 0.3rem 0.35rem;
-  font-size: 0.8rem;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.85rem;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
 }
@@ -777,12 +779,10 @@ html:has(.admin-no-scroll) body {
 .endurance-starter-mark {
   display: inline-flex;
   align-items: center;
-  gap: 0.15rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #475569;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
   cursor: pointer;
-  white-space: nowrap;
 }
 
 .endurance-starter-mark input {
@@ -2310,6 +2310,145 @@ html:has(.admin-no-scroll) body {
   color: var(--navy);
 }
 
+/* Dark modals — follow admin theme when toggled */
+.admin-modal-dark {
+  background: var(--admin-surface, #111827);
+  color: var(--admin-text, #e2e8f0);
+}
+
+.admin-modal-header-dark {
+  background: var(--admin-surface-raised, #1e293b);
+  border-bottom: 1px solid var(--admin-border, #334155);
+}
+
+.admin-modal-header-dark h2 {
+  margin: 0 0 4px;
+  color: var(--admin-text, #e2e8f0);
+  font-size: 1.15rem;
+}
+
+.admin-modal-dark .admin-modal-subtitle {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.admin-modal-dark .field-label,
+.admin-modal-dark .planner-field span,
+.admin-modal-dark .endurance-field-label {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.admin-modal-dark .planner-field input,
+.admin-modal-dark input[type='text'],
+.admin-modal-dark input[type='password'],
+.admin-modal-dark input[type='number'],
+.admin-modal-dark input[type='time'],
+.admin-modal-dark select,
+.admin-modal-dark textarea,
+.admin-modal-dark .endurance-team-name-input,
+.admin-modal-dark .endurance-member-row input {
+  color: var(--admin-text, #e2e8f0);
+  background: var(--admin-surface-raised, #1e293b);
+  border: 1px solid var(--admin-border, #334155);
+}
+
+.admin-modal-dark input::placeholder,
+.admin-modal-dark textarea::placeholder {
+  color: #64748b;
+}
+
+.admin-modal-dark .admin-modal-footer {
+  background: var(--admin-surface, #111827);
+  border-top-color: var(--admin-border, #334155);
+}
+
+.admin-modal-dark h2,
+.admin-modal-dark h3 {
+  color: var(--admin-text, #e2e8f0);
+}
+
+.admin-modal-dark .admin-modal-close {
+  background: var(--admin-surface-raised, #1e293b);
+  color: var(--admin-text, #e2e8f0);
+}
+
+.admin-modal-dark .admin-modal-close:hover {
+  background: var(--admin-border, #334155);
+}
+
+.admin-modal-dark .endurance-team-card {
+  background: var(--admin-surface-raised, #1e293b);
+  border-color: var(--admin-border, #334155);
+}
+
+.admin-modal-dark .endurance-team-add-btn,
+.admin-modal-dark .endurance-member-add {
+  background: var(--admin-surface-raised, #1e293b);
+  border-color: var(--admin-border, #475569);
+  color: #5eead4;
+}
+
+.admin-modal-dark .pro-event-prep-banner {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+
+.admin-modal-dark .pro-event-type-tab {
+  background: var(--admin-surface-raised, #1e293b);
+  border-color: var(--admin-border, #334155);
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.admin-modal-dark .pro-event-type-tab.active {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
+.admin-modal-dark .pro-event-groups-hint,
+.admin-modal-dark .pro-event-inline-hint {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.admin-modal-dark .pro-event-preview {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.admin-modal-dark .pro-event-preview-list strong {
+  color: #6ee7b7;
+}
+
+.admin-modal-dark .pro-event-preview-stats {
+  color: #34d399;
+}
+
+.admin-modal-dark .planner-stat-card {
+  background: var(--admin-surface-raised, #1e293b);
+  border-color: var(--admin-border, #334155);
+}
+
+.admin-modal-dark .planner-stat-card strong {
+  color: #5eead4;
+}
+
+.admin-modal-dark .planner-stat-card span {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
+.admin-modal-dark.track-planner-modal {
+  background: var(--admin-surface, #111827);
+  color: var(--admin-text, #e2e8f0);
+}
+
+.admin-modal-dark.track-planner-modal .track-planner-panel-modal {
+  background: var(--admin-surface, #111827);
+}
+
+.admin-modal-dark .endurance-members-head {
+  color: var(--admin-text-muted, #94a3b8);
+}
+
 .admin-advanced-modal {
   max-height: 90vh;
   overflow-y: auto;
@@ -3734,7 +3873,7 @@ html:has(.admin-no-scroll) body {
   }
 
   .pro-race-event-modal .endurance-member-row {
-    grid-template-columns: minmax(0, 1fr) minmax(3rem, 4rem);
+    grid-template-columns: minmax(0, 1fr) minmax(3.5rem, 4.5rem);
     grid-template-areas:
       "name name"
       "weight starter"
@@ -3742,6 +3881,10 @@ html:has(.admin-no-scroll) body {
     gap: 0.35rem;
     padding: 0.35rem 0;
     border-bottom: 1px dashed #e2e8f0;
+  }
+
+  .admin-modal-dark .pro-race-event-modal .endurance-member-row {
+    border-bottom-color: var(--admin-border, #334155);
   }
 
   .pro-race-event-modal .endurance-member-row input[type='text'] {

@@ -17,6 +17,7 @@ export default function ProRaceEventModal({
   draft,
   onApply,
   isSaving = false,
+  darkMode = false,
 }) {
   const [eventType, setEventType] = useState(initialType === 'sprint' ? 'sprint' : 'endurance');
   const [eventName, setEventName] = useState(draft?.name || '');
@@ -44,6 +45,9 @@ export default function ProRaceEventModal({
     if (eventType === 'endurance') return teamRecordsToGroups(groups);
     return sprintParsed.groups;
   }, [eventType, groups, sprintParsed.groups]);
+
+  const modalThemeClass = darkMode ? 'admin-modal-dark' : 'admin-modal-light';
+  const headerThemeClass = darkMode ? 'admin-modal-header-dark' : 'admin-modal-header-light';
 
   const preview = useMemo(() => summarizeRaceEvent({
     type: eventType,
@@ -88,11 +92,11 @@ export default function ProRaceEventModal({
   return (
     <div className="admin-modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
       <div
-        className="admin-modal admin-modal-wide admin-modal-light pro-race-event-modal"
+        className={`admin-modal admin-modal-wide ${modalThemeClass} pro-race-event-modal`}
         data-tour="pro-event"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="admin-modal-header admin-modal-header-light">
+        <header className={`admin-modal-header ${headerThemeClass}`}>
           <div>
             <h2>
               {isEndurance ? t('admin_pro_event_endurance_title') : t('admin_pro_event_sprint_title')}

@@ -116,35 +116,50 @@ export function createEmptyTeamRecord(index = 1) {
 
 export function groupsToTeamRecords(groups) {
   const list = Array.isArray(groups) && groups.length ? groups : [createEmptyTeamRecord()];
-  return list.map((group, index) => {
-    const drivers = normalizeGroupDrivers(group.drivers);
+  return list.map((group) => {
+    const rawMembers = (group.drivers || []).map((d, i) => {
+      const entry = normalizeDriverEntry(d, i);
+      return {
+        name: entry.name,
+        weightKg: entry.weightKg != null ? String(entry.weightKg) : '',
+        starter: Boolean(entry.starter),
+      };
+    });
+    const members = rawMembers.length
+      ? rawMembers
+      : [{ name: '', weightKg: '', starter: true }];
+    if (!members.some((m) => m.starter)) members[0].starter = true;
     return {
-      name: String(group.name || '').trim() || '',
-      members: drivers.length
-        ? drivers.map((d) => ({
-          name: d.name,
-          weightKg: d.weightKg != null ? String(d.weightKg) : '',
-          starter: Boolean(d.starter),
-        }))
-        : [{ name: '', weightKg: '', starter: true }],
+      name: String(group.name || '').trim(),
+      members,
     };
   });
 }
 
-export function teamRecordsToGroups(teams) {
+export function teamRecordsToGroups(teams, options = {}) {
+  const preserveEmpty = Boolean(options.preserveEmpty);
   return (teams || [])
     .map((team, index) => {
-      const name = String(team.name || '').trim() || `Team ${index + 1}`;
-      const drivers = normalizeGroupDrivers(
-        (team.members || []).map((m) => ({
-          name: String(m.name || '').trim(),
-          weightKg: m.weightKg === '' || m.weightKg == null ? null : Number(m.weightKg),
-          starter: Boolean(m.starter),
-        })),
-      );
-      return drivers.length ? { name, drivers } : null;
+      const rawName = String(team.name || '').trim();
+      const name = rawName || (preserveEmpty ? '' : `Team ${index + 1}`);
+      const rawDrivers = (team.members || []).map((m) => ({
+        name: String(m.name || '').trim(),
+        weightKg: m.weightKg === '' || m.weightKg == null ? null : Number(m.weightKg),
+        starter: Boolean(m.starter),
+      }));
+
+      if (preserveEmpty) {
+        const members = rawDrivers.length
+          ? rawDrivers
+          : [{ name: '', weightKg: null, starter: true }];
+        if (!members.some((d) => d.starter)) members[0].starter = true;
+        return { name, drivers: members };
+      }
+
+      const drivers = normalizeGroupDrivers(rawDrivers);
+      return drivers.length ? { name: name || `Team ${index + 1}`, drivers } : null;
     })
-    .filter(Boolean);
+    .filter((g) => (preserveEmpty ? true : Boolean(g)));
 }
 
 export function groupsToDriverQueue(groups, mode = 'endurance') {

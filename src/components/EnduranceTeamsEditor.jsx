@@ -9,7 +9,7 @@ export default function EnduranceTeamsEditor({ t, groups, onChange, showBulkImpo
   const teams = groupsToTeamRecords(groups);
 
   const updateTeams = (nextTeams) => {
-    onChange(teamRecordsToGroups(nextTeams));
+    onChange(teamRecordsToGroups(nextTeams, { preserveEmpty: true }));
   };
 
   const updateTeam = (teamIndex, patch) => {
@@ -114,8 +114,8 @@ export default function EnduranceTeamsEditor({ t, groups, onChange, showBulkImpo
                       name={`starter-${teamIndex}`}
                       checked={Boolean(member.starter)}
                       onChange={() => setStarter(teamIndex, memberIndex)}
+                      aria-label={t('admin_endurance_member_starter')}
                     />
-                    <span>{t('admin_endurance_starter_short')}</span>
                   </label>
                   <button
                     type="button"

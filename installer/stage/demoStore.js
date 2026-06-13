@@ -15,6 +15,8 @@ const stores = new Map();
 const persistTimers = new Map();
 const TTL_MS = installConfig.isLocalInstall() ? 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
 const DEFAULT_AVG_LAP_SEC = 45;
+/** Formation laps run noticeably slower than race pace in demo simulation. */
+const FORMATION_LAP_PACE_FACTOR = 1.35;
 
 function sanitizePitLines(pitLines) {
   if (!pitLines) return pitLines;
@@ -254,6 +256,10 @@ function getAvgLapSec(store) {
   return store.heatRuntime?.avgLapSec || DEFAULT_AVG_LAP_SEC;
 }
 
+function getFormationLapSec(store, avgLap = getAvgLapSec(store)) {
+  return avgLap * FORMATION_LAP_PACE_FACTOR;
+}
+
 const LEVEL_RANK = { Amateur: 0, Master: 1, Pro: 2 };
 
 function levelFromBestLap(store, bestLap, fallback = 'Amateur') {
@@ -358,10 +364,11 @@ function simulatedBestSec(avgLap, kartNumber) {
 }
 
 /** Realistic per-lap variation for demo simulation (changes every crossing). */
-function simulatedLapSecForCrossing(store, ot, row, avgLap) {
+function simulatedLapSecForCrossing(store, ot, row, avgLap, options = {}) {
+  const { formation = false } = options;
   const nextLap = (row.lap_count || 0) + 1;
   const kart = Number(ot.kart_number);
-  const base = store.heatSettings?.type === 'endurance'
+  const base = formation || store.heatSettings?.type === 'endurance'
     ? avgLap
     : simulatedBestSec(avgLap, kart);
   const lapWave = Math.sin(nextLap * 1.31 + kart * 0.47) * 0.72;
@@ -643,19 +650,21 @@ function tickHeatSimulation(store) {
   }
   const now = Date.now();
   const avgLap = getAvgLapSec(store);
+  const formationLapSec = getFormationLapSec(store, avgLap);
 
   store.onTrack.forEach((ot) => {
     const row = store.currentHeat.find((r) => Number(r.kart_number) === Number(ot.kart_number));
     if (!row) return;
 
+    const lapPaceSec = isFormationPhase(store) ? formationLapSec : avgLap;
     const sinceLapStart = (now - (ot.lastLapAt || ot.launchedAt)) / 1000;
-    ot.trackPosition = Math.min(0.999, sinceLapStart / avgLap);
+    ot.trackPosition = Math.min(0.999, sinceLapStart / lapPaceSec);
 
     if (isFormationPhase(store)) {
-      const completedFormation = Math.floor((now - ot.launchedAt) / 1000 / avgLap);
+      const completedFormation = Math.floor((now - ot.launchedAt) / 1000 / formationLapSec);
       while ((ot.formationLapsDone || 0) < completedFormation) {
         const prevDone = ot.formationLapsDone || 0;
-        const lapSec = simulatedLapSecForCrossing(store, ot, row, avgLap);
+        const lapSec = simulatedLapSecForCrossing(store, ot, row, formationLapSec, { formation: true });
         const prevAt = ot.lastLapAt || ot.launchedAt;
         const lapAt = Math.min(now, prevAt + lapSec * 1000);
         recordFormationCrossing(store, ot, row, lapSec, { at: lapAt });
