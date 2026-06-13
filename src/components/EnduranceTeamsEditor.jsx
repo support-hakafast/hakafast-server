@@ -1,40 +1,13 @@
 import React, { useRef } from 'react';
 import {
   createEmptyTeamRecord,
-  formatDriversLine,
   groupsToTeamRecords,
-  parseDriversLine,
   parseRaceGroupsCsv,
   raceGroupsCsvTemplate,
   teamRecordsToGroups,
 } from '../utils/raceEventHelpers.js';
 
-function teamToSimpleRecord(team) {
-  const members = team.members || [];
-  const driversLine = formatDriversLine(members.map((m) => ({
-    name: m.name,
-    weightKg: m.weightKg === '' || m.weightKg == null ? null : Number(m.weightKg),
-    starter: Boolean(m.starter),
-  })));
-  return {
-    name: team.name,
-    driversLine,
-  };
-}
-
-function simpleRecordToTeam(record, index) {
-  const drivers = parseDriversLine(record.driversLine);
-  return {
-    name: String(record.name || '').trim(),
-    members: drivers.length
-      ? drivers.map((d) => ({
-        name: d.name,
-        weightKg: d.weightKg != null ? String(d.weightKg) : '',
-        starter: Boolean(d.starter),
-      }))
-      : [{ name: '', weightKg: '', starter: true }],
-  };
-}
+const MAX_TEAMS = 80;
 
 export default function EnduranceTeamsEditor({
   t,
@@ -45,34 +18,53 @@ export default function EnduranceTeamsEditor({
   onImportError,
 }) {
   const fileRef = useRef(null);
-  const teams = groupsToTeamRecords(groups).map(teamToSimpleRecord);
+  const teams = groupsToTeamRecords(groups);
   const nameLabelKey = eventType === 'sprint' ? 'admin_sprint_heat_name_ph' : 'admin_endurance_team_name_ph';
+  const isEndurance = eventType === 'endurance';
+  const atLimit = teams.length >= MAX_TEAMS;
 
-  const updateTeams = (nextSimple) => {
-    onChange(teamRecordsToGroups(
-      nextSimple.map((row, i) => simpleRecordToTeam(row, i)),
-      { preserveEmpty: true },
-    ));
+  const updateTeams = (nextTeams) => {
+    onChange(teamRecordsToGroups(nextTeams, { preserveEmpty: true }));
   };
 
-  const updateTeam = (index, patch) => {
-    updateTeams(teams.map((team, i) => (i === index ? { ...team, ...patch } : team)));
+  const updateTeam = (teamIndex, patch) => {
+    updateTeams(teams.map((team, i) => (i === teamIndex ? { ...team, ...patch } : team)));
   };
 
-  const setStarter = (teamIndex, starterName) => {
-    const drivers = parseDriversLine(teams[teamIndex].driversLine);
-    const driversLine = formatDriversLine(drivers.map((d) => ({ ...d, starter: d.name === starterName })));
-    updateTeam(teamIndex, { driversLine });
+  const updateMember = (teamIndex, memberIndex, patch) => {
+    const team = teams[teamIndex];
+    const members = team.members.map((m, i) => (i === memberIndex ? { ...m, ...patch } : m));
+    updateTeam(teamIndex, { members });
+  };
+
+  const setStarter = (teamIndex, memberIndex) => {
+    const members = teams[teamIndex].members.map((m, i) => ({ ...m, starter: i === memberIndex }));
+    updateTeam(teamIndex, { members });
+  };
+
+  const addMember = (teamIndex) => {
+    const team = teams[teamIndex];
+    updateTeam(teamIndex, {
+      members: [...team.members, { name: '', weightKg: '', starter: team.members.length === 0 }],
+    });
+  };
+
+  const removeMember = (teamIndex, memberIndex) => {
+    const team = teams[teamIndex];
+    if (team.members.length <= 1) return;
+    const members = team.members.filter((_, i) => i !== memberIndex);
+    if (!members.some((m) => m.starter)) members[0].starter = true;
+    updateTeam(teamIndex, { members });
   };
 
   const addTeam = () => {
-    const empty = createEmptyTeamRecord(teams.length + 1);
-    updateTeams([...teams, teamToSimpleRecord(empty)]);
+    if (atLimit) return;
+    updateTeams([...teams, createEmptyTeamRecord(teams.length + 1)]);
   };
 
-  const removeTeam = (index) => {
+  const removeTeam = (teamIndex) => {
     if (teams.length <= 1) return;
-    updateTeams(teams.filter((_, i) => i !== index));
+    updateTeams(teams.filter((_, i) => i !== teamIndex));
   };
 
   const applyImportedGroups = (imported) => {
@@ -80,10 +72,7 @@ export default function EnduranceTeamsEditor({
       onImportError?.(t('admin_pro_event_csv_empty'));
       return;
     }
-    updateTeams(imported.map((g) => ({
-      name: g.name,
-      driversLine: formatDriversLine(g.drivers),
-    })));
+    updateTeams(groupsToTeamRecords(imported.slice(0, MAX_TEAMS)));
   };
 
   const handleCsvFile = (e) => {
@@ -113,9 +102,11 @@ export default function EnduranceTeamsEditor({
   };
 
   return (
-    <div className="endurance-teams-editor endurance-teams-simple">
+    <div className="endurance-teams-editor">
       <div className="endurance-teams-editor-head">
-        <span className="field-label">{t(groupsLabelKey)}</span>
+        <span className="field-label">
+          {t(groupsLabelKey)} · {t('admin_endurance_team_count', { count: teams.length, max: MAX_TEAMS })}
+        </span>
         <div className="endurance-import-actions">
           <button type="button" className="btn-muted endurance-csv-template" onClick={downloadTemplate}>
             {t('admin_pro_event_csv_template')}
@@ -134,73 +125,102 @@ export default function EnduranceTeamsEditor({
             className="endurance-csv-input"
             onChange={handleCsvFile}
           />
-          <button type="button" className="endurance-team-add-btn" onClick={addTeam}>
+          <button type="button" className="endurance-team-add-btn" onClick={addTeam} disabled={atLimit}>
             + {t('admin_endurance_add_team')}
           </button>
         </div>
       </div>
-      <p className="pro-event-groups-hint">{t('admin_endurance_teams_simple_hint')}</p>
+      <p className="pro-event-groups-hint">{t('admin_endurance_teams_editor_hint')}</p>
+      {atLimit && (
+        <p className="pro-event-import-msg" role="status">{t('admin_endurance_team_limit')}</p>
+      )}
 
-      <div className="endurance-simple-table" role="table">
-        <div className="endurance-simple-head" role="row">
-          <span role="columnheader">{t(nameLabelKey)}</span>
-          <span role="columnheader">{t('admin_endurance_drivers_line')}</span>
-          <span role="columnheader" aria-hidden />
-        </div>
-        {teams.map((team, teamIndex) => {
-          const drivers = eventType === 'endurance' ? parseDriversLine(team.driversLine) : [];
-          const starterName = drivers.find((d) => d.starter)?.name || drivers[0]?.name;
-          return (
-            <div key={`team-${teamIndex}`} className="endurance-simple-row-wrap">
-              <div className="endurance-simple-row" role="row">
-                <input
-                  type="text"
-                  className="endurance-team-name-input"
-                  dir="auto"
-                  value={team.name}
-                  onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
-                  placeholder={t(nameLabelKey)}
-                  aria-label={t(nameLabelKey)}
-                />
-                <input
-                  type="text"
-                  className="endurance-drivers-line-input"
-                  dir="auto"
-                  value={team.driversLine}
-                  onChange={(e) => updateTeam(teamIndex, { driversLine: e.target.value })}
-                  placeholder={t('admin_endurance_drivers_line_ph')}
-                  aria-label={t('admin_endurance_drivers_line')}
-                />
-                <button
-                  type="button"
-                  className="endurance-team-remove"
-                  onClick={() => removeTeam(teamIndex)}
-                  disabled={teams.length <= 1}
-                  aria-label={t('admin_endurance_remove_team')}
+      <ul className="endurance-teams-list">
+        {teams.map((team, teamIndex) => (
+          <li key={`team-${teamIndex}`} className="endurance-team-card">
+            <div className="endurance-team-card-head">
+              <span className="endurance-team-number" aria-hidden>{teamIndex + 1}</span>
+              <input
+                type="text"
+                className="endurance-team-name-input"
+                dir="auto"
+                value={team.name}
+                onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
+                placeholder={t(nameLabelKey)}
+                aria-label={t(nameLabelKey)}
+              />
+              <button
+                type="button"
+                className="endurance-team-remove"
+                onClick={() => removeTeam(teamIndex)}
+                disabled={teams.length <= 1}
+                aria-label={t('admin_endurance_remove_team')}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={`endurance-members-head${isEndurance ? '' : ' endurance-member-row-sprint'}`} aria-hidden>
+              <span>{t('admin_endurance_member_name')}</span>
+              {isEndurance && <span>{t('admin_endurance_member_weight')}</span>}
+              {isEndurance && <span>{t('admin_endurance_member_starter')}</span>}
+              <span />
+            </div>
+
+            <ul className="endurance-members-list">
+              {team.members.map((member, memberIndex) => (
+                <li
+                  key={`m-${teamIndex}-${memberIndex}`}
+                  className={`endurance-member-row${isEndurance ? '' : ' endurance-member-row-sprint'}`}
                 >
-                  ×
-                </button>
-              </div>
-              {eventType === 'endurance' && drivers.length > 1 && (
-                <div className="endurance-starter-picker">
-                  <span className="endurance-starter-picker-label">{t('admin_starter_drivers')}:</span>
-                  {drivers.map((d) => (
-                    <label key={d.name} className="endurance-starter-option">
+                  <input
+                    type="text"
+                    dir="auto"
+                    value={member.name}
+                    onChange={(e) => updateMember(teamIndex, memberIndex, { name: e.target.value })}
+                    placeholder={t('admin_driver_placeholder')}
+                  />
+                  {isEndurance && (
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={member.weightKg}
+                      onChange={(e) => updateMember(teamIndex, memberIndex, { weightKg: e.target.value })}
+                      placeholder="kg"
+                      title={t('admin_endurance_member_weight')}
+                    />
+                  )}
+                  {isEndurance && (
+                    <label className="endurance-starter-mark" title={t('admin_endurance_member_starter')}>
                       <input
                         type="radio"
                         name={`starter-${teamIndex}`}
-                        checked={starterName === d.name}
-                        onChange={() => setStarter(teamIndex, d.name)}
+                        checked={Boolean(member.starter)}
+                        onChange={() => setStarter(teamIndex, memberIndex)}
                       />
-                      {d.name}
+                      <span>{t('admin_endurance_starter_short')}</span>
                     </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                  )}
+                  <button
+                    type="button"
+                    className="endurance-member-remove"
+                    onClick={() => removeMember(teamIndex, memberIndex)}
+                    disabled={team.members.length <= 1}
+                    aria-label={t('admin_endurance_remove_member')}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <button type="button" className="endurance-member-add" onClick={() => addMember(teamIndex)}>
+              + {t('admin_endurance_add_member')}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

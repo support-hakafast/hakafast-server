@@ -573,7 +573,9 @@
     "results_live": "מקצה פעיל — תוצאות ביניים",
     "results_not_found": "מקצה לא נמצא",
     "results_back": "← כל המקצים",
-    "admin_sprint_heat_name_ph": "שם מקצה"
+    "admin_sprint_heat_name_ph": "שם מקצה",
+    "admin_endurance_team_count": "{{count}}/{{max}} קבוצות",
+    "admin_endurance_team_limit": "הגעת למספר הקבוצות המרבי ({{max}})"
   },
   "en": {
     "title": "HAKAFAST",
@@ -1149,7 +1151,9 @@
     "results_live": "Live heat — provisional results",
     "results_not_found": "Heat not found",
     "results_back": "← All heats",
-    "admin_sprint_heat_name_ph": "Heat name"
+    "admin_sprint_heat_name_ph": "Heat name",
+    "admin_endurance_team_count": "{{count}}/{{max}} teams",
+    "admin_endurance_team_limit": "Maximum number of teams reached ({{max}})"
   },
   "ar": {
     "title": "HAKAFAST",
@@ -1714,6 +1718,8 @@
     "results_live": "جولة مباشرة — نتائج مؤقتة",
     "results_not_found": "الجولة غير موجودة",
     "results_back": "← كل الجولات",
-    "admin_sprint_heat_name_ph": "اسم الجولة"
+    "admin_sprint_heat_name_ph": "اسم الجولة",
+    "admin_endurance_team_count": "{{count}}/{{max}} فريق",
+    "admin_endurance_team_limit": "تم الوصول إلى الحد الأقصى للفرق ({{max}})"
   }
 }

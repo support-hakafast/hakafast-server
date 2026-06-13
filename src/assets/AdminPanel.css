@@ -714,8 +714,23 @@ html:has(.admin-no-scroll) body {
 
 .endurance-team-card-head {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
   margin-bottom: 0.35rem;
+}
+
+.endurance-team-number {
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .endurance-team-name-input {
@@ -746,6 +761,10 @@ html:has(.admin-no-scroll) body {
   grid-template-columns: minmax(0, 1fr) minmax(3.5rem, 4.5rem) 1.75rem 1.75rem;
   gap: 0.4rem;
   align-items: center;
+}
+
+.endurance-member-row-sprint {
+  grid-template-columns: minmax(0, 1fr) 1.75rem;
 }
 
 .endurance-members-head {
@@ -2530,6 +2549,11 @@ html:has(.admin-no-scroll) body {
   border-color: var(--admin-border, #334155);
 }
 
+.admin-modal-dark .endurance-team-number {
+  background: var(--admin-border, #334155);
+  color: #cbd5e1;
+}
+
 .admin-modal-dark .endurance-team-add-btn,
 .admin-modal-dark .endurance-member-add {
   background: var(--admin-surface-raised, #1e293b);
@@ -3885,6 +3909,11 @@ html:has(.admin-no-scroll) body {
   border-color: var(--admin-border);
 }
 
+.admin-theme-dark .endurance-team-number {
+  background: var(--admin-border);
+  color: var(--admin-text-muted);
+}
+
 .admin-theme-dark .endurance-team-add-btn,
 .admin-theme-dark .endurance-member-add {
   background: var(--admin-surface-raised);
@@ -4138,5 +4167,10 @@ html:has(.admin-no-scroll) body {
   .pro-race-event-modal .endurance-member-remove {
     grid-area: remove;
     justify-self: end;
+  }
+
+  .pro-race-event-modal .endurance-member-row-sprint {
+    grid-template-columns: minmax(0, 1fr) 1.75rem;
+    grid-template-areas: "name remove";
   }
 }
