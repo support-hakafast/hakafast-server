@@ -839,7 +839,7 @@ async function testPitLaneWaitingInsertOrder() {
   const { resolveLaneInsertIndex } = await import('../src/utils/adminHelpers.js');
   assert(resolveLaneInsertIndex([], 'append') === 0, 'empty lane uses exit slot');
   assert(resolveLaneInsertIndex([5], 'append') === 1, 'waiting insert next to exit');
-  assert(resolveLaneInsertIndex([5, 7], 'append') === 1, 'new kart stacks at index 1');
+  assert(resolveLaneInsertIndex([5, 7], 'append') === 2, 'new kart stacks at back of queue');
 
   const wsBottom = 'verify-bottom-exit-insert';
   demoStore.resetStore('kart-demo', wsBottom);
@@ -857,7 +857,7 @@ async function testPitLaneWaitingInsertOrder() {
   );
   demoStore.returnKart(storeBottom, 2, 1);
   assert(
-    JSON.stringify(storeBottom.pitLines[1].karts) === JSON.stringify([10, 2, 1]),
+    JSON.stringify(storeBottom.pitLines[1].karts) === JSON.stringify([10, 1, 2]),
     'bottom exit: each new return stacks above the previous waiting kart',
   );
 
@@ -877,8 +877,8 @@ async function testPitLaneWaitingInsertOrder() {
   );
   demoStore.returnKart(storeTop, 2, 1);
   assert(
-    JSON.stringify(storeTop.pitLines[1].karts) === JSON.stringify([10, 2, 1]),
-    'top exit: each new return pushes previous waiting kart further down',
+    JSON.stringify(storeTop.pitLines[1].karts) === JSON.stringify([10, 1, 2]),
+    'top exit: each new return stacks further from exit in queue order',
   );
 }
 
@@ -929,10 +929,36 @@ async function testOverlapAssignmentDuringDrain() {
   });
   assert(result.complete, '3 pits + 2 on-track should cover 5 drivers');
   assert(result.assigned.filter((a) => a.source === 'pit').length === 3, '3 from pits');
-  assert(result.assigned.filter((a) => a.pendingFromTrack).length === 2, '2 pending on track');
+  assert(result.assigned.filter((a) => a.pendingFromTrack).length === 2, '2 pending on track'  );
 }
 
-function testPendingFilledOnPitReturn() {
+function testSessionEndPitReturnQueue() {
+  const wsId = 'verify-session-pit-queue';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.heatSettings = { type: 'time', duration: 10 };
+  store.currentHeat = [
+    { kart_number: 1, driver_name: 'A', lap_count: 1, lap_times: ['45.000'] },
+    { kart_number: 2, driver_name: 'B', lap_count: 1, lap_times: ['46.000'] },
+  ];
+  store.pitLines = { 1: { active: true, karts: [3, 4] } };
+  store.onTrack = [
+    { kart_number: 1, originLaneId: 1, launchedAt: Date.now() - 120000, lastLapAt: Date.now() - 5000 },
+    { kart_number: 2, originLaneId: 1, launchedAt: Date.now() - 120000, lastLapAt: Date.now() - 3000 },
+  ];
+
+  assert(store.pitLines[1].karts[0] === 3, 'kart 3 at transponder / pit exit');
+  assert(store.pitLines[1].karts[1] === 4, 'kart 4 queued behind 3');
+
+  const { returned } = demoStore.returnAllDrainingKartsToPits(store, { skipDrain: true });
+  assert(returned.length === 2, 'both on-track karts return to pits');
+  assert(
+    JSON.stringify(store.pitLines[1].karts) === JSON.stringify([3, 4, 1, 2]),
+    'session end: returns append at lane back in pit-entry order',
+  );
+}
+
+async function testPendingFilledOnPitReturn() {
   const wsId = 'verify-pending-fill';
   demoStore.resetStore('kart-demo', wsId);
   const store = demoStore.resolveFromParts('kart-demo', wsId);
@@ -1379,6 +1405,7 @@ async function main() {
   await run('merge client pit lines preserves server karts', () => testMergeClientPitLinesPreservesServerKarts());
   await run('even pit lane spread on return', () => testEvenPitLaneSpreadOnReturn());
   await run('pit lane waiting insert order', testPitLaneWaitingInsertOrder);
+  await run('session end pit return queue order', () => testSessionEndPitReturnQueue());
   await run('cooldown auto-return without next heat', () => testCooldownAutoReturnWithoutNextHeat());
   await run('overlap assignment during drain', testOverlapAssignmentDuringDrain);
   await run('pending slots filled on pit return', () => testPendingFilledOnPitReturn());

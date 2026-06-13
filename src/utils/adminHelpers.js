@@ -158,7 +158,7 @@ export function getWaitingKartNumbers(lane) {
   return lane.karts.slice(1).map(Number);
 }
 
-/** Where to insert into lane.karts (index 0 = pit exit / transponder). Append stacks at index 1; UI direction follows pitExitPosition. */
+/** Where to insert into lane.karts (index 0 = pit exit / transponder). Append adds at back of queue (furthest from exit). */
 export function resolveLaneInsertIndex(karts, insertAt = 'append') {
   const len = karts?.length ?? 0;
   if (typeof insertAt === 'number') {
@@ -167,7 +167,7 @@ export function resolveLaneInsertIndex(karts, insertAt = 'append') {
   if (insertAt === 'front') {
     return 0;
   }
-  return len === 0 ? 0 : 1;
+  return len;
 }
 
 /** Reorder a kart within a lane array (exit = index 0). */

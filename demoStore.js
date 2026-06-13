@@ -617,9 +617,8 @@ function recordLapCrossing(store, ot, row, lapSec, options = {}) {
     checkAutoFinish(store);
     const kartNum = Number(ot.kart_number);
     if (!isKartReservedForNextHeat(store, kartNum)) {
-      returnKart(store, kartNum, null, {
+      returnKart(store, kartNum, ot.originLaneId ?? ot.laneId, {
         skipNextHeatGuard: true,
-        evenSpread: true,
       });
     }
     return;
@@ -941,10 +940,9 @@ function returnAllDrainingKartsToPits(store, options = {}) {
       const inCooldown = store.heatCooldownPhase && ot.cooldownLapPending && !ot.cooldownLapDone;
       if (inCooldown) return;
     }
-    const result = returnKart(store, n, null, {
+    const result = returnKart(store, n, ot.originLaneId ?? ot.laneId, {
       skipNextHeatGuard: true,
       skipDrain: true,
-      evenSpread: true,
     });
     if (result.success) returned.push(n);
   });
@@ -996,13 +994,11 @@ function maybeDrainFinishedHeat(store) {
 }
 
 function resolveWaitingLaneInsertIndex(karts) {
-  const len = karts?.length ?? 0;
-  return len === 0 ? 0 : 1;
+  return karts?.length ?? 0;
 }
 
 function insertKartIntoWaitingLane(karts, kartNumber) {
-  const idx = resolveWaitingLaneInsertIndex(karts);
-  karts.splice(idx, 0, Number(kartNumber));
+  karts.splice(resolveWaitingLaneInsertIndex(karts), 0, Number(kartNumber));
 }
 
 function moveKartToPitExit(store, kartNumber, laneId) {
@@ -1058,10 +1054,9 @@ function returnKartsNotInNextHeat(store) {
       return;
     }
 
-    const result = returnKart(store, n, null, {
+    const result = returnKart(store, n, ot.originLaneId ?? ot.laneId, {
       skipNextHeatGuard: true,
       skipDrain: true,
-      evenSpread: true,
     });
     if (result.success) returned.push(n);
   });
