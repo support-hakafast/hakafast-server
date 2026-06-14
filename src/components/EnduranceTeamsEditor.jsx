@@ -235,7 +235,7 @@ export default function EnduranceTeamsEditor({
                     </strong>
                     <span className="endurance-team-summary-meta">
                       {t('admin_endurance_drivers_short', { count: summary.driverCount })}
-                      {isEndurance && ` · ${t('admin_starter_short')}: ${summary.starterName}`}
+                      {isEndurance && ` · ${t('admin_endurance_starter_short')}: ${summary.starterName}`}
                       {ready && <span className="endurance-team-ready-badge" aria-label="ready">✓</span>}
                     </span>
                   </div>
