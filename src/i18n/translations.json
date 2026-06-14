@@ -575,7 +575,13 @@
     "results_back": "← כל המקצים",
     "admin_sprint_heat_name_ph": "שם מקצה",
     "admin_endurance_team_count": "{{count}}/{{max}} קבוצות",
-    "admin_endurance_team_limit": "הגעת למספר הקבוצות המרבי ({{max}})"
+    "admin_endurance_team_limit": "הגעת למספר הקבוצות המרבי ({{max}})",
+    "admin_endurance_collapse_ready": "כווץ קבוצות מוכנות",
+    "admin_endurance_expand_all": "הרחב הכל",
+    "admin_endurance_expand": "הרחב קבוצה",
+    "admin_endurance_collapse": "כווץ קבוצה",
+    "admin_endurance_team_unnamed": "קבוצה ללא שם",
+    "admin_endurance_drivers_short": "{{count}} נהגים"
   },
   "en": {
     "title": "HAKAFAST",
@@ -1153,7 +1159,13 @@
     "results_back": "← All heats",
     "admin_sprint_heat_name_ph": "Heat name",
     "admin_endurance_team_count": "{{count}}/{{max}} teams",
-    "admin_endurance_team_limit": "Maximum number of teams reached ({{max}})"
+    "admin_endurance_team_limit": "Maximum number of teams reached ({{max}})",
+    "admin_endurance_collapse_ready": "Collapse ready teams",
+    "admin_endurance_expand_all": "Expand all",
+    "admin_endurance_expand": "Expand team",
+    "admin_endurance_collapse": "Collapse team",
+    "admin_endurance_team_unnamed": "Unnamed team",
+    "admin_endurance_drivers_short": "{{count}} drivers"
   },
   "ar": {
     "title": "HAKAFAST",
@@ -1720,6 +1732,13 @@
     "results_back": "← كل الجولات",
     "admin_sprint_heat_name_ph": "اسم الجولة",
     "admin_endurance_team_count": "{{count}}/{{max}} فريق",
-    "admin_endurance_team_limit": "تم الوصول إلى الحد الأقصى للفرق ({{max}})"
+    "admin_endurance_team_limit": "تم الوصول إلى الحد الأقصى للفرق ({{max}})",
+    "admin_endurance_collapse_ready": "طيّ الفرق الجاهزة",
+    "admin_endurance_expand_all": "توسيع الكل",
+    "admin_endurance_expand": "توسيع الفريق",
+    "admin_endurance_collapse": "طيّ الفريق",
+    "admin_endurance_team_unnamed": "فريق بلا اسم",
+    "admin_endurance_drivers_short": "{{count}} سائقين"
+
   }
 }

@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+// File: EnduranceTeamsEditor.jsx
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createEmptyTeamRecord,
   groupsToTeamRecords,
@@ -19,9 +20,57 @@ export default function EnduranceTeamsEditor({
 }) {
   const fileRef = useRef(null);
   const teams = groupsToTeamRecords(groups);
+  const [collapsed, setCollapsed] = useState(() => new Set());
   const nameLabelKey = eventType === 'sprint' ? 'admin_sprint_heat_name_ph' : 'admin_endurance_team_name_ph';
   const isEndurance = eventType === 'endurance';
   const atLimit = teams.length >= MAX_TEAMS;
+
+  const isTeamReady = useCallback((team) => {
+    if (!team?.name?.trim()) return false;
+    if (!Array.isArray(team.members) || !team.members.length) return false;
+    const named = team.members.filter((m) => m?.name?.trim());
+    if (!named.length) return false;
+    if (isEndurance) {
+      const hasStarter = named.some((m) => m.starter);
+      if (!hasStarter) return false;
+      const allComplete = team.members.every((m) =>
+        !m?.name?.trim() || (m.name.trim() && m.weightKg !== '' && m.weightKg != null),
+      );
+      if (!allComplete) return false;
+    }
+    return true;
+  }, [isEndurance]);
+
+  // Auto-collapse ready teams, auto-expand teams that became incomplete
+  useEffect(() => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      teams.forEach((team, idx) => {
+        const ready = isTeamReady(team);
+        if (ready && !next.has(idx)) { next.add(idx); changed = true; }
+        else if (!ready && next.has(idx)) { next.delete(idx); changed = true; }
+      });
+      return changed ? next : prev;
+    });
+  }, [teams, isTeamReady]);
+
+  const toggleCollapse = (teamIndex, e) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamIndex)) next.delete(teamIndex);
+      else next.add(teamIndex);
+      return next;
+    });
+  };
+
+  const stopInside = (e) => {
+    // Prevent the team-card-head click handler from firing when the user
+    // clicks/touches an input or button inside it.
+    e.stopPropagation();
+  };
 
   const updateTeams = (nextTeams) => {
     onChange(teamRecordsToGroups(nextTeams, { preserveEmpty: true }));
@@ -67,6 +116,13 @@ export default function EnduranceTeamsEditor({
     updateTeams(teams.filter((_, i) => i !== teamIndex));
   };
 
+  const expandAll = () => setCollapsed(new Set());
+  const collapseAllReady = () => {
+    const next = new Set();
+    teams.forEach((team, idx) => { if (isTeamReady(team)) next.add(idx); });
+    setCollapsed(next);
+  };
+
   const applyImportedGroups = (imported) => {
     if (!imported.length) {
       onImportError?.(t('admin_pro_event_csv_empty'));
@@ -101,6 +157,15 @@ export default function EnduranceTeamsEditor({
     URL.revokeObjectURL(url);
   };
 
+  const getTeamSummary = (team) => {
+    const named = team.members.filter((m) => m?.name?.trim());
+    const starter = team.members.find((m) => m.starter && m?.name?.trim());
+    return {
+      driverCount: named.length,
+      starterName: starter?.name || '—',
+    };
+  };
+
   return (
     <div className="endurance-teams-editor">
       <div className="endurance-teams-editor-head">
@@ -108,6 +173,12 @@ export default function EnduranceTeamsEditor({
           {t(groupsLabelKey)} · {t('admin_endurance_team_count', { count: teams.length, max: MAX_TEAMS })}
         </span>
         <div className="endurance-import-actions">
+          <button type="button" className="btn-muted endurance-collapse-all" onClick={collapseAllReady} title={t('admin_endurance_collapse_ready')}>
+            {t('admin_endurance_collapse_ready')}
+          </button>
+          <button type="button" className="btn-muted endurance-expand-all" onClick={expandAll} title={t('admin_endurance_expand_all')}>
+            {t('admin_endurance_expand_all')}
+          </button>
           <button type="button" className="btn-muted endurance-csv-template" onClick={downloadTemplate}>
             {t('admin_pro_event_csv_template')}
           </button>
@@ -136,90 +207,141 @@ export default function EnduranceTeamsEditor({
       )}
 
       <ul className="endurance-teams-list">
-        {teams.map((team, teamIndex) => (
-          <li key={`team-${teamIndex}`} className="endurance-team-card">
-            <div className="endurance-team-card-head">
-              <span className="endurance-team-number" aria-hidden>{teamIndex + 1}</span>
-              <input
-                type="text"
-                className="endurance-team-name-input"
-                dir="auto"
-                value={team.name}
-                onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
-                placeholder={t(nameLabelKey)}
-                aria-label={t(nameLabelKey)}
-              />
-              <button
-                type="button"
-                className="endurance-team-remove"
-                onClick={() => removeTeam(teamIndex)}
-                disabled={teams.length <= 1}
-                aria-label={t('admin_endurance_remove_team')}
+        {teams.map((team, teamIndex) => {
+          const isCollapsed = collapsed.has(teamIndex);
+          const ready = isTeamReady(team);
+          const summary = getTeamSummary(team);
+          return (
+            <li
+              key={`team-${teamIndex}`}
+              className={`endurance-team-card${isCollapsed ? ' is-collapsed' : ''}${ready ? ' is-ready' : ''}`}
+            >
+              <div
+                className="endurance-team-card-head"
+                onClick={() => toggleCollapse(teamIndex)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollapse(teamIndex, e); }
+                }}
+                aria-expanded={!isCollapsed}
               >
-                ×
-              </button>
-            </div>
+                <span className="endurance-team-number" aria-hidden>{teamIndex + 1}</span>
 
-            <div className={`endurance-members-head${isEndurance ? '' : ' endurance-member-row-sprint'}`} aria-hidden>
-              <span>{t('admin_endurance_member_name')}</span>
-              {isEndurance && <span>{t('admin_endurance_member_weight')}</span>}
-              {isEndurance && <span>{t('admin_endurance_member_starter')}</span>}
-              <span />
-            </div>
-
-            <ul className="endurance-members-list">
-              {team.members.map((member, memberIndex) => (
-                <li
-                  key={`m-${teamIndex}-${memberIndex}`}
-                  className={`endurance-member-row${isEndurance ? '' : ' endurance-member-row-sprint'}`}
-                >
+                {isCollapsed ? (
+                  <div className="endurance-team-summary" onClick={(e) => { e.stopPropagation(); toggleCollapse(teamIndex, e); }}>
+                    <strong className="endurance-team-summary-name">
+                      {team.name || t('admin_endurance_team_unnamed')}
+                    </strong>
+                    <span className="endurance-team-summary-meta">
+                      {t('admin_endurance_drivers_short', { count: summary.driverCount })}
+                      {isEndurance && ` · ${t('admin_starter_short')}: ${summary.starterName}`}
+                      {ready && <span className="endurance-team-ready-badge" aria-label="ready">✓</span>}
+                    </span>
+                  </div>
+                ) : (
                   <input
                     type="text"
+                    className="endurance-team-name-input"
                     dir="auto"
-                    value={member.name}
-                    onChange={(e) => updateMember(teamIndex, memberIndex, { name: e.target.value })}
-                    placeholder={t('admin_driver_placeholder')}
+                    value={team.name}
+                    onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
+                    onClick={stopInside}
+                    onMouseDown={stopInside}
+                    onKeyDown={stopInside}
+                    placeholder={t(nameLabelKey)}
+                    aria-label={t(nameLabelKey)}
                   />
-                  {isEndurance && (
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={member.weightKg}
-                      onChange={(e) => updateMember(teamIndex, memberIndex, { weightKg: e.target.value })}
-                      placeholder="kg"
-                      title={t('admin_endurance_member_weight')}
-                    />
-                  )}
-                  {isEndurance && (
-                    <label className="endurance-starter-mark" title={t('admin_endurance_member_starter')}>
-                      <input
-                        type="radio"
-                        name={`starter-${teamIndex}`}
-                        checked={Boolean(member.starter)}
-                        onChange={() => setStarter(teamIndex, memberIndex)}
-                      />
-                      <span>{t('admin_endurance_starter_short')}</span>
-                    </label>
-                  )}
-                  <button
-                    type="button"
-                    className="endurance-member-remove"
-                    onClick={() => removeMember(teamIndex, memberIndex)}
-                    disabled={team.members.length <= 1}
-                    aria-label={t('admin_endurance_remove_member')}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
+                )}
 
-            <button type="button" className="endurance-member-add" onClick={() => addMember(teamIndex)}>
-              + {t('admin_endurance_add_member')}
-            </button>
-          </li>
-        ))}
+                <button
+                  type="button"
+                  className="endurance-team-toggle"
+                  onClick={(e) => toggleCollapse(teamIndex, e)}
+                  aria-label={isCollapsed ? t('admin_endurance_expand') : t('admin_endurance_collapse')}
+                  title={isCollapsed ? t('admin_endurance_expand') : t('admin_endurance_collapse')}
+                >
+                  <span aria-hidden>{isCollapsed ? '▾' : '▴'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="endurance-team-remove"
+                  onClick={(e) => { e.stopPropagation(); removeTeam(teamIndex); }}
+                  disabled={teams.length <= 1}
+                  aria-label={t('admin_endurance_remove_team')}
+                >
+                  ×
+                </button>
+              </div>
+
+              {!isCollapsed && (
+                <>
+                  <div
+                    className={`endurance-members-head${isEndurance ? '' : ' endurance-member-row-sprint'}`}
+                    aria-hidden
+                  >
+                    <span>{t('admin_endurance_member_name')}</span>
+                    {isEndurance && <span>{t('admin_endurance_member_weight')}</span>}
+                    {isEndurance && <span>{t('admin_endurance_member_starter')}</span>}
+                    <span />
+                  </div>
+
+                  <ul className="endurance-members-list">
+                    {team.members.map((member, memberIndex) => (
+                      <li
+                        key={`m-${teamIndex}-${memberIndex}`}
+                        className={`endurance-member-row${isEndurance ? '' : ' endurance-member-row-sprint'}`}
+                      >
+                        <input
+                          type="text"
+                          dir="auto"
+                          value={member.name}
+                          onChange={(e) => updateMember(teamIndex, memberIndex, { name: e.target.value })}
+                          placeholder={t('admin_driver_placeholder')}
+                        />
+                        {isEndurance && (
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={member.weightKg}
+                            onChange={(e) => updateMember(teamIndex, memberIndex, { weightKg: e.target.value })}
+                            placeholder="kg"
+                            title={t('admin_endurance_member_weight')}
+                          />
+                        )}
+                        {isEndurance && (
+                          <label className="endurance-starter-mark" title={t('admin_endurance_member_starter')}>
+                            <input
+                              type="radio"
+                              name={`starter-${teamIndex}`}
+                              checked={Boolean(member.starter)}
+                              onChange={() => setStarter(teamIndex, memberIndex)}
+                            />
+                            <span>{t('admin_endurance_starter_short')}</span>
+                          </label>
+                        )}
+                        <button
+                          type="button"
+                          className="endurance-member-remove"
+                          onClick={() => removeMember(teamIndex, memberIndex)}
+                          disabled={team.members.length <= 1}
+                          aria-label={t('admin_endurance_remove_member')}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button type="button" className="endurance-member-add" onClick={() => addMember(teamIndex)}>
+                    + {t('admin_endurance_add_member')}
+                  </button>
+                </>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
