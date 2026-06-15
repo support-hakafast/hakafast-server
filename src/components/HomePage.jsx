@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../assets/HomePage.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
@@ -11,6 +11,29 @@ const CONTACT_TIMEOUT_MS = 12000;
 const HomePage = () => {
   const { t } = useLanguage();
   const [contactStatus, setContactStatus] = useState('idle');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
+
+  // Close menu on Escape key
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') closeMobileMenu();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [mobileMenuOpen, closeMobileMenu]);
+
+  // Lock body scroll when menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
 
   const handleContactSubmit = async (e) => {
     e.preventDefault();
@@ -75,8 +98,41 @@ const HomePage = () => {
             <a href="#contact">{t('nav_contact')}</a>
           </nav>
           <LanguageSwitcher />
+          <button
+            className={`home-hamburger${mobileMenuOpen ? ' is-open' : ''}`}
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+          >
+            <span className="home-hamburger-icon">
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
         </div>
       </header>
+
+      {/* Mobile slide-in menu */}
+      <div
+        className={`home-mobile-menu${mobileMenuOpen ? ' is-open' : ''}`}
+        onClick={closeMobileMenu}
+      >
+        <nav
+          className="home-mobile-drawer"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <a href="#features" onClick={closeMobileMenu}>{t('nav_features')}</a>
+          <a href="#live-tracks" onClick={closeMobileMenu}>{t('nav_live')}</a>
+          <Link to="/quote" onClick={closeMobileMenu}>{t('nav_quote')}</Link>
+          <Link to="/admin/kart-demo" onClick={closeMobileMenu}>{t('nav_demo')}</Link>
+          <a href="#about" onClick={closeMobileMenu}>{t('nav_about')}</a>
+          <a href="#contact" onClick={closeMobileMenu}>{t('nav_contact')}</a>
+          <div className="home-mobile-lang">
+            <LanguageSwitcher />
+          </div>
+        </nav>
+      </div>
 
       <section className="home-hero">
         <span className="home-hero-badge">{t('hero_badge')}</span>

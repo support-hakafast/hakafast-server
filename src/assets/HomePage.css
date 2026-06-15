@@ -3,6 +3,7 @@
   background: #fff;
 }
 
+/* ── Navigation ── */
 .home-nav {
   position: sticky;
   top: 0;
@@ -54,6 +55,117 @@
   background: #f1f5f9;
 }
 
+/* Hamburger button */
+.home-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.home-hamburger:focus-visible {
+  outline: 2px solid var(--hf-navy);
+  outline-offset: 2px;
+}
+
+.home-hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 24px;
+}
+
+.home-hamburger-icon span {
+  display: block;
+  height: 2.5px;
+  background: var(--hf-navy);
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.home-hamburger.is-open .home-hamburger-icon span:nth-child(1) {
+  transform: translateY(7.5px) rotate(45deg);
+}
+
+.home-hamburger.is-open .home-hamburger-icon span:nth-child(2) {
+  opacity: 0;
+}
+
+.home-hamburger.is-open .home-hamburger-icon span:nth-child(3) {
+  transform: translateY(-7.5px) rotate(-45deg);
+}
+
+/* Mobile menu overlay */
+.home-mobile-menu {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  animation: home-mobile-menu-fade 0.2s ease;
+}
+
+.home-mobile-menu.is-open {
+  display: block;
+}
+
+@keyframes home-mobile-menu-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.home-mobile-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(320px, 85vw);
+  height: 100%;
+  background: #fff;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: home-mobile-drawer-slide 0.25s ease;
+  overflow-y: auto;
+}
+
+@keyframes home-mobile-drawer-slide {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.home-mobile-drawer a {
+  display: block;
+  padding: 0.85rem 1rem;
+  color: var(--hf-ink);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.05rem;
+  border-radius: 0.65rem;
+  transition: background 0.15s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.home-mobile-drawer a:hover,
+.home-mobile-drawer a:active {
+  background: #f1f5f9;
+}
+
+.home-mobile-drawer .home-mobile-lang {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* ── Hero ── */
 .home-hero {
   padding: 4.5rem 1.25rem 4rem;
   text-align: center;
@@ -115,6 +227,7 @@
   text-decoration: none;
   border: 2px solid transparent;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  min-height: 48px;
 }
 
 .home-btn:hover {
@@ -133,6 +246,7 @@
   border-color: rgba(255, 255, 255, 0.85);
 }
 
+/* ── Sections ── */
 .home-section {
   padding: 3.5rem 1.25rem;
   max-width: 72rem;
@@ -154,6 +268,7 @@
   line-height: 1.6;
 }
 
+/* ── Features ── */
 .home-features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -194,6 +309,7 @@
   line-height: 1.55;
 }
 
+/* ── Tracks ── */
 .home-tracks {
   background: #f1f5f9;
   padding: 3rem 1.25rem;
@@ -234,6 +350,7 @@
   line-height: 1.4;
 }
 
+/* ── About ── */
 .home-about {
   max-width: 42rem;
   margin: 0 auto;
@@ -263,6 +380,7 @@
   color: var(--hf-navy);
 }
 
+/* ── Contact ── */
 .home-contact {
   max-width: 32rem;
   margin: 0 auto;
@@ -335,6 +453,7 @@
   color: #1e40af;
 }
 
+/* ── Footer ── */
 .home-footer {
   text-align: center;
   padding: 1.5rem;
@@ -343,17 +462,257 @@
   border-top: 1px solid #e2e8f0;
 }
 
-@media (max-width: 640px) {
+/* ═══════════════════════════════════════════
+   MOBILE — ≤ 768px (tablets + phones)
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
   .home-nav {
-    flex-direction: column;
-    align-items: stretch;
+    padding: 0.65rem 1rem;
   }
 
-  .home-nav-end {
-    justify-content: space-between;
+  .home-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .home-nav-links {
-    justify-content: center;
+    display: none;
+  }
+
+  .home-nav-end {
+    gap: 0.5rem;
+  }
+
+  .home-hero {
+    padding: 3rem 1rem 2.5rem;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(1.8rem, 7vw, 2.8rem);
+  }
+
+  .home-hero p {
+    font-size: clamp(0.95rem, 3vw, 1.15rem);
+    margin-bottom: 1.5rem;
+  }
+
+  .home-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    padding: 0 0.5rem;
+  }
+
+  .home-btn {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    font-size: 1.05rem;
+    min-height: 52px;
+  }
+
+  .home-section {
+    padding: 2.5rem 1rem;
+  }
+
+  .home-section h2 {
+    font-size: clamp(1.4rem, 5vw, 2rem);
+  }
+
+  .home-section-lead {
+    margin-bottom: 1.75rem;
+  }
+
+  .home-features {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .home-feature {
+    padding: 1.25rem;
+  }
+
+  .home-feature h3 {
+    font-size: 1.05rem;
+  }
+
+  .home-tracks {
+    padding: 2rem 1rem;
+  }
+
+  .home-track-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .home-track-card .home-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.85rem 1rem;
+    font-size: 0.95rem;
+    min-height: 48px;
+  }
+
+  .home-about {
+    max-width: 100%;
+  }
+
+  .home-contact {
+    max-width: 100%;
+  }
+
+  .home-form input,
+  .home-form textarea {
+    padding: 0.85rem 0.9rem;
+    font-size: 1rem;
+    border-radius: 0.7rem;
+  }
+
+  .home-form button {
+    padding: 1rem;
+    font-size: 1.05rem;
+    border-radius: 0.7rem;
+    min-height: 52px;
+  }
+
+  .home-footer {
+    padding: 1.25rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE — ≤ 480px (small phones)
+   ═══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .home-nav {
+    padding: 0.55rem 0.75rem;
+  }
+
+  .home-nav-logo.hf-logo-img {
+    height: 40px;
+    padding: 3px 8px;
+  }
+
+  .home-hero {
+    padding: 2.25rem 0.75rem 2rem;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(1.6rem, 8vw, 2.2rem);
+  }
+
+  .home-hero p {
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .home-hero-badge {
+    font-size: 0.78rem;
+    padding: 0.3rem 0.75rem;
+  }
+
+  .home-section {
+    padding: 2rem 0.75rem;
+  }
+
+  .home-section h2 {
+    font-size: 1.35rem;
+  }
+
+  .home-section-lead {
+    font-size: 0.92rem;
+  }
+
+  .home-features {
+    gap: 0.75rem;
+  }
+
+  .home-feature {
+    padding: 1rem;
+    border-radius: 0.85rem;
+  }
+
+  .home-feature > div:first-child {
+    font-size: 1.5rem;
+  }
+
+  .home-feature h3 {
+    font-size: 1rem;
+  }
+
+  .home-feature p {
+    font-size: 0.88rem;
+  }
+
+  .home-tracks {
+    padding: 1.5rem 0.75rem;
+  }
+
+  .home-track-card {
+    padding: 0.85rem;
+    border-radius: 0.75rem;
+  }
+
+  .home-track-card strong {
+    font-size: 0.95rem;
+  }
+
+  .home-demo-hint {
+    font-size: 0.78rem;
+  }
+
+  .home-form label {
+    font-size: 0.85rem;
+  }
+
+  .home-form input,
+  .home-form textarea {
+    padding: 0.8rem;
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  .home-form button {
+    font-size: 1rem;
+  }
+
+  .home-footer {
+    padding: 1rem 0.75rem;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   SAFE AREA — notched phones (iPhone X+)
+   ═══════════════════════════════════════════ */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .home-hero {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  .home-footer {
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
+  .home-mobile-drawer {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   LANDSCAPE — phones in landscape
+   ═══════════════════════════════════════════ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .home-hero {
+    padding: 1.5rem 1rem;
+  }
+
+  .home-hero h1 {
+    font-size: 1.8rem;
+  }
+
+  .home-hero p {
+    margin-bottom: 1rem;
   }
 }
