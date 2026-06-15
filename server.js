@@ -280,6 +280,19 @@ function notifyWorkspace(req) {
   if (demo) demoStore.persistStore(demo);
 }
 
+function requestTrackSlug(req) {
+  return req.headers['x-hf-track'] || req.params?.trackSlug || null;
+}
+
+/** Isolated demo tracks must never fall back to shared in-memory / DB state. */
+function missingIsolatedWorkspace(req) {
+  const track = requestTrackSlug(req);
+  if (!track || !demoStore.isIsolatedTrack(track)) return false;
+  const install = installConfig.loadInstallConfig();
+  if (installConfig.isLocalInstall() && install?.workspaceId) return false;
+  return !req.headers['x-hf-workspace'];
+}
+
 function isStrongPassword(password) {
   if (!password || password.length < 12) return false;
   if (!/[A-Z]/.test(password)) return false;
@@ -319,10 +332,8 @@ async function applyAutoLevelUpgrades(trackId = 1) {
   }
 }
 
-const ISOLATED_TRACKS = new Set(['kart-demo', 'holyland-racing', 'go-karting']);
-
 function adminLoginRequired(trackName) {
-  if (ISOLATED_TRACKS.has(trackName)) return false;
+  if (demoStore.isIsolatedTrack(trackName)) return false;
   return Boolean(levelSettings.editPassword || trackCredentials[trackName]);
 }
 
@@ -419,12 +430,14 @@ app.post('/api/contact', async (req, res) => {
   return res.status(500).json({ success: false, error: 'send_failed' });
 });
 app.get('/api/admin/pits', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const demo = demoStore.resolveWorkspace(req);
   if (demo) return res.json(demo.pitLines);
   return res.json(pitLines);
 });
 
 app.post('/api/admin/update-pits', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     demo.pitLines = demoStore.sanitizePitLines(req.body.newLines);
@@ -435,6 +448,7 @@ app.post('/api/admin/update-pits', (req, res) => {
 });
 
 app.get('/api/heat-settings', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     return res.json({
@@ -448,6 +462,7 @@ app.get('/api/heat-settings', (req, res) => {
 });
 
 app.get('/api/admin/session-state', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const demo = demoStore.resolveWorkspace(req);
   if (demo) return res.json(demoStore.getSessionState(demo));
   return res.json({
@@ -668,7 +683,9 @@ app.post('/api/install/setup', (req, res) => {
     }, trackSlug);
     if (adminPassword) store.levelSettings.editPassword = adminPassword;
     demoStore.persistStore(store);
-    saveTrackProfileToDb(trackSlug, store.trackProfile);
+    if (!demoStore.isIsolatedTrack(trackSlug)) {
+      saveTrackProfileToDb(trackSlug, store.trackProfile);
+    }
   }
   const port = Number(process.env.PORT) || 5000;
   return res.json({
@@ -816,6 +833,7 @@ app.post('/api/admin/kart-return', (req, res) => {
 });
 
 app.post('/api/admin/heat-settings', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     demo.heatSettings = { ...demo.heatSettings, ...req.body };
@@ -828,6 +846,7 @@ app.post('/api/admin/heat-settings', (req, res) => {
 });
 
 app.get('/api/admin/level-settings', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const demo = demoStore.resolveWorkspace(req);
   const settings = demo ? demo.levelSettings : levelSettings;
   return res.json({
@@ -841,20 +860,12 @@ app.get('/api/admin/level-settings', (req, res) => {
 app.get('/api/kiosk/track-config', async (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });
-  if (!demo.trackProfile) {
-    const fromDb = await loadTrackProfileFromDb(demo.trackSlug);
-    if (fromDb) demo.trackProfile = fromDb;
-  }
   return res.json({ success: true, ...demoStore.getKioskTrackConfig(demo) });
 });
 
 app.get('/api/admin/track-profile', async (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
-    if (!demo.trackProfile) {
-      const fromDb = await loadTrackProfileFromDb(demo.trackSlug);
-      if (fromDb) demo.trackProfile = fromDb;
-    }
     const profile = demoStore.getTrackProfile(demo);
     return res.json({
       success: true,
@@ -869,7 +880,6 @@ app.post('/api/admin/track-profile', async (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });
   const result = demoStore.updateTrackProfile(demo, req.body || {});
-  await saveTrackProfileToDb(demo.trackSlug, demo.trackProfile);
   notifyWorkspace(req);
   return res.json({
     ...result,
@@ -878,6 +888,9 @@ app.post('/api/admin/track-profile', async (req, res) => {
 });
 
 app.get('/api/admin/track-setup/:trackSlug', (req, res) => {
+  if (missingIsolatedWorkspace(req)) {
+    return res.json({ onboarded: false, kartNumbers: '' });
+  }
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     return res.json({
@@ -910,12 +923,14 @@ app.post('/api/admin/track-setup', (req, res) => {
     demoStore.updateTrackProfile(demo, profilePatch);
     if (editPassword) demo.levelSettings.editPassword = editPassword;
     demoStore.persistStore(demo);
-    saveTrackProfileToDb(demo.trackSlug, demoStore.getTrackProfile(demo));
     return res.json({
       success: true,
       kartNumbers: demo.trackSetup.kartNumbers,
       profile: demoStore.getTrackProfile(demo),
     });
+  }
+  if (demoStore.isIsolatedTrack(trackSlug)) {
+    return res.json({ success: false, error: 'no_workspace' });
   }
   trackSetups[trackSlug] = { onboarded: true, kartNumbers: String(kartNumbers || '').trim() };
   if (editPassword) levelSettings.editPassword = editPassword;
@@ -923,6 +938,7 @@ app.post('/api/admin/track-setup', (req, res) => {
 });
 
 app.post('/api/admin/verify-settings-password', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const demo = demoStore.resolveWorkspace(req);
   const settings = demo ? demo.levelSettings : levelSettings;
   if (!settings.editPassword) return res.json({ success: true });
@@ -930,6 +946,7 @@ app.post('/api/admin/verify-settings-password', (req, res) => {
 });
 
 app.post('/api/admin/sync-queue/:trackSlug', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const demo = demoStore.resolveWorkspace(req);
   if (demo) {
     demo.driverQueue = req.body.queue || [];
@@ -967,6 +984,7 @@ app.post('/api/workspace/reset', (req, res) => {
 });
 
 app.post('/api/admin/level-settings', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
   const { masterLapThreshold, proLapThreshold, editPassword, pitExitPosition } = req.body;
   const demo = demoStore.resolveWorkspace(req);
   const settings = demo ? demo.levelSettings : levelSettings;
@@ -1135,12 +1153,16 @@ app.post('/api/admin/update-driver-level', async (req, res) => {
 app.get('/live-timing-data/:track_id', async (req, res) => {
   const mode = req.query.mode || 'timing';
   const trackId = req.params.track_id;
-  const trackSlug = trackId === '1' ? 'kart-demo' : String(trackId);
+  const trackSlug = req.headers['x-hf-track'] || (trackId === '1' ? 'kart-demo' : String(trackId));
   const demo = demoStore.resolveWorkspace(req);
 
   if (demo) {
     const payload = demoStore.getLivePayload(demo, mode);
     return res.json(payload.rows);
+  }
+
+  if (demoStore.isIsolatedTrack(trackSlug)) {
+    return res.json([]);
   }
 
   if (mode === 'assignments') {

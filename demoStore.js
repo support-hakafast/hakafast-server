@@ -16,6 +16,13 @@ const trackProfile = require('./trackProfile');
 const stores = new Map();
 const persistTimers = new Map();
 const TTL_MS = installConfig.isLocalInstall() ? 365 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+/** Demo / sandbox tracks — each browser workspace must stay fully isolated. */
+const ISOLATED_TRACKS = new Set(['kart-demo', 'holyland-racing', 'go-karting']);
+
+function isIsolatedTrack(trackSlug) {
+  return ISOLATED_TRACKS.has(trackSlug);
+}
 const DEFAULT_AVG_LAP_SEC = 45;
 /** Formation laps run noticeably slower than race pace in demo simulation. */
 const FORMATION_LAP_PACE_FACTOR = 1.35;
@@ -2524,6 +2531,8 @@ function getLivePayload(store, mode) {
 }
 
 module.exports = {
+  ISOLATED_TRACKS,
+  isIsolatedTrack,
   sanitizePitLines,
   resolveWorkspace,
   resolveFromParts,
