@@ -1,15 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import EnduranceTeamsEditor from './EnduranceTeamsEditor.jsx';
 import RaceEventSchedule from './RaceEventSchedule.jsx';
 import {
   buildRaceSchedulePreview,
   groupsToTeamRecords,
   parseRaceGroupsText,
+  sanitizeRaceGroupsForApply,
   serializeGroupsText,
   summarizeRaceEvent,
   teamRecordsToGroups,
 } from '../utils/raceEventHelpers.js';
 import { COUNTRIES, countryFlag } from '../data/countries.js';
+import { TRANSPONDER_SYSTEMS, getTransponderSystem, isNativeTransponderSystem } from '../data/transponderSystems.js';
+import { apiFetch } from '../utils/apiClient.js';
 
 export default function ProRaceEventModal({
   onClose,
@@ -40,16 +43,31 @@ export default function ProRaceEventModal({
   const [enduranceRules, setEnduranceRules] = useState(draft?.enduranceRules || '');
   const [advanceCount, setAdvanceCount] = useState(String(draft?.advanceCount ?? 2));
   const [defaultNationality, setDefaultNationality] = useState(draft?.defaultNationality || '');
+  const [timingSystem, setTimingSystem] = useState(draft?.timingSystem || 'mylaps_tranx');
+  const [decoderStatus, setDecoderStatus] = useState(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch('/api/decoder/status', {}, trackSlug)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled) setDecoderStatus(data); })
+      .catch(() => { if (!cancelled) setDecoderStatus({ enabled: false }); });
+    return () => { cancelled = true; };
+  }, [trackSlug]);
+
+  const transponderSys = getTransponderSystem(timingSystem);
+
+  const normalizedGroups = useMemo(
+    () => sanitizeRaceGroupsForApply(groups),
+    [groups],
+  );
   const sprintParsed = useMemo(
     () => parseRaceGroupsText(groupsText, { mode: 'sprint' }),
     [groupsText],
   );
 
-  const normalizedGroups = useMemo(() => teamRecordsToGroups(groups), [groups]);
-
-  const modalThemeClass = darkMode ? 'admin-modal-dark' : 'admin-modal-light';
   const headerThemeClass = darkMode ? 'admin-modal-header-dark' : 'admin-modal-header-light';
+  const modalThemeClass = darkMode ? 'admin-modal-dark' : 'admin-modal-light';
 
   const preview = useMemo(() => summarizeRaceEvent({
     type: eventType,
@@ -81,13 +99,13 @@ export default function ProRaceEventModal({
 
   const handleGroupsChange = (nextGroups) => {
     setGroups(nextGroups);
-    setGroupsText(serializeGroupsText(teamRecordsToGroups(nextGroups, { preserveEmpty: true })));
+    setGroupsText(serializeGroupsText(teamRecordsToGroups(nextGroups, { preserveEmpty: true, preserveRaw: true })));
     setImportMessage('');
   };
 
   const applyDefaultNationalityToAll = () => {
     if (!defaultNationality) return;
-    const nextTeams = groupsToTeamRecords(groups).map((team) => ({
+    const nextTeams = groupsToTeamRecords(groups, { preserveRaw: true }).map((team) => ({
       ...team,
       nationality: defaultNationality,
       members: team.members.map((m) => ({ ...m, nationality: defaultNationality })),
@@ -113,6 +131,7 @@ export default function ProRaceEventModal({
       enduranceRules,
       advanceCount: parseInt(advanceCount, 10) || 2,
       defaultNationality,
+      timingSystem,
       prepOnly,
       updatedAt: Date.now(),
     });
@@ -197,13 +216,39 @@ export default function ProRaceEventModal({
               {t('admin_pro_event_apply_nationality')}
             </button>
           </div>
-          <p className="pro-event-groups-hint">{t('admin_pro_event_apply_nationality_hint')}</p>
+
+          <div className="pro-event-timing-system">
+            <label className="planner-field planner-field-compact">
+              <span>{t('admin_pro_event_timing_system')}</span>
+              <select value={timingSystem} onChange={(e) => setTimingSystem(e.target.value)}>
+                {TRANSPONDER_SYSTEMS.map((sys) => (
+                  <option key={sys.id} value={sys.id}>{sys.name}</option>
+                ))}
+              </select>
+            </label>
+            <div className="pro-event-timing-meta">
+              <span className={`pro-event-decoder-badge${decoderStatus?.connected ? ' is-live' : ''}`}>
+                {isNativeTransponderSystem(timingSystem)
+                  ? (decoderStatus?.connected
+                    ? t('admin_pro_event_decoder_connected')
+                    : t('admin_pro_event_decoder_idle'))
+                  : t('admin_pro_event_decoder_external')}
+              </span>
+              <p className="pro-event-groups-hint">
+                {t('admin_pro_event_timing_system_hint', {
+                  format: transponderSys.idFormat,
+                  vendor: transponderSys.vendor || '—',
+                })}
+              </p>
+            </div>
+          </div>
 
           <EnduranceTeamsEditor
             t={t}
             groups={groups}
             eventType={eventType}
             trackSlug={trackSlug}
+            timingSystem={timingSystem}
             groupsLabelKey={isEndurance ? 'admin_pro_event_groups_endurance' : 'admin_pro_event_groups_sprint'}
             onChange={handleGroupsChange}
             onImportError={(msg) => setImportMessage(msg)}

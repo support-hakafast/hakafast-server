@@ -1770,6 +1770,7 @@ const AdminPanel = () => {
           draft={plannedRaceEvent}
           onApply={applyPlannedRaceEvent}
           isSaving={proEventSaving}
+          trackSlug={trackSlug}
         />
       )}
 

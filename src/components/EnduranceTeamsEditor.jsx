@@ -1,16 +1,13 @@
-// File: EnduranceTeamsEditor.jsx
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   createEmptyTeamRecord,
   groupsToTeamRecords,
   parseRaceGroupsCsv,
   raceGroupsCsvTemplate,
   teamRecordsToGroups,
-  serializeGroupsText,
 } from '../utils/raceEventHelpers.js';
 import { COUNTRIES, countryFlag } from '../data/countries.js';
-import { saveDriverProfilesBatch, getDriverProfileSuggestions, exportDriverProfilesCsv } from '../utils/driverProfiles.js';
-import DriverAutoComplete from './DriverAutoComplete.jsx';
+import { getTransponderSystem, normalizeTransponderId } from '../data/transponderSystems.js';
 
 const MAX_TEAMS = 80;
 
@@ -21,15 +18,15 @@ export default function EnduranceTeamsEditor({
   eventType = 'endurance',
   groupsLabelKey = 'admin_pro_event_groups_endurance',
   onImportError,
-  trackSlug = '',
-  onSaveProfiles,
+  timingSystem = 'mylaps_tranx',
 }) {
   const fileRef = useRef(null);
-  const teams = groupsToTeamRecords(groups);
+  const teams = groupsToTeamRecords(groups, { preserveRaw: true });
   const [collapsed, setCollapsed] = useState(() => new Set());
   const nameLabelKey = eventType === 'sprint' ? 'admin_sprint_heat_name_ph' : 'admin_endurance_team_name_ph';
   const isEndurance = eventType === 'endurance';
   const atLimit = teams.length >= MAX_TEAMS;
+  const transponderSys = getTransponderSystem(timingSystem);
 
   const isTeamReady = useCallback((team) => {
     if (!team?.name?.trim()) return false;
@@ -47,23 +44,7 @@ export default function EnduranceTeamsEditor({
     return true;
   }, [isEndurance]);
 
-  // Auto-collapse ready teams, auto-expand teams that became incomplete
-  useEffect(() => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      let changed = false;
-      teams.forEach((team, idx) => {
-        const ready = isTeamReady(team);
-        if (ready && !next.has(idx)) { next.add(idx); changed = true; }
-        else if (!ready && next.has(idx)) { next.delete(idx); changed = true; }
-      });
-      return changed ? next : prev;
-    });
-  }, [teams, isTeamReady]);
-
-  const toggleCollapse = (teamIndex, e) => {
-    e?.stopPropagation();
-    e?.preventDefault();
+  const toggleCollapse = (teamIndex) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(teamIndex)) next.delete(teamIndex);
@@ -72,14 +53,8 @@ export default function EnduranceTeamsEditor({
     });
   };
 
-  const stopInside = (e) => {
-    // Prevent the team-card-head click handler from firing when the user
-    // clicks/touches an input or button inside it.
-    e.stopPropagation();
-  };
-
   const updateTeams = (nextTeams) => {
-    onChange(teamRecordsToGroups(nextTeams, { preserveEmpty: true }));
+    onChange(teamRecordsToGroups(nextTeams, { preserveEmpty: true, preserveRaw: true }));
   };
 
   const updateTeam = (teamIndex, patch) => {
@@ -100,7 +75,13 @@ export default function EnduranceTeamsEditor({
   const addMember = (teamIndex) => {
     const team = teams[teamIndex];
     updateTeam(teamIndex, {
-      members: [...team.members, { name: '', weightKg: '', starter: team.members.length === 0, nationality: '' }],
+      members: [...team.members, {
+        name: '',
+        weightKg: '',
+        starter: team.members.length === 0,
+        nationality: '',
+        transponderId: '',
+      }],
     });
   };
 
@@ -134,7 +115,7 @@ export default function EnduranceTeamsEditor({
       onImportError?.(t('admin_pro_event_csv_empty'));
       return;
     }
-    updateTeams(groupsToTeamRecords(imported.slice(0, MAX_TEAMS)));
+    updateTeams(groupsToTeamRecords(imported.slice(0, MAX_TEAMS), { preserveRaw: true }));
   };
 
   const handleCsvFile = (e) => {
@@ -173,28 +154,42 @@ export default function EnduranceTeamsEditor({
     };
   };
 
+  const handleTransponderChange = (teamIndex, memberIndex, raw) => {
+    updateMember(teamIndex, memberIndex, {
+      transponderId: normalizeTransponderId(raw, timingSystem),
+    });
+  };
+
+  const handleTeamTransponderChange = (teamIndex, raw) => {
+    updateTeam(teamIndex, {
+      transponderId: normalizeTransponderId(raw, timingSystem),
+    });
+  };
+
   return (
-    <div className="endurance-teams-editor">
-      <div className="endurance-teams-editor-head">
-        <span className="field-label">
-          {t(groupsLabelKey)} · {t('admin_endurance_team_count', { count: teams.length, max: MAX_TEAMS })}
-        </span>
-        <div className="endurance-import-actions">
-          <button type="button" className="btn-muted endurance-collapse-all" onClick={collapseAllReady} title={t('admin_endurance_collapse_ready')}>
-            {t('admin_endurance_collapse_ready')}
+    <div className="endurance-teams-editor endurance-teams-editor-v2">
+      <div className="ete-toolbar">
+        <div className="ete-toolbar-title">
+          <span className="field-label">{t(groupsLabelKey)}</span>
+          <span className="ete-team-count">
+            {t('admin_endurance_team_count', { count: teams.length, max: MAX_TEAMS })}
+          </span>
+        </div>
+        <div className="ete-toolbar-actions">
+          <button type="button" className="ete-tool-btn" onClick={() => fileRef.current?.click()}>
+            {t('admin_pro_event_csv_import')}
           </button>
-          <button type="button" className="btn-muted endurance-expand-all" onClick={expandAll} title={t('admin_endurance_expand_all')}>
-            {t('admin_endurance_expand_all')}
-          </button>
-          <button type="button" className="btn-muted endurance-csv-template" onClick={downloadTemplate}>
+          <button type="button" className="ete-tool-btn" onClick={downloadTemplate}>
             {t('admin_pro_event_csv_template')}
           </button>
-          <button
-            type="button"
-            className="btn-muted endurance-csv-import"
-            onClick={() => fileRef.current?.click()}
-          >
-            {t('admin_pro_event_csv_import')}
+          <button type="button" className="ete-tool-btn" onClick={expandAll}>
+            {t('admin_endurance_expand_all')}
+          </button>
+          <button type="button" className="ete-tool-btn" onClick={collapseAllReady}>
+            {t('admin_endurance_collapse_ready')}
+          </button>
+          <button type="button" className="ete-tool-btn ete-tool-btn-primary" onClick={addTeam} disabled={atLimit}>
+            + {t('admin_endurance_add_team')}
           </button>
           <input
             ref={fileRef}
@@ -203,132 +198,147 @@ export default function EnduranceTeamsEditor({
             className="endurance-csv-input"
             onChange={handleCsvFile}
           />
-          <button type="button" className="endurance-team-add-btn" onClick={addTeam} disabled={atLimit}>
-            + {t('admin_endurance_add_team')}
-          </button>
         </div>
       </div>
-      <p className="pro-event-groups-hint">{t('admin_endurance_teams_editor_hint')}</p>
+
+      <p className="ete-hint">{t('admin_endurance_teams_editor_hint')}</p>
       {atLimit && (
         <p className="pro-event-import-msg" role="status">{t('admin_endurance_team_limit')}</p>
       )}
 
-      <ul className="endurance-teams-list">
+      <ul className="ete-teams-list">
         {teams.map((team, teamIndex) => {
           const isCollapsed = collapsed.has(teamIndex);
           const ready = isTeamReady(team);
           const summary = getTeamSummary(team);
+
           return (
             <li
               key={`team-${teamIndex}`}
-              className={`endurance-team-card${isCollapsed ? ' is-collapsed' : ''}${ready ? ' is-ready' : ''}`}
+              className={`ete-team-card${isCollapsed ? ' is-collapsed' : ''}${ready ? ' is-ready' : ''}`}
             >
-              <div
-                className="endurance-team-card-head"
-                onClick={() => toggleCollapse(teamIndex)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollapse(teamIndex, e); }
-                }}
-                aria-expanded={!isCollapsed}
-              >
-                <span className="endurance-team-number" aria-hidden>{teamIndex + 1}</span>
+              <div className="ete-team-header">
+                <span className="ete-team-badge" aria-hidden>{teamIndex + 1}</span>
 
                 {isCollapsed ? (
-                  <div className="endurance-team-summary" onClick={(e) => { e.stopPropagation(); toggleCollapse(teamIndex, e); }}>
-                    <strong className="endurance-team-summary-name">
-                      {summary.flag && <span className="endurance-team-summary-flag" aria-hidden>{summary.flag}</span>}
+                  <button
+                    type="button"
+                    className="ete-team-summary-btn"
+                    onClick={() => toggleCollapse(teamIndex)}
+                  >
+                    <strong className="ete-summary-name">
+                      {summary.flag && <span className="ete-summary-flag" aria-hidden>{summary.flag}</span>}
                       {team.name || t('admin_endurance_team_unnamed')}
                     </strong>
-                    <span className="endurance-team-summary-meta">
+                    <span className="ete-summary-meta">
                       {t('admin_endurance_drivers_short', { count: summary.driverCount })}
                       {isEndurance && ` · ${t('admin_endurance_starter_short')}: ${summary.starterName}`}
-                      {ready && <span className="endurance-team-ready-badge" aria-label="ready">✓</span>}
+                      {ready && <span className="ete-ready-dot" aria-label="ready">✓</span>}
                     </span>
-                  </div>
+                  </button>
                 ) : (
-                  <div className="endurance-team-head-fields" onClick={stopInside}>
-                    <input
-                      type="text"
-                      className="endurance-team-name-input"
-                      dir="auto"
-                      value={team.name}
-                      onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
-                      onClick={stopInside}
-                      onMouseDown={stopInside}
-                      onKeyDown={stopInside}
-                      placeholder={t(nameLabelKey)}
-                      aria-label={t(nameLabelKey)}
-                    />
-                    <select
-                      className="endurance-team-nationality-select"
-                      value={team.nationality || ''}
-                      onChange={(e) => updateTeam(teamIndex, { nationality: e.target.value })}
-                      onClick={stopInside}
-                      onMouseDown={stopInside}
-                      title={t('admin_endurance_team_nationality')}
-                      aria-label={t('admin_endurance_team_nationality')}
-                    >
-                      <option value="">{t('admin_endurance_nationality_none')}</option>
-                      {COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {countryFlag(c.code)} {c.name}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="ete-team-fields">
+                    <label className="ete-field ete-field-grow">
+                      <span className="ete-field-label">{t(nameLabelKey)}</span>
+                      <input
+                        type="text"
+                        className="ete-text-input"
+                        dir="auto"
+                        value={team.name}
+                        onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
+                        placeholder={t(nameLabelKey)}
+                        aria-label={t(nameLabelKey)}
+                        autoComplete="off"
+                        spellCheck
+                      />
+                    </label>
+                    <label className="ete-field ete-field-nation">
+                      <span className="ete-field-label">{t('admin_endurance_team_nationality')}</span>
+                      <select
+                        className="ete-select"
+                        value={team.nationality || ''}
+                        onChange={(e) => updateTeam(teamIndex, { nationality: e.target.value })}
+                        aria-label={t('admin_endurance_team_nationality')}
+                      >
+                        <option value="">{t('admin_endurance_nationality_none')}</option>
+                        {COUNTRIES.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {countryFlag(c.code)} {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {timingSystem !== 'manual' && (
+                      <label className="ete-field ete-field-transponder">
+                        <span className="ete-field-label">{t('admin_endurance_team_transponder')}</span>
+                        <input
+                          type="text"
+                          className="ete-text-input ete-transponder-input"
+                          dir="ltr"
+                          value={team.transponderId || ''}
+                          onChange={(e) => handleTeamTransponderChange(teamIndex, e.target.value)}
+                          placeholder={transponderSys.idExample}
+                          title={t('admin_endurance_transponder_format', { format: transponderSys.idFormat })}
+                          autoComplete="off"
+                        />
+                      </label>
+                    )}
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  className="endurance-team-toggle"
-                  onClick={(e) => toggleCollapse(teamIndex, e)}
-                  aria-label={isCollapsed ? t('admin_endurance_expand') : t('admin_endurance_collapse')}
-                  title={isCollapsed ? t('admin_endurance_expand') : t('admin_endurance_collapse')}
-                >
-                  <span aria-hidden>{isCollapsed ? '▾' : '▴'}</span>
-                </button>
-                <button
-                  type="button"
-                  className="endurance-team-remove"
-                  onClick={(e) => { e.stopPropagation(); removeTeam(teamIndex); }}
-                  disabled={teams.length <= 1}
-                  aria-label={t('admin_endurance_remove_team')}
-                >
-                  ×
-                </button>
+                <div className="ete-team-actions">
+                  <button
+                    type="button"
+                    className="ete-icon-btn"
+                    onClick={() => toggleCollapse(teamIndex)}
+                    aria-label={isCollapsed ? t('admin_endurance_expand') : t('admin_endurance_collapse')}
+                    title={isCollapsed ? t('admin_endurance_expand') : t('admin_endurance_collapse')}
+                  >
+                    {isCollapsed ? '▾' : '▴'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ete-icon-btn ete-icon-btn-danger"
+                    onClick={() => removeTeam(teamIndex)}
+                    disabled={teams.length <= 1}
+                    aria-label={t('admin_endurance_remove_team')}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
 
               {!isCollapsed && (
-                <>
-                  <div
-                    className={`endurance-members-head${isEndurance ? '' : ' endurance-member-row-sprint'}`}
-                    aria-hidden
-                  >
+                <div className="ete-members-panel">
+                  <div className={`ete-members-grid ete-members-head${isEndurance ? '' : ' ete-sprint'}`}>
                     <span>{t('admin_endurance_member_name')}</span>
                     {isEndurance && <span>{t('admin_endurance_member_weight')}</span>}
                     <span>{t('admin_endurance_nationality_short')}</span>
+                    {timingSystem !== 'manual' && <span>{t('admin_endurance_transponder_short')}</span>}
                     {isEndurance && <span>{t('admin_endurance_member_starter')}</span>}
                     <span />
                   </div>
 
-                  <ul className="endurance-members-list">
+                  <ul className="ete-members-list">
                     {team.members.map((member, memberIndex) => (
                       <li
                         key={`m-${teamIndex}-${memberIndex}`}
-                        className={`endurance-member-row${isEndurance ? '' : ' endurance-member-row-sprint'}`}
+                        className={`ete-members-grid ete-member-row${isEndurance ? '' : ' ete-sprint'}`}
                       >
                         <input
                           type="text"
+                          className="ete-text-input"
                           dir="auto"
                           value={member.name}
                           onChange={(e) => updateMember(teamIndex, memberIndex, { name: e.target.value })}
                           placeholder={t('admin_driver_placeholder')}
+                          autoComplete="off"
+                          spellCheck
                         />
                         {isEndurance && (
                           <input
                             type="number"
+                            className="ete-text-input ete-weight-input"
                             min="0"
                             step="0.1"
                             value={member.weightKg}
@@ -338,14 +348,16 @@ export default function EnduranceTeamsEditor({
                           />
                         )}
                         <select
-                          className="endurance-member-nationality-select"
+                          className="ete-select"
                           value={member.nationality || ''}
                           onChange={(e) => updateMember(teamIndex, memberIndex, { nationality: e.target.value })}
                           title={t('admin_endurance_member_nationality')}
                           aria-label={t('admin_endurance_member_nationality')}
                         >
                           <option value="">
-                            {team.nationality ? `${countryFlag(team.nationality)} ${t('admin_endurance_team_nationality')}` : t('admin_endurance_nationality_none')}
+                            {team.nationality
+                              ? `${countryFlag(team.nationality)} ${t('admin_endurance_team_nationality')}`
+                              : t('admin_endurance_nationality_none')}
                           </option>
                           {COUNTRIES.map((c) => (
                             <option key={c.code} value={c.code}>
@@ -353,20 +365,32 @@ export default function EnduranceTeamsEditor({
                             </option>
                           ))}
                         </select>
+                        {timingSystem !== 'manual' && (
+                          <input
+                            type="text"
+                            className="ete-text-input ete-transponder-input"
+                            dir="ltr"
+                            value={member.transponderId || ''}
+                            onChange={(e) => handleTransponderChange(teamIndex, memberIndex, e.target.value)}
+                            placeholder={transponderSys.idExample}
+                            title={t('admin_endurance_transponder_format', { format: transponderSys.idFormat })}
+                            autoComplete="off"
+                          />
+                        )}
                         {isEndurance && (
-                          <label className="endurance-starter-mark" title={t('admin_endurance_member_starter')}>
-                            <input
-                              type="radio"
-                              name={`starter-${teamIndex}`}
-                              checked={Boolean(member.starter)}
-                              onChange={() => setStarter(teamIndex, memberIndex)}
-                            />
-                            <span>{t('admin_endurance_starter_short')}</span>
-                          </label>
+                          <button
+                            type="button"
+                            className={`ete-starter-btn${member.starter ? ' is-active' : ''}`}
+                            onClick={() => setStarter(teamIndex, memberIndex)}
+                            title={t('admin_endurance_member_starter')}
+                            aria-pressed={Boolean(member.starter)}
+                          >
+                            ★
+                          </button>
                         )}
                         <button
                           type="button"
-                          className="endurance-member-remove"
+                          className="ete-icon-btn ete-icon-btn-danger"
                           onClick={() => removeMember(teamIndex, memberIndex)}
                           disabled={team.members.length <= 1}
                           aria-label={t('admin_endurance_remove_member')}
@@ -377,10 +401,10 @@ export default function EnduranceTeamsEditor({
                     ))}
                   </ul>
 
-                  <button type="button" className="endurance-member-add" onClick={() => addMember(teamIndex)}>
+                  <button type="button" className="ete-add-member" onClick={() => addMember(teamIndex)}>
                     + {t('admin_endurance_add_member')}
                   </button>
-                </>
+                </div>
               )}
             </li>
           );
