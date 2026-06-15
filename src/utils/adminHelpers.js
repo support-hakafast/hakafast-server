@@ -196,6 +196,18 @@ export function groupQueueByTeam(queue) {
   return teams;
 }
 
+export function formatEnduranceQueueDriver(d, isStarter = false) {
+  let label = d.name || '';
+  if (d.weightKg) label += ` (${d.weightKg}kg)`;
+  if (isStarter) label = `★ ${label}`;
+  return label;
+}
+
+export function removeTeamFromQueue(queue, teamName) {
+  const key = String(teamName || '').trim();
+  return queue.filter((d) => (d.team || '').trim() !== key);
+}
+
 /** Sort on-track karts by expected pit entry order (cooldown first, then earliest last crossing). */
 export function orderOnTrackKartsForPitEntry(onTrackList = []) {
   const entries = onTrackList.map((item) => {

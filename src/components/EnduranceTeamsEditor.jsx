@@ -3,7 +3,9 @@ import {
   createEmptyTeamRecord,
   groupsToTeamRecords,
   parseRaceGroupsCsv,
+  parseTeamDriversLine,
   raceGroupsCsvTemplate,
+  serializeTeamDriversLine,
   teamRecordsToGroups,
 } from '../utils/raceEventHelpers.js';
 import { COUNTRIES, countryFlag } from '../data/countries.js';
@@ -23,6 +25,7 @@ export default function EnduranceTeamsEditor({
   const fileRef = useRef(null);
   const teams = groupsToTeamRecords(groups, { preserveRaw: true });
   const [collapsed, setCollapsed] = useState(() => new Set());
+  const [driversLineDraft, setDriversLineDraft] = useState({});
   const nameLabelKey = eventType === 'sprint' ? 'admin_sprint_heat_name_ph' : 'admin_endurance_team_name_ph';
   const isEndurance = eventType === 'endurance';
   const atLimit = teams.length >= MAX_TEAMS;
@@ -34,12 +37,7 @@ export default function EnduranceTeamsEditor({
     const named = team.members.filter((m) => m?.name?.trim());
     if (!named.length) return false;
     if (isEndurance) {
-      const hasStarter = named.some((m) => m.starter);
-      if (!hasStarter) return false;
-      const allComplete = team.members.every((m) =>
-        !m?.name?.trim() || (m.name.trim() && m.weightKg !== '' && m.weightKg != null),
-      );
-      if (!allComplete) return false;
+      return named.length > 0;
     }
     return true;
   }, [isEndurance]);
@@ -59,6 +57,16 @@ export default function EnduranceTeamsEditor({
 
   const updateTeam = (teamIndex, patch) => {
     updateTeams(teams.map((team, i) => (i === teamIndex ? { ...team, ...patch } : team)));
+  };
+
+  const updateDriversLine = (teamIndex, line) => {
+    setDriversLineDraft((prev) => ({ ...prev, [teamIndex]: line }));
+    updateTeam(teamIndex, { members: parseTeamDriversLine(line) });
+  };
+
+  const getDriversLineValue = (teamIndex, team) => {
+    if (driversLineDraft[teamIndex] !== undefined) return driversLineDraft[teamIndex];
+    return serializeTeamDriversLine(team.members);
   };
 
   const updateMember = (teamIndex, memberIndex, patch) => {
@@ -116,6 +124,7 @@ export default function EnduranceTeamsEditor({
       return;
     }
     updateTeams(groupsToTeamRecords(imported.slice(0, MAX_TEAMS), { preserveRaw: true }));
+    setDriversLineDraft({});
   };
 
   const handleCsvFile = (e) => {
@@ -147,9 +156,11 @@ export default function EnduranceTeamsEditor({
   const getTeamSummary = (team) => {
     const named = team.members.filter((m) => m?.name?.trim());
     const starter = team.members.find((m) => m.starter && m?.name?.trim());
+    const driversLine = serializeTeamDriversLine(team.members);
     return {
       driverCount: named.length,
-      starterName: starter?.name || '—',
+      starterName: starter?.name || named[0]?.name || '—',
+      driversLine,
       flag: countryFlag(team.nationality),
     };
   };
@@ -231,7 +242,9 @@ export default function EnduranceTeamsEditor({
                       {team.name || t('admin_endurance_team_unnamed')}
                     </strong>
                     <span className="ete-summary-meta">
-                      {t('admin_endurance_drivers_short', { count: summary.driverCount })}
+                      {isEndurance && summary.driversLine
+                        ? summary.driversLine
+                        : t('admin_endurance_drivers_short', { count: summary.driverCount })}
                       {isEndurance && ` · ${t('admin_endurance_starter_short')}: ${summary.starterName}`}
                       {ready && <span className="ete-ready-dot" aria-label="ready">✓</span>}
                     </span>
@@ -310,100 +323,92 @@ export default function EnduranceTeamsEditor({
 
               {!isCollapsed && (
                 <div className="ete-members-panel">
-                  <div className={`ete-members-grid ete-members-head${isEndurance ? '' : ' ete-sprint'}`}>
-                    <span>{t('admin_endurance_member_name')}</span>
-                    {isEndurance && <span>{t('admin_endurance_member_weight')}</span>}
-                    <span>{t('admin_endurance_nationality_short')}</span>
-                    {timingSystem !== 'manual' && <span>{t('admin_endurance_transponder_short')}</span>}
-                    {isEndurance && <span>{t('admin_endurance_member_starter')}</span>}
-                    <span />
-                  </div>
-
-                  <ul className="ete-members-list">
-                    {team.members.map((member, memberIndex) => (
-                      <li
-                        key={`m-${teamIndex}-${memberIndex}`}
-                        className={`ete-members-grid ete-member-row${isEndurance ? '' : ' ete-sprint'}`}
-                      >
-                        <input
-                          type="text"
-                          className="ete-text-input"
-                          dir="auto"
-                          value={member.name}
-                          onChange={(e) => updateMember(teamIndex, memberIndex, { name: e.target.value })}
-                          placeholder={t('admin_driver_placeholder')}
-                          autoComplete="off"
-                          spellCheck
-                        />
-                        {isEndurance && (
-                          <input
-                            type="number"
-                            className="ete-text-input ete-weight-input"
-                            min="0"
-                            step="0.1"
-                            value={member.weightKg}
-                            onChange={(e) => updateMember(teamIndex, memberIndex, { weightKg: e.target.value })}
-                            placeholder="kg"
-                            title={t('admin_endurance_member_weight')}
-                          />
-                        )}
-                        <select
-                          className="ete-select"
-                          value={member.nationality || ''}
-                          onChange={(e) => updateMember(teamIndex, memberIndex, { nationality: e.target.value })}
-                          title={t('admin_endurance_member_nationality')}
-                          aria-label={t('admin_endurance_member_nationality')}
-                        >
-                          <option value="">
-                            {team.nationality
-                              ? `${countryFlag(team.nationality)} ${t('admin_endurance_team_nationality')}`
-                              : t('admin_endurance_nationality_none')}
-                          </option>
-                          {COUNTRIES.map((c) => (
-                            <option key={c.code} value={c.code}>
-                              {countryFlag(c.code)} {c.name}
-                            </option>
-                          ))}
-                        </select>
-                        {timingSystem !== 'manual' && (
-                          <input
-                            type="text"
-                            className="ete-text-input ete-transponder-input"
-                            dir="ltr"
-                            value={member.transponderId || ''}
-                            onChange={(e) => handleTransponderChange(teamIndex, memberIndex, e.target.value)}
-                            placeholder={transponderSys.idExample}
-                            title={t('admin_endurance_transponder_format', { format: transponderSys.idFormat })}
-                            autoComplete="off"
-                          />
-                        )}
-                        {isEndurance && (
-                          <button
-                            type="button"
-                            className={`ete-starter-btn${member.starter ? ' is-active' : ''}`}
-                            onClick={() => setStarter(teamIndex, memberIndex)}
-                            title={t('admin_endurance_member_starter')}
-                            aria-pressed={Boolean(member.starter)}
+                  {isEndurance ? (
+                    <label className="ete-field ete-drivers-line-field">
+                      <span className="ete-field-label">{t('admin_endurance_drivers_line')}</span>
+                      <input
+                        type="text"
+                        className="ete-text-input ete-drivers-line-input"
+                        dir="auto"
+                        value={getDriversLineValue(teamIndex, team)}
+                        onChange={(e) => updateDriversLine(teamIndex, e.target.value)}
+                        placeholder={t('admin_endurance_drivers_line_ph')}
+                        autoComplete="off"
+                        spellCheck
+                      />
+                      <span className="ete-drivers-line-hint">{t('admin_endurance_teams_simple_hint')}</span>
+                    </label>
+                  ) : (
+                    <>
+                      <div className="ete-members-grid ete-members-head ete-sprint" aria-hidden>
+                        <span>{t('admin_endurance_member_name')}</span>
+                        <span>{t('admin_endurance_nationality_short')}</span>
+                        {timingSystem !== 'manual' && <span>{t('admin_endurance_transponder_short')}</span>}
+                        <span />
+                      </div>
+                      <ul className="ete-members-list">
+                        {team.members.map((member, memberIndex) => (
+                          <li
+                            key={`m-${teamIndex}-${memberIndex}`}
+                            className="ete-members-grid ete-member-row ete-sprint"
                           >
-                            ★
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="ete-icon-btn ete-icon-btn-danger"
-                          onClick={() => removeMember(teamIndex, memberIndex)}
-                          disabled={team.members.length <= 1}
-                          aria-label={t('admin_endurance_remove_member')}
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button type="button" className="ete-add-member" onClick={() => addMember(teamIndex)}>
-                    + {t('admin_endurance_add_member')}
-                  </button>
+                            <input
+                              type="text"
+                              className="ete-text-input"
+                              dir="auto"
+                              value={member.name}
+                              onChange={(e) => updateMember(teamIndex, memberIndex, { name: e.target.value })}
+                              placeholder={t('admin_driver_placeholder')}
+                              autoComplete="off"
+                              spellCheck
+                            />
+                            <select
+                              className="ete-select"
+                              value={member.nationality || ''}
+                              onChange={(e) => updateMember(teamIndex, memberIndex, { nationality: e.target.value })}
+                              title={t('admin_endurance_member_nationality')}
+                              aria-label={t('admin_endurance_member_nationality')}
+                            >
+                              <option value="">
+                                {team.nationality
+                                  ? `${countryFlag(team.nationality)} ${t('admin_endurance_team_nationality')}`
+                                  : t('admin_endurance_nationality_none')}
+                              </option>
+                              {COUNTRIES.map((c) => (
+                                <option key={c.code} value={c.code}>
+                                  {countryFlag(c.code)} {c.name}
+                                </option>
+                              ))}
+                            </select>
+                            {timingSystem !== 'manual' && (
+                              <input
+                                type="text"
+                                className="ete-text-input ete-transponder-input"
+                                dir="ltr"
+                                value={member.transponderId || ''}
+                                onChange={(e) => handleTransponderChange(teamIndex, memberIndex, e.target.value)}
+                                placeholder={transponderSys.idExample}
+                                title={t('admin_endurance_transponder_format', { format: transponderSys.idFormat })}
+                                autoComplete="off"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              className="ete-icon-btn ete-icon-btn-danger"
+                              onClick={() => removeMember(teamIndex, memberIndex)}
+                              disabled={team.members.length <= 1}
+                              aria-label={t('admin_endurance_remove_member')}
+                            >
+                              ×
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <button type="button" className="ete-add-member" onClick={() => addMember(teamIndex)}>
+                        + {t('admin_endurance_add_member')}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </li>

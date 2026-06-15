@@ -266,6 +266,42 @@ export function buildTeamStartersFromGroups(groups) {
   return starters;
 }
 
+/** Comma-separated drivers line for endurance one-row editor. */
+export function serializeTeamDriversLine(members) {
+  return (members || [])
+    .filter((m) => m?.name?.trim())
+    .map((m) => {
+      let part = String(m.name).trim();
+      if (m.weightKg !== '' && m.weightKg != null) part += `(${m.weightKg}kg)`;
+      if (m.starter) part += '*';
+      return part;
+    })
+    .join(', ');
+}
+
+export function parseTeamDriversLine(text) {
+  const parts = String(text || '').split(',').map((s) => s); // preserve spaces while typing
+  const nonEmpty = parts.filter((p) => p.trim());
+  if (!nonEmpty.length) {
+    return [{ name: '', weightKg: '', starter: true, nationality: '', transponderId: '' }];
+  }
+  return parts
+    .map((part) => {
+      const raw = part;
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      const entry = normalizeDriverEntry(trimmed);
+      return {
+        name: raw,
+        weightKg: entry.weightKg != null ? String(entry.weightKg) : '',
+        starter: Boolean(entry.starter),
+        nationality: entry.nationality || '',
+        transponderId: entry.transponderId || '',
+      };
+    })
+    .filter(Boolean);
+}
+
 export function serializeGroupsText(groups) {
   return (groups || [])
     .map((g) => {

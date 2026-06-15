@@ -33,6 +33,8 @@ import {
   reorderAssignedKartsToPitFront,
   reorderKartsInLaneArray,
   groupQueueByTeam,
+  formatEnduranceQueueDriver,
+  removeTeamFromQueue,
   getExitKartNumber,
   getWaitingKartNumbers,
   orderOnTrackKartsForPitEntry,
@@ -2188,40 +2190,61 @@ const AdminPanel = () => {
               </div>
             </div>
 
-            <h3 className="queue-heading">{t('admin_queue_title')}</h3>
-            {heatType === 'endurance' && enduranceQueueTeams.length > 0 && (
-              <div className="endurance-starter-panel">
-                <span className="field-label">{t('admin_starter_drivers')}</span>
-                <p className="timing-columns-intro">{t('admin_starter_drivers_hint')}</p>
-                {enduranceQueueTeams.map((team) => (
-                  <div key={team.teamName} className="endurance-starter-team">
-                    <strong>{team.teamName}</strong>
-                    {team.drivers.map((d) => (
-                      <label key={`${team.teamName}-${d.name}`} className="endurance-starter-option">
-                        <input
-                          type="radio"
-                          name={`starter-${team.teamName}`}
-                          checked={(teamStarters[team.teamName] || team.drivers[0]?.name) === d.name}
-                          onChange={() => setTeamStarters((prev) => ({ ...prev, [team.teamName]: d.name }))}
-                        />
-                        {d.name}
-                      </label>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
+            <h3 className="queue-heading">
+              {heatType === 'endurance' ? t('admin_queue_title_endurance') : t('admin_queue_title')}
+            </h3>
             <ul className="queue-list queue-list-tall">
-              {driverQueue.length === 0 ? (
+              {heatType === 'endurance' ? (
+                enduranceQueueTeams.length === 0 ? (
+                  <li className="queue-empty">{t('admin_queue_empty')}</li>
+                ) : enduranceQueueTeams.map((team, i) => {
+                  const starterName = teamStarters[team.teamName] || team.drivers[0]?.name;
+                  return (
+                    <li key={team.teamName} className="queue-item queue-item-team">
+                      <span className="queue-pos">{i + 1}</span>
+                      <div className="queue-team-block">
+                        <strong className="queue-team-name">{team.teamName}</strong>
+                        <span className="queue-team-drivers">
+                          {team.drivers.map((d, di) => (
+                            <span key={`${d.name}-${di}`} className="queue-driver-chip">
+                              {formatEnduranceQueueDriver(d, starterName === d.name)}
+                              {di < team.drivers.length - 1 ? ', ' : ''}
+                            </span>
+                          ))}
+                        </span>
+                        <label className="queue-starter-pick">
+                          <span className="queue-starter-label">{t('admin_endurance_starter_short')}</span>
+                          <select
+                            value={starterName || ''}
+                            onChange={(e) => setTeamStarters((prev) => ({
+                              ...prev,
+                              [team.teamName]: e.target.value,
+                            }))}
+                          >
+                            {team.drivers.map((d) => (
+                              <option key={d.name} value={d.name}>{d.name}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-remove"
+                        onClick={() => setDriverQueue((q) => removeTeamFromQueue(q, team.teamName))}
+                      >
+                        X
+                      </button>
+                    </li>
+                  );
+                })
+              ) : driverQueue.length === 0 ? (
                 <li className="queue-empty">{t('admin_queue_empty')}</li>
               ) : driverQueue.map((d, i) => (
                 <li key={`${d.name}-${i}`} className={`queue-item${d.saved ? ' queue-item-saved' : ''}`}>
                   <span className="queue-pos">{i + 1}</span>
                   <span className="queue-name">
                     {d.saved && <span className="saved-badge">★</span>}
-                    {d.team && <span className="queue-team">{d.team} — </span>}
-                    {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}{d.weightKg ? ` (${d.weightKg}kg)` : ''}
-                    {d.team && teamStarters[d.team] === d.name && <span className="starter-badge"> *</span>}
+                    {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}
                   </span>
                   <button type="button" className="btn-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>X</button>
                 </li>

@@ -4767,3 +4767,132 @@ html:has(.admin-no-scroll) body {
   }
 }
 
+/* Collapsed team summary — high contrast */
+.ete-team-card.is-collapsed {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.ete-team-card.is-collapsed .ete-team-header {
+  background: #d1fae5;
+}
+
+.ete-summary-name {
+  color: #064e3b !important;
+  font-weight: 800;
+}
+
+.ete-summary-meta {
+  color: #047857 !important;
+}
+
+.ete-team-summary-btn:hover .ete-summary-name {
+  color: #022c22 !important;
+}
+
+.admin-modal-dark .ete-team-card.is-collapsed {
+  background: #134e4a;
+  border-color: #2dd4bf;
+}
+
+.admin-modal-dark .ete-team-card.is-collapsed .ete-team-header {
+  background: #115e59;
+}
+
+.admin-modal-dark .ete-summary-name {
+  color: #f0fdfa !important;
+}
+
+.admin-modal-dark .ete-summary-meta {
+  color: #99f6e4 !important;
+}
+
+/* Endurance one-line drivers field */
+.ete-drivers-line-field {
+  width: 100%;
+}
+
+.ete-drivers-line-input {
+  font-size: 0.95rem;
+}
+
+.ete-drivers-line-hint {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.admin-modal-dark .ete-drivers-line-hint {
+  color: #94a3b8;
+}
+
+/* Endurance queue — one row per team */
+.queue-item-team {
+  align-items: flex-start;
+  padding: 0.65rem 0.75rem;
+}
+
+.queue-team-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.queue-team-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.queue-team-drivers {
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.queue-driver-chip {
+  white-space: normal;
+}
+
+.queue-starter-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+}
+
+.queue-starter-label {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.queue-starter-pick select {
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.82rem;
+  background: #fff;
+  color: #0f172a;
+}
+
+.admin-theme-dark .queue-team-name {
+  color: #f8fafc;
+}
+
+.admin-theme-dark .queue-team-drivers {
+  color: #cbd5e1;
+}
+
+.admin-theme-dark .queue-starter-label {
+  color: #94a3b8;
+}
+
+.admin-theme-dark .queue-starter-pick select {
+  background: #0f172a;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
