@@ -3,11 +3,13 @@ import EnduranceTeamsEditor from './EnduranceTeamsEditor.jsx';
 import RaceEventSchedule from './RaceEventSchedule.jsx';
 import {
   buildRaceSchedulePreview,
+  groupsToTeamRecords,
   parseRaceGroupsText,
   serializeGroupsText,
   summarizeRaceEvent,
   teamRecordsToGroups,
 } from '../utils/raceEventHelpers.js';
+import { COUNTRIES, countryFlag } from '../data/countries.js';
 
 export default function ProRaceEventModal({
   onClose,
@@ -18,6 +20,7 @@ export default function ProRaceEventModal({
   onApply,
   isSaving = false,
   darkMode = false,
+  trackSlug = '',
 }) {
   const [eventType, setEventType] = useState(initialType === 'sprint' ? 'sprint' : 'endurance');
   const [eventName, setEventName] = useState(draft?.name || '');
@@ -36,6 +39,7 @@ export default function ProRaceEventModal({
   const [turnoverSec, setTurnoverSec] = useState(String(draft?.turnoverSec ?? 120));
   const [enduranceRules, setEnduranceRules] = useState(draft?.enduranceRules || '');
   const [advanceCount, setAdvanceCount] = useState(String(draft?.advanceCount ?? 2));
+  const [defaultNationality, setDefaultNationality] = useState(draft?.defaultNationality || '');
 
   const sprintParsed = useMemo(
     () => parseRaceGroupsText(groupsText, { mode: 'sprint' }),
@@ -81,6 +85,16 @@ export default function ProRaceEventModal({
     setImportMessage('');
   };
 
+  const applyDefaultNationalityToAll = () => {
+    if (!defaultNationality) return;
+    const nextTeams = groupsToTeamRecords(groups).map((team) => ({
+      ...team,
+      nationality: defaultNationality,
+      members: team.members.map((m) => ({ ...m, nationality: defaultNationality })),
+    }));
+    handleGroupsChange(nextTeams);
+  };
+
   const handleApply = () => {
     if (!normalizedGroups.length) return;
     onApply({
@@ -98,6 +112,7 @@ export default function ProRaceEventModal({
       turnoverSec: parseInt(turnoverSec, 10) || 120,
       enduranceRules,
       advanceCount: parseInt(advanceCount, 10) || 2,
+      defaultNationality,
       prepOnly,
       updatedAt: Date.now(),
     });
@@ -160,10 +175,35 @@ export default function ProRaceEventModal({
             />
           </label>
 
+          <div className="pro-event-nationality-row">
+            <label className="planner-field planner-field-compact">
+              <span>{t('admin_pro_event_default_nationality')}</span>
+              <select value={defaultNationality} onChange={(e) => setDefaultNationality(e.target.value)}>
+                <option value="">{t('admin_endurance_nationality_none')}</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {countryFlag(c.code)} {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="btn-muted pro-event-apply-nationality"
+              onClick={applyDefaultNationalityToAll}
+              disabled={!defaultNationality}
+              title={t('admin_pro_event_apply_nationality_hint')}
+            >
+              {t('admin_pro_event_apply_nationality')}
+            </button>
+          </div>
+          <p className="pro-event-groups-hint">{t('admin_pro_event_apply_nationality_hint')}</p>
+
           <EnduranceTeamsEditor
             t={t}
             groups={groups}
             eventType={eventType}
+            trackSlug={trackSlug}
             groupsLabelKey={isEndurance ? 'admin_pro_event_groups_endurance' : 'admin_pro_event_groups_sprint'}
             onChange={handleGroupsChange}
             onImportError={(msg) => setImportMessage(msg)}
@@ -223,43 +263,51 @@ export default function ProRaceEventModal({
           />
 
           {isEndurance ? (
-            <div className="pro-event-settings-grid pro-event-settings-compact">
-              <div className="pro-event-settings-row">
-                <label className="endurance-field">
-                  <span className="endurance-field-label">{t('admin_hours_placeholder')}</span>
-                  <input type="number" min="0" value={enduranceHours} onChange={(e) => setEnduranceHours(e.target.value)} />
-                </label>
-                <label className="endurance-field">
-                  <span className="endurance-field-label">{t('admin_minutes_placeholder')}</span>
-                  <input type="number" min="0" max="59" value={enduranceMinutes} onChange={(e) => setEnduranceMinutes(e.target.value)} />
-                </label>
-                <label className="endurance-field">
-                  <span className="endurance-field-label">{t('admin_pro_event_stint_min')}</span>
-                  <input type="number" min="0" value={stintMinutes} onChange={(e) => setStintMinutes(e.target.value)} />
-                </label>
-                <label className="endurance-field">
-                  <span className="endurance-field-label">{t('admin_pro_event_driver_change_sec')}</span>
-                  <input type="number" min="0" value={driverChangeSec} onChange={(e) => setDriverChangeSec(e.target.value)} />
+            <>
+              <div className="pro-event-section pro-event-timing-section">
+                <span className="field-label">{t('admin_pro_event_timing_title')}</span>
+                <div className="pro-event-settings-grid pro-event-settings-compact">
+                  <div className="pro-event-settings-row">
+                    <label className="endurance-field">
+                      <span className="endurance-field-label">{t('admin_hours_placeholder')}</span>
+                      <input type="number" min="0" value={enduranceHours} onChange={(e) => setEnduranceHours(e.target.value)} />
+                    </label>
+                    <label className="endurance-field">
+                      <span className="endurance-field-label">{t('admin_minutes_placeholder')}</span>
+                      <input type="number" min="0" max="59" value={enduranceMinutes} onChange={(e) => setEnduranceMinutes(e.target.value)} />
+                    </label>
+                    <label className="endurance-field">
+                      <span className="endurance-field-label">{t('admin_pro_event_stint_min')}</span>
+                      <input type="number" min="0" value={stintMinutes} onChange={(e) => setStintMinutes(e.target.value)} />
+                    </label>
+                    <label className="endurance-field">
+                      <span className="endurance-field-label">{t('admin_pro_event_driver_change_sec')}</span>
+                      <input type="number" min="0" value={driverChangeSec} onChange={(e) => setDriverChangeSec(e.target.value)} />
+                    </label>
+                  </div>
+                  <div className="pro-event-settings-row">
+                    <label className="endurance-field">
+                      <span className="endurance-field-label">{t('admin_formation_laps')}</span>
+                      <input type="number" min="0" max="5" value={formationLaps} onChange={(e) => setFormationLaps(e.target.value)} />
+                    </label>
+                    <label className="endurance-field endurance-field-grow">
+                      <span className="endurance-field-label">{t('admin_start_mode')}</span>
+                      <select value={startMode} onChange={(e) => setStartMode(e.target.value)}>
+                        <option value="grid">{t('admin_start_grid')}</option>
+                        <option value="le_mans">{t('admin_start_le_mans')}</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pro-event-section pro-event-rules-section">
+                <label className="planner-field planner-field-compact">
+                  <span>{t('admin_endurance_rules')}</span>
+                  <textarea rows={2} value={enduranceRules} onChange={(e) => setEnduranceRules(e.target.value)} />
                 </label>
               </div>
-              <div className="pro-event-settings-row">
-                <label className="endurance-field">
-                  <span className="endurance-field-label">{t('admin_formation_laps')}</span>
-                  <input type="number" min="0" max="5" value={formationLaps} onChange={(e) => setFormationLaps(e.target.value)} />
-                </label>
-                <label className="endurance-field endurance-field-grow">
-                  <span className="endurance-field-label">{t('admin_start_mode')}</span>
-                  <select value={startMode} onChange={(e) => setStartMode(e.target.value)}>
-                    <option value="grid">{t('admin_start_grid')}</option>
-                    <option value="le_mans">{t('admin_start_le_mans')}</option>
-                  </select>
-                </label>
-              </div>
-              <label className="planner-field planner-field-compact">
-                <span>{t('admin_endurance_rules')}</span>
-                <textarea rows={2} value={enduranceRules} onChange={(e) => setEnduranceRules(e.target.value)} />
-              </label>
-            </div>
+            </>
           ) : (
             <div className="pro-event-settings-grid pro-event-settings-compact">
               <div className="pro-event-settings-row">

@@ -3,6 +3,11 @@ import { lapToSeconds } from './liveTimingColumns.js';
 
 const GROUP_SEPARATORS = ['|', ':', '—', '–', '-'];
 
+function normalizeNationality(raw) {
+  const code = String(raw || '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : '';
+}
+
 export function normalizeDriverEntry(raw, index = 0) {
   if (typeof raw === 'string') {
     const trimmed = raw.trim();
@@ -13,6 +18,7 @@ export function normalizeDriverEntry(raw, index = 0) {
         name: weightMatch[1].trim(),
         weightKg: Number(weightMatch[2]),
         starter: Boolean(weightMatch[3]),
+        nationality: '',
       };
     }
     const starter = trimmed.endsWith('*');
@@ -20,16 +26,18 @@ export function normalizeDriverEntry(raw, index = 0) {
       name: (starter ? trimmed.slice(0, -1) : trimmed).trim(),
       weightKg: null,
       starter,
+      nationality: '',
     };
   }
   if (!raw || typeof raw !== 'object') {
-    return { name: '', weightKg: null, starter: index === 0 };
+    return { name: '', weightKg: null, starter: index === 0, nationality: '' };
   }
   const weightRaw = raw.weightKg;
   return {
     name: String(raw.name || '').trim(),
     weightKg: weightRaw === '' || weightRaw == null ? null : Math.max(0, Number(weightRaw) || 0),
     starter: Boolean(raw.starter),
+    nationality: normalizeNationality(raw.nationality),
   };
 }
 
@@ -111,7 +119,8 @@ export function parseRaceGroupsText(text, options = {}) {
 export function createEmptyTeamRecord(index = 1) {
   return {
     name: '',
-    members: [{ name: '', weightKg: '', starter: true }],
+    nationality: '',
+    members: [{ name: '', weightKg: '', starter: true, nationality: '' }],
   };
 }
 
@@ -124,14 +133,16 @@ export function groupsToTeamRecords(groups) {
         name: entry.name,
         weightKg: entry.weightKg != null ? String(entry.weightKg) : '',
         starter: Boolean(entry.starter),
+        nationality: entry.nationality || '',
       };
     });
     const members = rawMembers.length
       ? rawMembers
-      : [{ name: '', weightKg: '', starter: true }];
+      : [{ name: '', weightKg: '', starter: true, nationality: '' }];
     if (!members.some((m) => m.starter)) members[0].starter = true;
     return {
       name: String(group.name || '').trim(),
+      nationality: normalizeNationality(group.nationality),
       members,
     };
   });
@@ -143,22 +154,24 @@ export function teamRecordsToGroups(teams, options = {}) {
     .map((team, index) => {
       const rawName = String(team.name || '').trim();
       const name = rawName || (preserveEmpty ? '' : `Team ${index + 1}`);
+      const nationality = normalizeNationality(team.nationality);
       const rawDrivers = (team.members || []).map((m) => ({
         name: String(m.name || '').trim(),
         weightKg: m.weightKg === '' || m.weightKg == null ? null : Number(m.weightKg),
         starter: Boolean(m.starter),
+        nationality: normalizeNationality(m.nationality),
       }));
 
       if (preserveEmpty) {
         const members = rawDrivers.length
           ? rawDrivers
-          : [{ name: '', weightKg: null, starter: true }];
+          : [{ name: '', weightKg: null, starter: true, nationality: '' }];
         if (!members.some((d) => d.starter)) members[0].starter = true;
-        return { name, drivers: members };
+        return { name, nationality, drivers: members };
       }
 
       const drivers = normalizeGroupDrivers(rawDrivers);
-      return drivers.length ? { name: name || `Team ${index + 1}`, drivers } : null;
+      return drivers.length ? { name: name || `Team ${index + 1}`, nationality, drivers } : null;
     })
     .filter((g) => (preserveEmpty ? true : Boolean(g)));
 }
@@ -242,9 +255,25 @@ function splitCsvRow(line) {
 }
 
 function normalizeCsvHeader(cell) {
-  return String(cell || '').trim().toLowerCase()
+  const raw = String(cell || '').trim().toLowerCase()
     .replace(/\s+/g, '_')
     .replace(/[^\w\u0590-\u05ff]/g, '');
+  // Hebrew aliases
+  const map = {
+    'קבוצה': 'team',
+    'מקצה': 'heat',
+    'נהג': 'driver',
+    'נהגים': 'drivers',
+    'משקל': 'weight',
+    'מזנק': 'starter',
+    'לאום': 'nationality',
+    'מדינה': 'nationality',
+    'התחלה': 'starter',
+    'קג': 'weight',
+    'שם_נהג': 'driver',
+    'שם_קבוצה': 'team',
+  };
+  return map[raw] || raw;
 }
 
 /** Parse CSV for teams/heats: wide (team,driver,weight,starter) or compact (team,drivers). */
@@ -267,6 +296,7 @@ export function parseRaceGroupsCsv(text, options = {}) {
   const driverIdx = headers.findIndex((h) => h === 'driver' || h.includes('נהג') || h.includes('name'));
   const weightIdx = headers.findIndex((h) => h.includes('weight') || h.includes('משקל') || h === 'kg');
   const starterIdx = headers.findIndex((h) => h.includes('starter') || h.includes('מזנק') || h === 'start');
+  const nationalityIdx = headers.findIndex((h) => h.includes('nationality') || h.includes('nation') || h.includes('country') || h.includes('לאום') || h.includes('מדינה'));
 
   const teamMap = new Map();
   let autoTeam = 1;
@@ -301,11 +331,13 @@ export function parseRaceGroupsCsv(text, options = {}) {
       const name = cells[driverIdx].trim();
       const weightRaw = weightIdx >= 0 ? cells[weightIdx] : '';
       const starterRaw = starterIdx >= 0 ? cells[starterIdx] : '';
+      const nationalityRaw = nationalityIdx >= 0 ? cells[nationalityIdx] : '';
       const starter = /^(1|true|yes|y|★|\*|כן)$/i.test(String(starterRaw).trim()) || name.endsWith('*');
       group.drivers.push({
         name: name.replace(/\*$/, '').trim(),
         weightKg: weightRaw === '' ? null : Math.max(0, Number(weightRaw) || 0),
         starter,
+        nationality: nationalityRaw,
       });
       return;
     }
@@ -330,7 +362,10 @@ export function parseRaceGroupsCsv(text, options = {}) {
 
   teamMap.forEach((group) => {
     group.drivers = normalizeGroupDrivers(group.drivers);
-    if (group.drivers.length) groups.push(group);
+    if (!group.drivers.length) return;
+    const shared = group.drivers[0].nationality;
+    if (shared && group.drivers.every((d) => d.nationality === shared)) group.nationality = shared;
+    groups.push(group);
   });
 
   return { groups, errors };
@@ -380,13 +415,14 @@ export function raceGroupsCsvTemplate(mode = 'endurance') {
   if (mode === 'sprint') {
     return 'heat,drivers\nHeat 1,"Yossi*, Dani, Mike, Sara"\nHeat 2,"Oren, Noa, Gil"';
   }
-  return 'team,driver,weight,starter\nTeam Alpha,Yossi,75,1\nTeam Alpha,Dani,80,0\nTeam Beta,Sara,65,1';
+  return 'team,driver,weight,starter,nationality\nTeam Alpha,Yossi,75,1,IL\nTeam Alpha,Dani,80,0,GB\nTeam Beta,Sara,65,1,IL';
 }
 
 export function createEmptyRaceEvent(type = 'endurance') {
   return {
     type,
     name: '',
+    defaultNationality: '',
     groupsText: '',
     groups: [],
     activeSessionIndex: 0,
@@ -415,6 +451,7 @@ export function normalizePlannedRaceEvent(raw) {
   const groups = Array.isArray(raw.groups)
     ? raw.groups.map((g) => ({
       name: String(g.name || '').trim(),
+      nationality: normalizeNationality(g.nationality),
       drivers: normalizeGroupDrivers(g.drivers),
     })).filter((g) => g.name && g.drivers.length)
     : [];
@@ -424,6 +461,7 @@ export function normalizePlannedRaceEvent(raw) {
     ...raw,
     type,
     name: String(raw.name || '').trim(),
+    defaultNationality: normalizeNationality(raw.defaultNationality),
     groupsText: raw.groupsText || serializeGroupsText(groups),
     groups,
     sessions: Array.isArray(raw.sessions) ? raw.sessions : [],

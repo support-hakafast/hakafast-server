@@ -6,7 +6,11 @@ import {
   parseRaceGroupsCsv,
   raceGroupsCsvTemplate,
   teamRecordsToGroups,
+  serializeGroupsText,
 } from '../utils/raceEventHelpers.js';
+import { COUNTRIES, countryFlag } from '../data/countries.js';
+import { saveDriverProfilesBatch, getDriverProfileSuggestions, exportDriverProfilesCsv } from '../utils/driverProfiles.js';
+import DriverAutoComplete from './DriverAutoComplete.jsx';
 
 const MAX_TEAMS = 80;
 
@@ -17,6 +21,8 @@ export default function EnduranceTeamsEditor({
   eventType = 'endurance',
   groupsLabelKey = 'admin_pro_event_groups_endurance',
   onImportError,
+  trackSlug = '',
+  onSaveProfiles,
 }) {
   const fileRef = useRef(null);
   const teams = groupsToTeamRecords(groups);
@@ -94,7 +100,7 @@ export default function EnduranceTeamsEditor({
   const addMember = (teamIndex) => {
     const team = teams[teamIndex];
     updateTeam(teamIndex, {
-      members: [...team.members, { name: '', weightKg: '', starter: team.members.length === 0 }],
+      members: [...team.members, { name: '', weightKg: '', starter: team.members.length === 0, nationality: '' }],
     });
   };
 
@@ -163,6 +169,7 @@ export default function EnduranceTeamsEditor({
     return {
       driverCount: named.length,
       starterName: starter?.name || '—',
+      flag: countryFlag(team.nationality),
     };
   };
 
@@ -231,6 +238,7 @@ export default function EnduranceTeamsEditor({
                 {isCollapsed ? (
                   <div className="endurance-team-summary" onClick={(e) => { e.stopPropagation(); toggleCollapse(teamIndex, e); }}>
                     <strong className="endurance-team-summary-name">
+                      {summary.flag && <span className="endurance-team-summary-flag" aria-hidden>{summary.flag}</span>}
                       {team.name || t('admin_endurance_team_unnamed')}
                     </strong>
                     <span className="endurance-team-summary-meta">
@@ -240,18 +248,36 @@ export default function EnduranceTeamsEditor({
                     </span>
                   </div>
                 ) : (
-                  <input
-                    type="text"
-                    className="endurance-team-name-input"
-                    dir="auto"
-                    value={team.name}
-                    onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
-                    onClick={stopInside}
-                    onMouseDown={stopInside}
-                    onKeyDown={stopInside}
-                    placeholder={t(nameLabelKey)}
-                    aria-label={t(nameLabelKey)}
-                  />
+                  <div className="endurance-team-head-fields" onClick={stopInside}>
+                    <input
+                      type="text"
+                      className="endurance-team-name-input"
+                      dir="auto"
+                      value={team.name}
+                      onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
+                      onClick={stopInside}
+                      onMouseDown={stopInside}
+                      onKeyDown={stopInside}
+                      placeholder={t(nameLabelKey)}
+                      aria-label={t(nameLabelKey)}
+                    />
+                    <select
+                      className="endurance-team-nationality-select"
+                      value={team.nationality || ''}
+                      onChange={(e) => updateTeam(teamIndex, { nationality: e.target.value })}
+                      onClick={stopInside}
+                      onMouseDown={stopInside}
+                      title={t('admin_endurance_team_nationality')}
+                      aria-label={t('admin_endurance_team_nationality')}
+                    >
+                      <option value="">{t('admin_endurance_nationality_none')}</option>
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {countryFlag(c.code)} {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
 
                 <button
@@ -282,6 +308,7 @@ export default function EnduranceTeamsEditor({
                   >
                     <span>{t('admin_endurance_member_name')}</span>
                     {isEndurance && <span>{t('admin_endurance_member_weight')}</span>}
+                    <span>{t('admin_endurance_nationality_short')}</span>
                     {isEndurance && <span>{t('admin_endurance_member_starter')}</span>}
                     <span />
                   </div>
@@ -310,6 +337,22 @@ export default function EnduranceTeamsEditor({
                             title={t('admin_endurance_member_weight')}
                           />
                         )}
+                        <select
+                          className="endurance-member-nationality-select"
+                          value={member.nationality || ''}
+                          onChange={(e) => updateMember(teamIndex, memberIndex, { nationality: e.target.value })}
+                          title={t('admin_endurance_member_nationality')}
+                          aria-label={t('admin_endurance_member_nationality')}
+                        >
+                          <option value="">
+                            {team.nationality ? `${countryFlag(team.nationality)} ${t('admin_endurance_team_nationality')}` : t('admin_endurance_nationality_none')}
+                          </option>
+                          {COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {countryFlag(c.code)} {c.name}
+                            </option>
+                          ))}
+                        </select>
                         {isEndurance && (
                           <label className="endurance-starter-mark" title={t('admin_endurance_member_starter')}>
                             <input

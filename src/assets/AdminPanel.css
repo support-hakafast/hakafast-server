@@ -733,6 +733,14 @@ html:has(.admin-no-scroll) body {
   font-weight: 800;
 }
 
+.endurance-team-head-fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
 .endurance-team-name-input {
   flex: 1;
   min-width: 0;
@@ -741,6 +749,37 @@ html:has(.admin-no-scroll) body {
   border-radius: 6px;
   font-weight: 700;
   font-size: 0.9rem;
+}
+
+.endurance-team-nationality-select {
+  flex-shrink: 0;
+  max-width: 9rem;
+  padding: 0.5rem 0.4rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.endurance-team-summary-flag {
+  margin-inline-end: 0.35rem;
+}
+
+.pro-event-nationality-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pro-event-nationality-row .planner-field {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.pro-event-apply-nationality {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .endurance-team-remove,
@@ -758,13 +797,24 @@ html:has(.admin-no-scroll) body {
 .endurance-members-head,
 .endurance-member-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(3.5rem, 4.5rem) 1.75rem 1.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(3.5rem, 4.5rem) minmax(4.5rem, 6rem) 1.75rem 1.75rem;
   gap: 0.4rem;
   align-items: center;
 }
 
 .endurance-member-row-sprint {
-  grid-template-columns: minmax(0, 1fr) 1.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(4.5rem, 6rem) 1.75rem;
+}
+
+.endurance-member-nationality-select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.45rem 0.4rem;
+  font-size: 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
 }
 
 .endurance-members-head {
@@ -2514,6 +2564,8 @@ html:has(.admin-no-scroll) body {
 .admin-modal-dark textarea,
 .admin-modal-dark .endurance-team-name-input,
 .admin-modal-dark .endurance-member-row input,
+.admin-modal-dark .endurance-team-nationality-select,
+.admin-modal-dark .endurance-member-nationality-select,
 .admin-modal-dark .endurance-drivers-line-input {
   color: var(--admin-text, #e2e8f0);
   background: var(--admin-surface-raised, #1e293b);
@@ -3659,6 +3711,27 @@ html:has(.admin-no-scroll) body {
   gap: 10px;
 }
 
+.pro-event-section {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.pro-event-section > .field-label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.pro-event-section .planner-field-compact {
+  margin: 0;
+}
+
+.admin-modal-dark .pro-event-section {
+  background: var(--admin-surface-raised, #1e293b);
+  border-color: var(--admin-border, #334155);
+}
+
 .pro-event-day-banner {
   margin: 8px 0 0;
   padding: 8px 10px;
@@ -3934,7 +4007,9 @@ html:has(.admin-no-scroll) body {
 .admin-theme-dark .admin-modal-light select,
 .admin-theme-dark .admin-modal-light textarea,
 .admin-theme-dark .admin-modal-light .endurance-team-name-input,
-.admin-theme-dark .admin-modal-light .endurance-member-row input {
+.admin-theme-dark .admin-modal-light .endurance-member-row input,
+.admin-theme-dark .admin-modal-light .endurance-team-nationality-select,
+.admin-theme-dark .admin-modal-light .endurance-member-nationality-select {
   background: #fff;
   color: #0f172a;
   border-color: #cbd5e1;
@@ -4140,7 +4215,8 @@ html:has(.admin-no-scroll) body {
     grid-template-columns: minmax(0, 1fr) minmax(3.5rem, 4.5rem);
     grid-template-areas:
       "name name"
-      "weight starter"
+      "weight nationality"
+      "starter starter"
       "remove remove";
     gap: 0.35rem;
     padding: 0.35rem 0;
@@ -4159,6 +4235,10 @@ html:has(.admin-no-scroll) body {
     grid-area: weight;
   }
 
+  .pro-race-event-modal .endurance-member-nationality-select {
+    grid-area: nationality;
+  }
+
   .pro-race-event-modal .endurance-starter-mark {
     grid-area: starter;
     justify-self: start;
@@ -4170,8 +4250,28 @@ html:has(.admin-no-scroll) body {
   }
 
   .pro-race-event-modal .endurance-member-row-sprint {
-    grid-template-columns: minmax(0, 1fr) 1.75rem;
-    grid-template-areas: "name remove";
+    grid-template-columns: minmax(0, 1fr) minmax(3.5rem, 4.5rem);
+    grid-template-areas:
+      "name name"
+      "nationality remove";
+  }
+
+  .pro-race-event-modal .endurance-member-row-sprint .endurance-member-nationality-select {
+    grid-area: nationality;
+  }
+
+  .pro-race-event-modal .endurance-member-row-sprint .endurance-member-remove {
+    grid-area: remove;
+    justify-self: end;
+  }
+
+  .endurance-team-head-fields {
+    flex-wrap: wrap;
+  }
+
+  .endurance-team-nationality-select {
+    max-width: none;
+    flex: 1 1 8rem;
   }
 }
 
