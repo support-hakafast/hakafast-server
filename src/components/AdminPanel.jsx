@@ -2347,15 +2347,6 @@ const AdminPanel = () => {
                 🏆 {t('admin_championship')}
               </Link>
             )}
-            {!isLicensed && (
-              <button
-                type="button"
-                className="btn-sidebar-tool btn-sidebar-license"
-                onClick={() => setShowAdvanced(true)}
-              >
-                🔑 {t('admin_license_activate')}
-              </button>
-            )}
           </div>
 
           <div className="heat-clock-bar">

@@ -38,8 +38,15 @@ html:has(.cp-page) body {
   gap: 0.75rem;
 }
 
-.cp-header-logo {
+.cp-header-logo .hf-logo-img,
+.cp-header-logo.hf-logo-img {
+  height: 44px;
+  width: auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
   flex-shrink: 0;
+  display: block;
 }
 
 .cp-header-title {
