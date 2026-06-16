@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
+import LanguageSwitcher from './LanguageSwitcher.jsx';
+import ProRaceEventModal from './ProRaceEventModal.jsx';
 import {
   createChampionship,
   createRound,
@@ -16,13 +18,6 @@ import { apiFetch } from '../utils/apiClient.js';
 import { COUNTRIES, countryFlag } from '../data/countries.js';
 import '../assets/AdminPanel.css';
 
-const PRESET_LABELS = {
-  karting: 'Karting (15·12·10·8·6·4·3·2·1)',
-  f1: 'F1 (25·18·15·12·10·8·6·4·2·1)',
-  top5: 'Top 5 (10·7·5·3·1)',
-  simple: 'Podium (3·2·1)',
-};
-
 function downloadTextFile(filename, content) {
   const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -33,12 +28,17 @@ function downloadTextFile(filename, content) {
   URL.revokeObjectURL(url);
 }
 
-function PointsTableEditor({ value, onChange }) {
+function PointsTableEditor({ value, onChange, t }) {
   const [text, setText] = useState(value.join(', '));
 
-  useEffect(() => {
-    setText(value.join(', '));
-  }, [value]);
+  useEffect(() => { setText(value.join(', ')); }, [value]);
+
+  const presetKeys = [
+    { key: 'karting', label: t('champ_preset_karting') },
+    { key: 'f1', label: t('champ_preset_f1') },
+    { key: 'top5', label: t('champ_preset_top5') },
+    { key: 'simple', label: t('champ_preset_podium') },
+  ];
 
   function commit(raw) {
     const pts = raw.split(/[,;\s]+/).map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n) && n >= 0);
@@ -48,7 +48,7 @@ function PointsTableEditor({ value, onChange }) {
   return (
     <div className="champ-points-editor">
       <div className="champ-points-presets">
-        {Object.entries(PRESET_LABELS).map(([key, label]) => (
+        {presetKeys.map(({ key, label }) => (
           <button
             key={key}
             type="button"
@@ -60,13 +60,13 @@ function PointsTableEditor({ value, onChange }) {
         ))}
       </div>
       <label className="planner-field planner-field-compact" style={{ marginTop: '0.4rem' }}>
-        <span>Custom (P1, P2, P3…)</span>
+        <span>{t('champ_points_custom_label')}</span>
         <input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onBlur={(e) => commit(e.target.value)}
-          placeholder="25, 18, 15, 12, 10…"
+          placeholder={t('champ_points_custom_ph')}
         />
       </label>
       <div className="champ-points-preview">
@@ -78,7 +78,7 @@ function PointsTableEditor({ value, onChange }) {
   );
 }
 
-function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, onMoveDown, total }) {
+function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, onMoveDown, total, t }) {
   return (
     <li className="champ-result-row">
       <span className="champ-pos">{index + 1}</span>
@@ -88,7 +88,7 @@ function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, o
         className="champ-result-name-input"
         value={driver.name}
         onChange={(e) => onUpdate({ ...driver, name: e.target.value })}
-        placeholder={isEndurance ? 'Team name' : 'Driver name'}
+        placeholder={isEndurance ? t('champ_add_team_ph') : t('champ_add_driver_ph')}
         autoComplete="off"
       />
       {!isEndurance && (
@@ -97,7 +97,6 @@ function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, o
             className="champ-result-nation"
             value={driver.nationality || ''}
             onChange={(e) => onUpdate({ ...driver, nationality: e.target.value })}
-            title="Nationality"
           >
             <option value="">—</option>
             {COUNTRIES.map((c) => (
@@ -110,8 +109,7 @@ function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, o
             className="champ-result-kart"
             value={driver.kartNumber || ''}
             onChange={(e) => onUpdate({ ...driver, kartNumber: e.target.value })}
-            placeholder="#"
-            title="Kart number"
+            placeholder={t('champ_kart_ph')}
           />
         </>
       )}
@@ -122,8 +120,7 @@ function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, o
           className="champ-result-drivers-input"
           value={(driver.drivers || []).join(', ')}
           onChange={(e) => onUpdate({ ...driver, drivers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-          placeholder="Driver 1, Driver 2…"
-          title="Drivers who participated"
+          placeholder={t('champ_drivers_ph')}
         />
       )}
       <div className="champ-result-controls">
@@ -135,7 +132,7 @@ function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, o
   );
 }
 
-function RoundEditor({ round, championship, heatHistory, onSave, onCancel }) {
+function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) {
   const [label, setLabel] = useState(round.label || '');
   const [date, setDate] = useState(round.date || '');
   const [results, setResults] = useState(() =>
@@ -193,26 +190,24 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel }) {
   return (
     <div className="champ-round-editor">
       <div className="champ-round-editor-header">
-        <h3>
-          {round.label ? `Editing: ${round.label}` : 'New Round'}
-        </h3>
+        <h3>{round.label ? `${t('champ_round_edit')}: ${round.label}` : t('champ_add_round').replace('+ ', '')}</h3>
         <button type="button" className="admin-modal-close champ-inline-close" onClick={onCancel}>×</button>
       </div>
 
       <div className="champ-round-editor-fields">
         <label className="planner-field planner-field-compact">
-          <span>Round label</span>
-          <input type="text" dir="auto" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Round 1 – Location" autoFocus />
+          <span>{t('champ_round_label')}</span>
+          <input type="text" dir="auto" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t('champ_round_label_ph')} autoFocus />
         </label>
         <label className="planner-field planner-field-compact">
-          <span>Date</span>
+          <span>{t('champ_round_date')}</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
       </div>
 
       {heatHistory?.length > 0 && (
         <div className="champ-heat-import">
-          <span className="champ-section-label">Import from heat history</span>
+          <span className="champ-section-label">{t('champ_from_heat')}</span>
           <div className="champ-heat-list">
             {heatHistory.slice().reverse().slice(0, 15).map((h, i) => (
               <button
@@ -231,13 +226,15 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel }) {
 
       <div className="champ-results-section">
         <div className="champ-results-toolbar">
-          <span className="champ-section-label">Results — {results.length} {isEndurance ? 'teams' : 'drivers'}</span>
+          <span className="champ-section-label">
+            {t('champ_results_label')} — {results.length} {isEndurance ? t('champ_round_teams') : t('champ_round_drivers')}
+          </span>
           <button
             type="button"
             className={`champ-action-btn${csvMode ? ' is-active' : ''}`}
             onClick={() => setCsvMode((v) => !v)}
           >
-            CSV paste
+            {t('champ_csv_paste')}
           </button>
         </div>
 
@@ -246,10 +243,10 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel }) {
             <textarea
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
-              placeholder={'1,Driver A\n2,Driver B\n3,Driver C'}
+              placeholder={t('champ_csv_ph')}
               rows={6}
             />
-            <button type="button" className="btn-muted" onClick={applyCSV}>Apply</button>
+            <button type="button" className="btn-muted" onClick={applyCSV}>{t('champ_csv_apply')}</button>
           </div>
         )}
 
@@ -265,10 +262,11 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel }) {
               onRemove={() => removeResult(i)}
               onMoveUp={() => moveResult(i, -1)}
               onMoveDown={() => moveResult(i, 1)}
+              t={t}
             />
           ))}
           {results.length === 0 && (
-            <li className="champ-empty" style={{ listStyle: 'none' }}>No results yet — add drivers below or import from a heat</li>
+            <li className="champ-empty" style={{ listStyle: 'none' }}>{t('champ_results_empty')}</li>
           )}
         </ol>
 
@@ -279,33 +277,33 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel }) {
             value={addName}
             onChange={(e) => setAddName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addResult(); } }}
-            placeholder={isEndurance ? '+ Team name…' : '+ Driver name…'}
+            placeholder={isEndurance ? t('champ_add_team_ph') : t('champ_add_driver_ph')}
           />
-          <button type="button" className="btn-muted" onClick={addResult} disabled={!addName.trim()}>Add</button>
+          <button type="button" className="btn-muted" onClick={addResult} disabled={!addName.trim()}>{t('champ_add_btn')}</button>
         </div>
       </div>
 
       <div className="champ-round-editor-footer">
-        <button type="button" className="btn-muted" onClick={onCancel}>Cancel</button>
+        <button type="button" className="btn-muted" onClick={onCancel}>{t('champ_cancel')}</button>
         <button
           type="button"
           className="btn-primary"
           onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, results })}
         >
-          Save round
+          {t('champ_save_round')}
         </button>
       </div>
     </div>
   );
 }
 
-function StandingsTable({ championship }) {
+function StandingsTable({ championship, t }) {
   const standings = computeStandings(championship);
   const { rounds = [], type } = championship;
   const isEndurance = type === 'endurance';
 
   if (!rounds.length) {
-    return <p className="champ-empty">No rounds yet. Add a round to see standings.</p>;
+    return <p className="champ-empty">{t('champ_standings_empty')}</p>;
   }
 
   return (
@@ -316,17 +314,17 @@ function StandingsTable({ championship }) {
           className="champ-action-btn"
           onClick={() => downloadTextFile(`${championship.name || 'championship'}-standings.csv`, exportStandingsCsv(championship))}
         >
-          ⬇ Export CSV
+          {t('champ_export_csv')}
         </button>
       </div>
       <div className="champ-standings-table-wrap">
         <table className="champ-standings-table">
           <thead>
             <tr>
-              <th>Pos</th>
-              <th>{isEndurance ? 'Team' : 'Driver'}</th>
-              <th>Pts</th>
-              <th title="Wins">W</th>
+              <th>{t('champ_col_pos')}</th>
+              <th>{isEndurance ? t('champ_col_team') : t('champ_col_driver')}</th>
+              <th>{t('champ_col_pts')}</th>
+              <th title="Wins">{t('champ_col_wins')}</th>
               {rounds.map((r, i) => (
                 <th key={i} className="champ-round-th" title={r.date || ''}>
                   {r.label ? r.label.replace(/\s*[–-].*$/, '').trim() : `R${i + 1}`}
@@ -349,7 +347,7 @@ function StandingsTable({ championship }) {
               </tr>
             ))}
             {!standings.length && (
-              <tr><td colSpan={4 + rounds.length} className="champ-empty">No results entered yet</td></tr>
+              <tr><td colSpan={4 + rounds.length} className="champ-empty">{t('champ_results_empty')}</td></tr>
             )}
           </tbody>
         </table>
@@ -367,9 +365,9 @@ export default function ChampionshipPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [view, setView] = useState('list'); // 'list' | 'create' | 'detail'
-  const [activeTab, setActiveTab] = useState('rounds'); // 'rounds' | 'standings' | 'settings'
-  const [editingRound, setEditingRound] = useState(null); // round index or null
+  const [view, setView] = useState('list');
+  const [activeTab, setActiveTab] = useState('rounds');
+  const [editingRound, setEditingRound] = useState(null);
   const [heatHistory, setHeatHistory] = useState([]);
 
   // Create form
@@ -377,10 +375,14 @@ export default function ChampionshipPage() {
   const [type, setType] = useState('sprint');
   const [pointsTable, setPointsTable] = useState([...DEFAULT_POINTS_TABLES.karting]);
 
-  // Settings form (mirrors selected when open)
+  // Settings form
   const [settingsName, setSettingsName] = useState('');
   const [settingsType, setSettingsType] = useState('sprint');
   const [settingsPoints, setSettingsPoints] = useState([...DEFAULT_POINTS_TABLES.karting]);
+
+  // ProRaceEventModal for round planning
+  const [planningRoundIndex, setPlanningRoundIndex] = useState(null);
+  const [planSaving, setPlanSaving] = useState(false);
 
   useEffect(() => {
     loadChampionships();
@@ -441,6 +443,7 @@ export default function ChampionshipPage() {
     setSettingsPoints([...c.pointsTable]);
     setActiveTab('rounds');
     setEditingRound(null);
+    setPlanningRoundIndex(null);
     setView('detail');
   }
 
@@ -480,24 +483,57 @@ export default function ChampionshipPage() {
     updateSelected({ name: settingsName.trim(), type: settingsType, pointsTable: settingsPoints });
   }
 
+  function handlePlanApply(planDraft) {
+    if (planningRoundIndex === null) return;
+    const rounds = (selected.rounds || []).map((r, i) =>
+      i === planningRoundIndex ? { ...r, eventPlan: planDraft } : r
+    );
+    updateSelected({ rounds });
+    setPlanningRoundIndex(null);
+  }
+
   const adminLink = trackSlug ? `/admin/${trackSlug}` : '/admin';
+  const planningRound = planningRoundIndex !== null ? selected?.rounds?.[planningRoundIndex] : null;
 
   return (
     <div className="champ-page">
-      <header className="champ-page-header">
-        <div className="champ-page-header-brand">
+      {/* Shared ProRaceEventModal overlay for round event planning */}
+      {planningRound && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal" style={{ maxWidth: '820px', maxHeight: '90vh', overflow: 'auto' }}>
+            <ProRaceEventModal
+              t={t}
+              onClose={() => setPlanningRoundIndex(null)}
+              initialType={selected?.type === 'endurance' ? 'endurance' : 'sprint'}
+              prepOnly={false}
+              draft={planningRound.eventPlan || null}
+              trackSlug={trackSlug || ''}
+              isSaving={planSaving}
+              onApply={(draft) => handlePlanApply(draft)}
+            />
+          </div>
+        </div>
+      )}
+
+      <header className="admin-header champ-page-header">
+        <div className="admin-header-brand">
           <HakafastLogo to="/" className="admin-header-logo" />
           <h1>🏆 {t('admin_championship')}</h1>
         </div>
         <nav className="champ-page-nav">
           {view !== 'list' && (
-            <button type="button" className="champ-nav-btn" onClick={() => { setView('list'); setSelected(null); setEditingRound(null); }}>
-              ← All championships
+            <button
+              type="button"
+              className="btn-muted champ-nav-btn"
+              onClick={() => { setView('list'); setSelected(null); setEditingRound(null); setPlanningRoundIndex(null); }}
+            >
+              {t('champ_back_all')}
             </button>
           )}
-          <Link to={adminLink} className="champ-nav-btn">
-            ← {t('nav_admin')}
+          <Link to={adminLink} className="btn-muted champ-nav-btn">
+            {t('champ_back_admin')}
           </Link>
+          <LanguageSwitcher />
         </nav>
       </header>
 
@@ -507,19 +543,24 @@ export default function ChampionshipPage() {
         {view === 'list' && (
           <div className="champ-page-list">
             <div className="champ-page-list-header">
-              <h2>Championships</h2>
-              <button type="button" className="btn-primary" onClick={() => setView('create')}>+ New</button>
+              <div>
+                <h2>{t('champ_page_title')}</h2>
+                <p className="champ-page-subtitle">{t('champ_page_subtitle')}</p>
+              </div>
+              <button type="button" className="btn-primary" onClick={() => setView('create')}>
+                {t('champ_create_new')}
+              </button>
             </div>
 
-            {loading && <p className="champ-empty">Loading…</p>}
+            {loading && <p className="champ-empty">{t('champ_saving')}</p>}
 
             {!loading && championships.length === 0 && (
               <div className="champ-onboarding">
                 <div className="champ-onboarding-icon">🏆</div>
-                <p>Track driver or team points across multiple race events.</p>
-                <p>Create a championship, add rounds with results, and watch standings update automatically.</p>
-                <button type="button" className="btn-primary" style={{ marginTop: '1rem' }} onClick={() => setView('create')}>
-                  Create your first championship
+                <p className="champ-onboarding-title">{t('champ_list_empty_title')}</p>
+                <p className="champ-onboarding-desc">{t('champ_list_empty_desc')}</p>
+                <button type="button" className="btn-primary" style={{ marginTop: '1.25rem' }} onClick={() => setView('create')}>
+                  {t('champ_create_btn')}
                 </button>
               </div>
             )}
@@ -532,14 +573,18 @@ export default function ChampionshipPage() {
                   <div className="champ-list-card-body">
                     <span className="champ-list-name">{c.name}</span>
                     <span className={`champ-type-badge champ-type-${c.type}`}>{c.type}</span>
-                    <span className="champ-list-meta">{c.rounds?.length || 0} rounds</span>
-                    {leader && <span className="champ-list-leader">P1: {leader.name} — {leader.points} pts</span>}
+                    <span className="champ-list-meta">{t('champ_rounds_count', { count: c.rounds?.length || 0 })}</span>
+                    {leader && (
+                      <span className="champ-list-leader">
+                        {t('champ_leader_prefix')}: {leader.name} — {leader.points} {t('champ_pts_suffix')}
+                      </span>
+                    )}
                   </div>
                   <button
                     type="button"
                     className="champ-action-btn champ-action-delete"
                     onClick={(e) => { e.stopPropagation(); deleteChampionship(c.id); }}
-                    title="Delete championship"
+                    title={t('champ_delete')}
                   >✕</button>
                 </div>
               );
@@ -551,48 +596,50 @@ export default function ChampionshipPage() {
         {view === 'create' && (
           <div className="champ-page-create">
             <div className="champ-page-section-header">
-              <h2>New Championship</h2>
-              <button type="button" className="champ-nav-btn" onClick={() => setView('list')}>← Back</button>
+              <h2>{t('champ_create_title')}</h2>
+              <button type="button" className="btn-muted champ-nav-btn" onClick={() => setView('list')}>
+                {t('champ_back_all')}
+              </button>
             </div>
 
             <label className="planner-field planner-field-compact">
-              <span>Championship name</span>
+              <span>{t('champ_name_label')}</span>
               <input
                 type="text"
                 dir="auto"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) handleCreate(); }}
-                placeholder="2025 Sprint League"
+                placeholder={t('champ_name_ph')}
                 autoFocus
               />
             </label>
 
-            <div className="champ-section-label" style={{ marginTop: '1rem' }}>Race type</div>
+            <div className="champ-section-label" style={{ marginTop: '1rem' }}>{t('champ_type_label')}</div>
             <div className="champ-type-tabs">
               <button
                 type="button"
                 className={`pro-event-type-tab${type === 'sprint' ? ' active' : ''}`}
                 onClick={() => setType('sprint')}
               >
-                Sprint — individual drivers
+                {t('champ_type_sprint')}
               </button>
               <button
                 type="button"
                 className={`pro-event-type-tab${type === 'endurance' ? ' active' : ''}`}
                 onClick={() => setType('endurance')}
               >
-                Endurance — teams
+                {t('champ_type_endurance')}
               </button>
             </div>
 
-            <div className="champ-section-label" style={{ marginTop: '1rem' }}>Points table</div>
-            <PointsTableEditor value={pointsTable} onChange={setPointsTable} />
+            <div className="champ-section-label" style={{ marginTop: '1rem' }}>{t('champ_points_label')}</div>
+            <PointsTableEditor value={pointsTable} onChange={setPointsTable} t={t} />
 
             <div className="champ-create-footer" style={{ marginTop: '1.5rem' }}>
-              <button type="button" className="btn-muted" onClick={() => setView('list')}>Cancel</button>
+              <button type="button" className="btn-muted" onClick={() => setView('list')}>{t('champ_cancel')}</button>
               <button type="button" className="btn-primary" onClick={handleCreate} disabled={!name.trim()}>
-                Create championship
+                {t('champ_create_btn')}
               </button>
             </div>
           </div>
@@ -606,18 +653,27 @@ export default function ChampionshipPage() {
                 <h2>{selected.name}</h2>
                 <span className={`champ-type-badge champ-type-${selected.type}`}>{selected.type}</span>
               </div>
-              {saving && <span className="champ-saving-badge">Saving…</span>}
+              {saving && <span className="champ-saving-badge">{t('champ_saving')}</span>}
             </div>
 
             <div className="champ-edit-tabs">
-              <button className={`champ-edit-tab${activeTab === 'rounds' ? ' active' : ''}`} onClick={() => setActiveTab('rounds')}>
-                Rounds ({selected.rounds?.length || 0})
+              <button
+                className={`champ-edit-tab${activeTab === 'rounds' ? ' active' : ''}`}
+                onClick={() => setActiveTab('rounds')}
+              >
+                {t('champ_tab_rounds')} ({selected.rounds?.length || 0})
               </button>
-              <button className={`champ-edit-tab${activeTab === 'standings' ? ' active' : ''}`} onClick={() => setActiveTab('standings')}>
-                Standings
+              <button
+                className={`champ-edit-tab${activeTab === 'standings' ? ' active' : ''}`}
+                onClick={() => setActiveTab('standings')}
+              >
+                {t('champ_tab_standings')}
               </button>
-              <button className={`champ-edit-tab${activeTab === 'settings' ? ' active' : ''}`} onClick={() => setActiveTab('settings')}>
-                Settings
+              <button
+                className={`champ-edit-tab${activeTab === 'settings' ? ' active' : ''}`}
+                onClick={() => setActiveTab('settings')}
+              >
+                {t('champ_tab_settings')}
               </button>
             </div>
 
@@ -631,36 +687,58 @@ export default function ChampionshipPage() {
                     heatHistory={heatHistory}
                     onSave={(updated) => saveRound(editingRound, updated)}
                     onCancel={() => setEditingRound(null)}
+                    t={t}
                   />
                 ) : (
                   <>
                     {(!selected.rounds || selected.rounds.length === 0) && (
-                      <p className="champ-empty">No rounds yet. Add a round to start tracking results and points.</p>
+                      <p className="champ-empty">{t('champ_rounds_empty')}</p>
                     )}
-                    {(selected.rounds || []).map((r, i) => {
-                      const pts = computeStandings(selected);
-                      return (
-                        <div key={r.id} className="champ-round-row">
-                          <div className="champ-round-info">
-                            <span className="champ-round-num">R{i + 1}</span>
-                            <div className="champ-round-meta">
-                              <span className="champ-round-label">{r.label || `Round ${i + 1}`}</span>
-                              {r.date && <span className="champ-round-date">{r.date}</span>}
-                              <span className="champ-round-count">
-                                {r.results?.length || 0} {selected.type === 'endurance' ? 'teams' : 'drivers'}
-                                {r.results?.[0] && ` · P1: ${r.results[0].name}`}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="champ-round-actions">
-                            <button type="button" className="champ-action-btn" onClick={() => setEditingRound(i)}>✏ Edit</button>
-                            <button type="button" className="champ-action-btn champ-action-delete" onClick={() => deleteRound(i)}>✕</button>
+                    {(selected.rounds || []).map((r, i) => (
+                      <div key={r.id} className="champ-round-row">
+                        <div className="champ-round-info">
+                          <span className="champ-round-num">R{i + 1}</span>
+                          <div className="champ-round-meta">
+                            <span className="champ-round-label">{r.label || `Round ${i + 1}`}</span>
+                            {r.date && <span className="champ-round-date">{r.date}</span>}
+                            <span className="champ-round-count">
+                              {r.results?.length || 0} {selected.type === 'endurance' ? t('champ_round_teams') : t('champ_round_drivers')}
+                              {r.results?.[0] && ` · ${t('champ_round_winner')}: ${r.results[0].name}`}
+                            </span>
+                            {r.eventPlan && (
+                              <span className="champ-event-linked-badge">✓ {t('champ_event_linked')}</span>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="champ-round-actions">
+                          <button
+                            type="button"
+                            className={`champ-action-btn${r.eventPlan ? ' is-active' : ''}`}
+                            onClick={() => setPlanningRoundIndex(i)}
+                            title={t('champ_event_link_hint')}
+                          >
+                            📋 {t('champ_plan_event')}
+                          </button>
+                          {r.eventPlan && trackSlug && (
+                            <Link
+                              to={`/admin/${trackSlug}`}
+                              className="champ-action-btn"
+                              title={t('champ_open_admin')}
+                            >
+                              🏁 {t('champ_open_admin')}
+                            </Link>
+                          )}
+                          <button type="button" className="champ-action-btn" onClick={() => setEditingRound(i)}>
+                            ✏ {t('champ_round_edit')}
+                          </button>
+                          <button type="button" className="champ-action-btn champ-action-delete" onClick={() => deleteRound(i)}>
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                     <button type="button" className="btn-primary champ-add-round-btn" onClick={addRound}>
-                      + Add round
+                      {t('champ_add_round')}
                     </button>
                   </>
                 )}
@@ -669,48 +747,52 @@ export default function ChampionshipPage() {
 
             {/* STANDINGS */}
             {activeTab === 'standings' && (
-              <StandingsTable championship={selected} />
+              <StandingsTable championship={selected} t={t} />
             )}
 
             {/* SETTINGS */}
             {activeTab === 'settings' && (
               <div className="champ-settings-panel">
                 <label className="planner-field planner-field-compact">
-                  <span>Championship name</span>
+                  <span>{t('champ_name_label')}</span>
                   <input type="text" dir="auto" value={settingsName} onChange={(e) => setSettingsName(e.target.value)} />
                 </label>
 
-                <div className="champ-section-label" style={{ marginTop: '1rem' }}>Race type</div>
+                <div className="champ-section-label" style={{ marginTop: '1rem' }}>{t('champ_type_label')}</div>
                 <div className="champ-type-tabs">
                   <button
                     type="button"
                     className={`pro-event-type-tab${settingsType === 'sprint' ? ' active' : ''}`}
                     onClick={() => setSettingsType('sprint')}
                   >
-                    Sprint — individual drivers
+                    {t('champ_type_sprint')}
                   </button>
                   <button
                     type="button"
                     className={`pro-event-type-tab${settingsType === 'endurance' ? ' active' : ''}`}
                     onClick={() => setSettingsType('endurance')}
                   >
-                    Endurance — teams
+                    {t('champ_type_endurance')}
                   </button>
                 </div>
 
-                <div className="champ-section-label" style={{ marginTop: '1rem' }}>Points table</div>
-                <PointsTableEditor value={settingsPoints} onChange={setSettingsPoints} />
+                <div className="champ-section-label" style={{ marginTop: '1rem' }}>{t('champ_points_label')}</div>
+                <PointsTableEditor value={settingsPoints} onChange={setSettingsPoints} t={t} />
 
                 <div className="champ-settings-footer" style={{ marginTop: '1.5rem' }}>
                   <button
                     type="button"
                     className="champ-action-btn champ-action-delete"
-                    onClick={() => { if (window.confirm(`Delete "${selected.name}"?`)) deleteChampionship(selected.id); }}
+                    onClick={() => {
+                      if (window.confirm(t('champ_delete_confirm', { name: selected.name }))) {
+                        deleteChampionship(selected.id);
+                      }
+                    }}
                   >
-                    Delete championship
+                    {t('champ_delete')}
                   </button>
                   <button type="button" className="btn-primary" onClick={saveSettings}>
-                    Save settings
+                    {t('champ_settings_save')}
                   </button>
                 </div>
               </div>
