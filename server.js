@@ -255,6 +255,40 @@ let levelSettings = {
 const trackSetups = {};
 const driverQueues = {};
 
+// ── Global championships store (shared across all tracks) ────────────────────
+const CHAMPIONSHIPS_FILE = path.join(installConfig.getDataDir(), 'championships.json');
+
+function loadGlobalChampionships() {
+  try {
+    if (fs.existsSync(CHAMPIONSHIPS_FILE)) {
+      return JSON.parse(fs.readFileSync(CHAMPIONSHIPS_FILE, 'utf8'));
+    }
+  } catch { /* ignore */ }
+  return [];
+}
+
+function saveGlobalChampionships(list) {
+  try {
+    const tmp = `${CHAMPIONSHIPS_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(list, null, 0), 'utf8');
+    fs.renameSync(tmp, CHAMPIONSHIPS_FILE);
+  } catch { /* ignore */ }
+}
+
+let globalChampionships = loadGlobalChampionships();
+
+// ── License validation ───────────────────────────────────────────────────────
+const VALID_LICENSE_KEYS = new Set(
+  (process.env.HF_LICENSE_KEYS || '').split(',').map((k) => k.trim()).filter(Boolean)
+);
+
+function isValidLicenseKey(key) {
+  if (!key || typeof key !== 'string') return false;
+  if (VALID_LICENSE_KEYS.size > 0) return VALID_LICENSE_KEYS.has(key.trim());
+  // Dev fallback: any key starting with HF- and 12+ chars is valid
+  return /^HF-[A-Z0-9]{8,}$/i.test(key.trim());
+}
+
 let liveBroadcast = null;
 let ambDecoder = null;
 
@@ -736,19 +770,97 @@ app.get('/api/results/:heatNumber', (req, res) => {
 
 // ── Championships ────────────────────────────────────────────────────────────
 
+// ── Championship API (global store) ─────────────────────────────────────────
+
+// GET all championships — strips passwords, returns public view
+// Query: ?trackSlug=xxx  → also returns today's rounds for that track
 app.get('/api/championships', (req, res) => {
-  const demo = demoStore.resolveWorkspace(req);
-  if (!demo) return res.json({ success: false, error: 'no_workspace' });
-  return res.json({ success: true, championships: demo.championships || [] });
+  const trackSlug = req.query.trackSlug || null;
+  const today = new Date().toISOString().slice(0, 10);
+  const sanitized = globalChampionships.map((c) => {
+    const { adminPassword: _pw, ...pub } = c;
+    return {
+      ...pub,
+      rounds: (pub.rounds || []).map(({ eventPlan: _ep, ...r }) => r),
+      hasPassword: Boolean(_pw),
+    };
+  });
+  const todayRounds = trackSlug
+    ? globalChampionships.flatMap((c) =>
+        (c.rounds || [])
+          .filter((r) => r.trackSlug === trackSlug && r.date === today)
+          .map((r) => ({ championshipId: c.id, championshipName: c.name, round: { ...r, eventPlan: undefined } }))
+      )
+    : [];
+  return res.json({ success: true, championships: sanitized, todayRounds });
 });
 
+// POST create a championship (requires championship admin password in body)
 app.post('/api/championships', (req, res) => {
-  const demo = demoStore.resolveWorkspace(req);
-  if (!demo) return res.json({ success: false, error: 'no_workspace' });
-  const list = req.body?.championships;
-  if (!Array.isArray(list)) return res.status(400).json({ success: false, error: 'invalid_body' });
-  demo.championships = list;
+  const { championship } = req.body || {};
+  if (!championship || !championship.name) {
+    return res.status(400).json({ success: false, error: 'invalid_body' });
+  }
+  const existing = globalChampionships.find((c) => c.id === championship.id);
+  if (existing) {
+    // Update: verify admin password
+    if (existing.adminPassword && req.body.password !== existing.adminPassword) {
+      return res.json({ success: false, error: 'bad_password' });
+    }
+    const updated = { ...existing, ...championship, id: existing.id, updatedAt: Date.now() };
+    globalChampionships = globalChampionships.map((c) => c.id === existing.id ? updated : c);
+  } else {
+    // Create new
+    globalChampionships = [...globalChampionships, { ...championship, createdAt: Date.now(), updatedAt: Date.now() }];
+  }
+  saveGlobalChampionships(globalChampionships);
   return res.json({ success: true });
+});
+
+// DELETE a championship
+app.delete('/api/championships/:id', (req, res) => {
+  const id = req.params.id;
+  const existing = globalChampionships.find((c) => c.id === id);
+  if (!existing) return res.json({ success: false, error: 'not_found' });
+  if (existing.adminPassword && req.body?.password !== existing.adminPassword) {
+    return res.json({ success: false, error: 'bad_password' });
+  }
+  globalChampionships = globalChampionships.filter((c) => c.id !== id);
+  saveGlobalChampionships(globalChampionships);
+  return res.json({ success: true });
+});
+
+// Verify championship admin password
+app.post('/api/championships/:id/verify-password', (req, res) => {
+  const id = req.params.id;
+  const existing = globalChampionships.find((c) => c.id === id);
+  if (!existing) return res.json({ success: false, error: 'not_found' });
+  if (!existing.adminPassword) return res.json({ success: true });
+  return res.json({ success: req.body?.password === existing.adminPassword });
+});
+
+// ── License verification ─────────────────────────────────────────────────────
+
+app.post('/api/admin/verify-license', (req, res) => {
+  const key = req.body?.licenseKey;
+  if (!isValidLicenseKey(key)) return res.json({ success: false, error: 'invalid_key' });
+
+  // Save key to the track's levelSettings
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo) {
+    demo.levelSettings.licenseKey = key.trim();
+    demoStore.persistStore(demo);
+  } else {
+    levelSettings.licenseKey = key.trim();
+  }
+  return res.json({ success: true, features: ['pro_events', 'official_rounds'] });
+});
+
+app.get('/api/admin/license-status', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  const settings = demo ? demo.levelSettings : levelSettings;
+  const licensed = isValidLicenseKey(settings.licenseKey);
+  return res.json({ licensed, features: licensed ? ['pro_events', 'official_rounds'] : [] });
 });
 
 app.get('/api/webhooks/rentix/status', (req, res) => {
@@ -871,6 +983,7 @@ app.get('/api/admin/level-settings', (req, res) => {
     proLapThreshold: settings.proLapThreshold,
     pitExitPosition: settings.pitExitPosition || 'bottom',
     hasPassword: Boolean(settings.editPassword),
+    licensed: isValidLicenseKey(settings.licenseKey),
   });
 });
 

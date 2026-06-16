@@ -141,6 +141,7 @@ const HomePage = () => {
         <div className="home-cta-row">
           <Link to="/admin/kart-demo" className="home-btn home-btn-primary">{t('cta_admin')}</Link>
           <a href="#live-tracks" className="home-btn home-btn-ghost">{t('cta_live')}</a>
+          <Link to="/championship" className="home-btn home-btn-ghost">🏆 {t('cta_championship')}</Link>
         </div>
       </section>
 

@@ -7,6 +7,7 @@ import { apiFetch } from '../utils/apiClient.js';
 export default function AdvancedSettingsModal({
   trackSlug,
   hasPassword,
+  isLicensed,
   onClose,
   masterLapThreshold,
   setMasterLapThreshold,
@@ -23,6 +24,7 @@ export default function AdvancedSettingsModal({
   exportPdf,
   setExportPdf,
   onFinishHeat,
+  onLicenseActivated,
 }) {
   const { t } = useLanguage();
   const { showAlert } = useDialog();
@@ -32,6 +34,28 @@ export default function AdvancedSettingsModal({
   const [editLookup, setEditLookup] = useState('');
   const [editLevel, setEditLevel] = useState('Amateur');
   const [editPassword, setEditPassword] = useState('');
+  const [licenseKey, setLicenseKey] = useState('');
+  const [licenseStatus, setLicenseStatus] = useState(isLicensed ? 'active' : null);
+
+  const tryActivateLicense = async () => {
+    if (!licenseKey.trim()) return;
+    try {
+      const res = await apiFetch('/api/admin/verify-license', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ licenseKey: licenseKey.trim() }),
+      }, trackSlug);
+      const data = await res.json();
+      if (data.success) {
+        setLicenseStatus('active');
+        onLicenseActivated?.();
+      } else {
+        setLicenseStatus('invalid');
+      }
+    } catch {
+      setLicenseStatus('error');
+    }
+  };
 
   const tryUnlock = async () => {
     const res = await apiFetch('/api/admin/verify-settings-password', {
@@ -110,6 +134,31 @@ export default function AdvancedSettingsModal({
             >
               {t('admin_btn_update_db')}
             </button>
+
+            <hr className="panel-divider" />
+            <h3>{t('admin_license_title')}</h3>
+            {licenseStatus === 'active' ? (
+              <p className="license-active-msg">✓ {t('admin_license_active')}</p>
+            ) : (
+              <>
+                <p className="level-hint">{t('admin_license_hint')}</p>
+                <div className="license-input-row">
+                  <input
+                    type="text"
+                    value={licenseKey}
+                    onChange={(e) => setLicenseKey(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') tryActivateLicense(); }}
+                    placeholder={t('admin_license_key_ph')}
+                    dir="ltr"
+                  />
+                  <button type="button" className="btn-muted" onClick={tryActivateLicense} disabled={!licenseKey.trim()}>
+                    {t('admin_license_activate')}
+                  </button>
+                </div>
+                {licenseStatus === 'invalid' && <p className="license-error-msg">{t('admin_license_invalid')}</p>}
+                {licenseStatus === 'error' && <p className="license-error-msg">{t('admin_license_error')}</p>}
+              </>
+            )}
 
             <hr className="panel-divider" />
             <div className="finish-section finish-section-modal">

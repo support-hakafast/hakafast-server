@@ -6466,3 +6466,69 @@ a.btn-sidebar-championship {
   text-decoration: none;
 }
 
+/* ── License button in sidebar ─────────────────────────────────────────────── */
+.btn-sidebar-license {
+  width: 100%;
+  font-size: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px dashed #b8c0e0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+.btn-sidebar-license:hover { border-color: var(--navy); color: var(--navy); background: #f0f4ff; }
+
+/* ── Admin championship today banner ────────────────────────────────────────── */
+.admin-champ-today-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: linear-gradient(90deg, #eff6ff, #f5f3ff);
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+}
+.admin-champ-today-icon { font-size: 1.25rem; flex-shrink: 0; }
+.admin-champ-today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.admin-champ-today-item { font-size: 0.8rem; color: #1e293b; }
+.admin-champ-today-link { font-size: 0.75rem; font-weight: 700; color: var(--navy); text-decoration: none; white-space: nowrap; }
+.admin-champ-today-link:hover { text-decoration: underline; }
+
+/* ── License CSS in AdvancedSettingsModal ────────────────────────────────────── */
+.license-input-row { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+.license-input-row input { flex: 1; }
+.license-active-msg { color: #166534; font-weight: 600; font-size: 0.85rem; padding: 0.4rem 0.6rem; background: #dcfce7; border-radius: 0.4rem; }
+.license-error-msg { color: #dc2626; font-size: 0.78rem; margin-top: 0.25rem; }
+
+/* ── Championship login widget ────────────────────────────────────────────── */
+.champ-login-widget { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.champ-login-label { font-size: 0.75rem; color: #64748b; white-space: nowrap; }
+.champ-login-input { font-size: 0.8rem; padding: 0.25rem 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.35rem; width: 10rem; }
+.champ-login-input:focus { outline: none; border-color: var(--navy); }
+.champ-login-btn { font-size: 0.78rem; padding: 0.25rem 0.7rem; }
+.champ-login-error { font-size: 0.72rem; color: #dc2626; }
+.champ-editor-badge { font-size: 0.72rem; color: var(--navy); font-weight: 700; background: #eff6ff; border: 1px solid #c7d2fe; padding: 0.15rem 0.5rem; border-radius: 0.35rem; }
+
+/* ── Official / unofficial round styles ──────────────────────────────────── */
+.champ-round-official { border-color: #c7d2fe !important; background: #fafbff; }
+.champ-round-official .champ-round-num { background: #4f46e5; }
+.champ-official-badge { font-size: 0.65rem; font-weight: 700; background: #ede9fe; color: #4f46e5; padding: 0.1rem 0.35rem; border-radius: 0.25rem; }
+.champ-unofficial-badge { font-size: 0.65rem; color: #92400e; background: #fef3c7; padding: 0.1rem 0.35rem; border-radius: 0.25rem; }
+.champ-unofficial-note { font-size: 0.75rem; color: #92400e; background: #fef3c7; padding: 0.4rem 0.6rem; border-radius: 0.4rem; margin: 0; }
+.champ-official-toggle { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; cursor: pointer; padding: 0.4rem 0; }
+.champ-official-toggle input { cursor: pointer; }
+.champ-official-hint { font-size: 0.7rem; color: #64748b; }
+.champ-official-count { font-size: 0.72rem; color: #4f46e5; font-weight: 600; background: #ede9fe; padding: 0.1rem 0.4rem; border-radius: 0.25rem; }
+.champ-lock-icon { font-size: 0.8rem; }
+.champ-round-track { font-size: 0.68rem; color: #64748b; }
+.champ-password-hint { font-size: 0.72rem; color: #64748b; margin: 0.15rem 0 0; }
+
+/* ── Standings mode toggle ────────────────────────────────────────────────── */
+.champ-standings-mode-toggle { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
+
+

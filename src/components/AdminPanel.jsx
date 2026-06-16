@@ -131,6 +131,8 @@ const AdminPanel = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
+  const [isLicensed, setIsLicensed] = useState(false);
+  const [todayChampRounds, setTodayChampRounds] = useState([]);
 
   const [allKarts, setAllKarts] = useState({});
   const [linesData, setLinesData] = useState({ ...DEFAULT_LINES });
@@ -301,7 +303,12 @@ const AdminPanel = () => {
       if (s?.proLapThreshold) setProLapThreshold(s.proLapThreshold);
       if (s?.pitExitPosition) setPitExitPosition(s.pitExitPosition);
       setHasPassword(Boolean(s?.hasPassword));
+      setIsLicensed(Boolean(s?.licensed));
     }).catch(() => {});
+    fetch(`/api/championships?trackSlug=${encodeURIComponent(trackSlug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.todayRounds?.length) setTodayChampRounds(d.todayRounds); })
+      .catch(() => {});
 
     if (usesIsolatedWorkspace(trackSlug)) {
       const wsId = getWorkspaceId(trackSlug);
@@ -1676,6 +1683,7 @@ const AdminPanel = () => {
         <AdvancedSettingsModal
           trackSlug={trackSlug}
           hasPassword={hasPassword}
+          isLicensed={isLicensed}
           onClose={() => setShowAdvanced(false)}
           masterLapThreshold={masterLapThreshold}
           setMasterLapThreshold={setMasterLapThreshold}
@@ -1692,6 +1700,7 @@ const AdminPanel = () => {
           exportPdf={exportPdf}
           setExportPdf={setExportPdf}
           onFinishHeat={finishHeat}
+          onLicenseActivated={() => setIsLicensed(true)}
         />
       )}
       {showLivePreview && (
@@ -1816,6 +1825,26 @@ const AdminPanel = () => {
             queue: nextHeatReadiness.inPitsQueue,
           })}
         </p>
+      )}
+
+      {todayChampRounds.length > 0 && (
+        <div className="admin-champ-today-banner">
+          <span className="admin-champ-today-icon">🏆</span>
+          <div className="admin-champ-today-text">
+            {todayChampRounds.map((item, i) => (
+              <span key={i} className="admin-champ-today-item">
+                <strong>{item.championshipName}</strong>
+                {' — '}
+                {item.round.label || t('champ_add_round')}
+                {item.round.time ? ` · ${item.round.time}` : ''}
+                {item.round.isOfficial && <span className="champ-official-badge">🏅 {t('champ_official')}</span>}
+              </span>
+            ))}
+          </div>
+          <Link to="/championship" className="admin-champ-today-link">
+            {t('admin_championship')} →
+          </Link>
+        </div>
       )}
 
       <div className="admin-workspace">
@@ -2272,7 +2301,7 @@ const AdminPanel = () => {
             >
               {t('admin_track_planner')}
             </button>
-            {heatType === 'time' && (
+            {isLicensed && heatType === 'time' && (
               <button
                 type="button"
                 className="btn-muted btn-sidebar-tool"
@@ -2282,7 +2311,7 @@ const AdminPanel = () => {
                 {t('admin_pro_event_prep_day')}
               </button>
             )}
-            {heatType === 'endurance' && (
+            {isLicensed && heatType === 'endurance' && (
               <>
                 <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => openProEventModal('endurance')}>
                   {t('admin_pro_event_plan_endurance')}
@@ -2292,17 +2321,17 @@ const AdminPanel = () => {
                 </button>
               </>
             )}
-            {heatType === 'sprint' && (
+            {isLicensed && heatType === 'sprint' && (
               <button type="button" className="btn-muted btn-sidebar-tool" onClick={() => openProEventModal('sprint')}>
                 {t('admin_pro_event_plan_sprint')}
               </button>
             )}
-            {heatType === 'sprint' && sprintHeatsRemaining > 0 && (
+            {isLicensed && heatType === 'sprint' && sprintHeatsRemaining > 0 && (
               <button type="button" className="btn-muted btn-sidebar-tool" onClick={loadNextSprintSession}>
                 {t('admin_pro_event_next_heat', { n: sprintHeatsRemaining })}
               </button>
             )}
-            {heatType === 'sprint' && sprintHeatsRemaining === 0
+            {isLicensed && heatType === 'sprint' && sprintHeatsRemaining === 0
               && plannedRaceEvent?.type === 'sprint'
               && (plannedRaceEvent?.sessions?.length || 0) > 1
               && heatNumber != null && (
@@ -2311,11 +2340,20 @@ const AdminPanel = () => {
               </button>
             )}
             <Link
-              to={`/championship/${trackSlug}`}
+              to="/championship"
               className="btn-muted btn-sidebar-tool btn-sidebar-championship"
             >
               🏆 {t('admin_championship')}
             </Link>
+            {!isLicensed && (
+              <button
+                type="button"
+                className="btn-sidebar-tool btn-sidebar-license"
+                onClick={() => setShowAdvanced(true)}
+              >
+                🔑 {t('admin_license_activate')}
+              </button>
+            )}
           </div>
 
           <div className="heat-clock-bar">

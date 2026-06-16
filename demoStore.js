@@ -75,6 +75,7 @@ function createStore(trackSlug = 'kart-demo') {
       masterLapThreshold: '45.500',
       proLapThreshold: '42.000',
       pitExitPosition: 'bottom',
+      licenseKey: '',
     },
     trackSetup: null,
     trackProfile: null,

@@ -39,25 +39,39 @@ export const DEFAULT_POINTS_TABLES = {
   karting: [15, 12, 10, 8, 6, 4, 3, 2, 1],
 };
 
-export function createChampionship({ name, type = 'sprint', pointsTable = DEFAULT_POINTS_TABLES.karting }) {
+export function createChampionship({ name, type = 'sprint', pointsTable = DEFAULT_POINTS_TABLES.karting, adminPassword = '' }) {
   return {
     id: generateId(),
     name: name.trim(),
     type,
     pointsTable: [...pointsTable],
     rounds: [],
+    adminPassword: adminPassword || '',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
 }
 
-export function createRound({ label = '', date = null, results = [], heatHistoryRef = null } = {}) {
+export function createRound({
+  label = '',
+  date = null,
+  time = null,
+  results = [],
+  heatHistoryRef = null,
+  isOfficial = false,
+  trackSlug = null,
+  eventPlan = null,
+} = {}) {
   return {
     id: generateId(),
     label: label.trim(),
     date,
+    time,
     results,
     heatHistoryRef,
+    isOfficial,
+    trackSlug,
+    eventPlan,
   };
 }
 
@@ -199,6 +213,7 @@ export function normalizeChampionship(raw) {
     type: raw.type === 'endurance' ? 'endurance' : 'sprint',
     pointsTable: Array.isArray(raw.pointsTable) ? raw.pointsTable.map(Number).filter((n) => !Number.isNaN(n)) : [...DEFAULT_POINTS_TABLES.karting],
     rounds: Array.isArray(raw.rounds) ? raw.rounds.map(normalizeRound) : [],
+    adminPassword: raw.adminPassword || '',
     createdAt: raw.createdAt || Date.now(),
     updatedAt: raw.updatedAt || Date.now(),
   };
@@ -209,7 +224,44 @@ function normalizeRound(raw) {
     id: raw.id || generateId(),
     label: raw.label || '',
     date: raw.date || null,
+    time: raw.time || null,
     results: Array.isArray(raw.results) ? raw.results : [],
     heatHistoryRef: raw.heatHistoryRef || null,
+    isOfficial: Boolean(raw.isOfficial),
+    trackSlug: raw.trackSlug || null,
+    eventPlan: raw.eventPlan || null,
   };
+}
+
+/** Strip sensitive fields before sending to unauthenticated viewers */
+export function sanitizeChampionshipForPublic(c) {
+  const { adminPassword: _pw, ...pub } = c;
+  return {
+    ...pub,
+    rounds: (pub.rounds || []).map(({ eventPlan: _ep, ...r }) => r),
+    hasPassword: Boolean(_pw),
+  };
+}
+
+/** Get rounds for a specific track that are scheduled today */
+export function getRoundsForTrackToday(championships, trackSlug) {
+  const today = new Date().toISOString().slice(0, 10);
+  const results = [];
+  for (const c of championships) {
+    for (const r of c.rounds || []) {
+      if (r.trackSlug === trackSlug && r.date === today) {
+        results.push({ championship: c, round: r });
+      }
+    }
+  }
+  return results;
+}
+
+/** Compute standings using only official rounds */
+export function computeOfficialStandings(championship) {
+  const officialOnly = {
+    ...championship,
+    rounds: (championship.rounds || []).filter((r) => r.isOfficial),
+  };
+  return computeStandings(officialOnly);
 }
