@@ -11,6 +11,7 @@ import InstallGuidePage from './components/InstallGuidePage.jsx';
 import SetupWizard from './components/SetupWizard.jsx';
 import Reception from './components/Reception.jsx';
 import ResultsPage from './components/ResultsPage.jsx';
+import ChampionshipPage from './components/ChampionshipPage.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import { fetchInstallConfig } from './utils/installMode.js';
 
@@ -67,6 +68,8 @@ function App() {
               <Route path="/live-desk/:track" element={<LiveDeskPage />} />
               <Route path="/quote" element={<TrackQuotePage />} />
               <Route path="/install-guide" element={<InstallGuidePage />} />
+              <Route path="/championship" element={<ChampionshipPage />} />
+              <Route path="/championship/:trackName" element={<ChampionshipPage />} />
             </Routes>
           </LocalInstallGuard>
         </Router>

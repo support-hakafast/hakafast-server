@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import '../assets/AdminPanel.css';
 import '../assets/AdminWalkthrough.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
@@ -9,7 +9,6 @@ import HakafastLogo from './HakafastLogo.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
 import ProRaceEventModal from './ProRaceEventModal.jsx';
-import ChampionshipModal from './ChampionshipModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
 import TimingColumnsPicker from './TimingColumnsPicker.jsx';
 import AdminWalkthrough, { isAdminTourDone } from './AdminWalkthrough.jsx';
@@ -198,7 +197,6 @@ const AdminPanel = () => {
   const [proEventSaving, setProEventSaving] = useState(false);
   const [plannedRaceEvent, setPlannedRaceEvent] = useState(null);
   const [showTrackPlannerModal, setShowTrackPlannerModal] = useState(false);
-  const [showChampionshipModal, setShowChampionshipModal] = useState(false);
   const [plannerSaving, setPlannerSaving] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(false);
@@ -1777,14 +1775,6 @@ const AdminPanel = () => {
           trackSlug={trackSlug}
         />
       )}
-      {showChampionshipModal && (
-        <ChampionshipModal
-          onClose={() => setShowChampionshipModal(false)}
-          t={t}
-          trackSlug={trackSlug}
-          darkMode={adminTheme === 'dark'}
-        />
-      )}
 
       <header className="admin-header">
         <div className="admin-header-brand">
@@ -2320,13 +2310,12 @@ const AdminPanel = () => {
                 {t('admin_pro_event_generate_next_round')}
               </button>
             )}
-            <button
-              type="button"
+            <Link
+              to={`/championship/${trackSlug}`}
               className="btn-muted btn-sidebar-tool btn-sidebar-championship"
-              onClick={() => setShowChampionshipModal(true)}
             >
               🏆 {t('admin_championship')}
-            </button>
+            </Link>
           </div>
 
           <div className="heat-clock-bar">
