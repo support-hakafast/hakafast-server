@@ -287,12 +287,13 @@ export function parseTeamDriversLine(text) {
   }
   return parts
     .map((part) => {
-      const raw = part;
-      const trimmed = raw.trim();
+      const trimmed = part.trim();
       if (!trimmed) return null;
       const entry = normalizeDriverEntry(trimmed);
+      // Use the parsed clean name (not the raw string) to avoid weight duplication
+      // when serializeTeamDriversLine runs on the result.
       return {
-        name: raw,
+        name: entry.name,
         weightKg: entry.weightKg != null ? String(entry.weightKg) : '',
         starter: Boolean(entry.starter),
         nationality: entry.nationality || '',

@@ -58,10 +58,8 @@ export default function EnduranceTeamsEditor({
   };
 
   const setStarter = (teamIndex, memberIndex) => {
+    // Only toggle starter flag — never touch the text input draft.
     const members = teams[teamIndex].members.map((m, i) => ({ ...m, starter: i === memberIndex }));
-    // Update the drivers line draft to reflect the new starter
-    const newLine = serializeTeamDriversLine(members);
-    setDriversLineDraft((prev) => ({ ...prev, [teamIndex]: newLine }));
     updateTeam(teamIndex, { members });
   };
 
@@ -198,8 +196,6 @@ export default function EnduranceTeamsEditor({
 
       <p className="ete2-hint">
         {t('admin_endurance_drivers_line_ph')}
-        {' — '}
-        {t('admin_endurance_teams_simple_hint')}
       </p>
 
       {atLimit && (
@@ -298,30 +294,32 @@ export default function EnduranceTeamsEditor({
                       placeholder={t('admin_endurance_drivers_line_ph')}
                       autoComplete="off"
                     />
-                    {/* Driver chips — click to set starter */}
-                    {namedMembers.length > 0 && (
+                    {/* Driver chips — click any to set as race starter */}
+                    {namedMembers.length > 0 ? (
                       <div className="ete2-driver-chips">
                         {namedMembers.map((m, mi) => {
                           const isStarter = m.starter;
                           const realIndex = team.members.indexOf(m);
+                          const hasWeight = m.weightKg !== '' && m.weightKg != null && m.weightKg !== '0';
                           return (
                             <button
                               key={mi}
                               type="button"
                               className={`ete2-driver-chip${isStarter ? ' is-starter' : ''}`}
                               onClick={() => setStarter(teamIndex, realIndex)}
-                              title={isStarter ? 'Starter' : 'Set as starter'}
+                              title={isStarter ? t('admin_endurance_starter_short') : t('admin_endurance_set_starter')}
                             >
-                              {isStarter && <span className="ete2-starter-flag" aria-hidden>★</span>}
                               <span className="ete2-chip-name">{m.name.trim()}</span>
-                              {(m.weightKg !== '' && m.weightKg != null) && (
+                              {hasWeight && (
                                 <span className="ete2-chip-weight">{m.weightKg}kg</span>
                               )}
+                              {isStarter && <span className="ete2-starter-flag" aria-hidden>★</span>}
                             </button>
                           );
                         })}
+                        <span className="ete2-chips-hint">{t('admin_endurance_tap_starter_hint')}</span>
                       </div>
-                    )}
+                    ) : null}
                   </>
                 ) : (
                   /* Sprint: individual member rows with transponder per driver */
