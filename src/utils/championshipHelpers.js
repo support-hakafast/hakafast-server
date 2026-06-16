@@ -39,11 +39,11 @@ export const DEFAULT_POINTS_TABLES = {
   karting: [15, 12, 10, 8, 6, 4, 3, 2, 1],
 };
 
-export function createChampionship({ name, type = 'sprint', pointsTable = DEFAULT_POINTS_TABLES.karting, adminPassword = '' }) {
+export function createChampionship({ name, pointsTable = DEFAULT_POINTS_TABLES.karting, adminPassword = '' }) {
   return {
     id: generateId(),
     name: name.trim(),
-    type,
+    allowedTypes: [],
     pointsTable: [...pointsTable],
     rounds: [],
     adminPassword: adminPassword || '',
@@ -61,6 +61,7 @@ export function createRound({
   isOfficial = false,
   trackSlug = null,
   eventPlan = null,
+  raceType = 'sprint',
 } = {}) {
   return {
     id: generateId(),
@@ -72,6 +73,7 @@ export function createRound({
     isOfficial,
     trackSlug,
     eventPlan,
+    raceType,
   };
 }
 
@@ -211,6 +213,7 @@ export function normalizeChampionship(raw) {
     id: raw.id || generateId(),
     name: raw.name || '',
     type: raw.type === 'endurance' ? 'endurance' : 'sprint',
+    allowedTypes: raw.allowedTypes || [],
     pointsTable: Array.isArray(raw.pointsTable) ? raw.pointsTable.map(Number).filter((n) => !Number.isNaN(n)) : [...DEFAULT_POINTS_TABLES.karting],
     rounds: Array.isArray(raw.rounds) ? raw.rounds.map(normalizeRound) : [],
     adminPassword: raw.adminPassword || '',
@@ -230,6 +233,7 @@ function normalizeRound(raw) {
     isOfficial: Boolean(raw.isOfficial),
     trackSlug: raw.trackSlug || null,
     eventPlan: raw.eventPlan || null,
+    raceType: raw.raceType || 'sprint',
   };
 }
 

@@ -1314,3 +1314,25 @@ html:has(.cp-page) body {
   .cp-result-nation { display: none; } /* too cramped */
   .cp-result-kart { display: none; }
 }
+
+/* Race type badges on round rows */
+.cp-rt-badge { font-size: 0.62rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 0.25rem; white-space: nowrap; }
+.cp-rt-sprint { background: rgba(0,0,128,0.1); color: var(--navy); }
+.cp-rt-endurance-team { background: rgba(64,224,208,0.18); color: #007070; }
+.cp-rt-endurance-solo { background: rgba(128,0,128,0.1); color: #800080; }
+.cp-rt-best-lap { background: #fef3c7; color: #92400e; }
+
+/* Collapsible round rows */
+.cp-round-header { display: flex; align-items: center; gap: 0.65rem; cursor: pointer; width: 100%; user-select: none; }
+.cp-round-chevron { font-size: 0.65rem; color: #8090b8; flex-shrink: 0; transition: transform 0.15s; }
+.cp-round-row.is-open .cp-round-chevron { transform: rotate(90deg); }
+.cp-round-body { padding-top: 0.6rem; border-top: 1px solid #e8edf8; margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.45rem; }
+
+/* Race type selector in round editor */
+.cp-racetype-tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.75rem; }
+.cp-racetype-tab { font-size: 0.75rem; font-weight: 700; padding: 0.3rem 0.7rem; border: 1.5px solid #d1d9f0; border-radius: 8px; background: #fff; color: #8090b8; cursor: pointer; transition: all 0.13s; }
+.cp-racetype-tab:hover { border-color: var(--navy); color: var(--navy); }
+.cp-racetype-tab.is-active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.cp-racetype-tab.rt-endurance-team.is-active { background: #007070; border-color: #007070; }
+.cp-racetype-tab.rt-endurance-solo.is-active { background: var(--purple); border-color: var(--purple); }
+.cp-racetype-tab.rt-best-lap.is-active { background: #92400e; border-color: #92400e; }

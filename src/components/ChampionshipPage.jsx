@@ -141,6 +141,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
   const [time, setTime] = useState(round.time || '');
   const [trackSlug, setTrackSlug] = useState(round.trackSlug || '');
   const [isOfficial, setIsOfficial] = useState(round.isOfficial || false);
+  const [raceType, setRaceType] = useState(round.raceType || 'sprint');
   const [results, setResults] = useState(() =>
     (round.results || []).map((r) => ({ ...r, nationality: r.nationality || '', kartNumber: r.kartNumber || '' }))
   );
@@ -148,7 +149,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
   const [csvMode, setCsvMode] = useState(false);
   const [addName, setAddName] = useState('');
   const [suggestions, setSuggestions] = useState([]);
-  const isEndurance = championship.type === 'endurance';
+  const isEndurance = raceType === 'endurance-team';
 
   // Results are locked until the day after the event
   const resultsUnlocked = canEnterResults(date);
@@ -220,6 +221,20 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
           <span>{t('champ_round_track')}</span>
           <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} placeholder="track-slug" />
         </label>
+      </div>
+
+      <div className="cp-field-label">{t('champ_racetype_label')}</div>
+      <div className="cp-racetype-tabs">
+        {[
+          { key: 'sprint', label: t('champ_racetype_sprint'), cls: 'rt-sprint' },
+          { key: 'endurance-team', label: t('champ_racetype_endurance_team'), cls: 'rt-endurance-team' },
+          { key: 'endurance-solo', label: t('champ_racetype_endurance_solo'), cls: 'rt-endurance-solo' },
+          { key: 'best-lap', label: t('champ_racetype_best_lap'), cls: 'rt-best-lap' },
+        ].map(({ key, label: lbl, cls }) => (
+          <button key={key} type="button"
+            className={`cp-racetype-tab ${cls}${raceType === key ? ' is-active' : ''}`}
+            onClick={() => setRaceType(key)}>{lbl}</button>
+        ))}
       </div>
 
       <label className="cp-official-toggle">
@@ -313,7 +328,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
       <div className="cp-round-editor-footer">
         <button type="button" className="cp-btn-ghost" onClick={onCancel}>{t('champ_cancel')}</button>
         <button type="button" className="cp-btn-primary"
-          onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, time: time || null, trackSlug: trackSlug || null, isOfficial, results })}
+          onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, time: time || null, trackSlug: trackSlug || null, isOfficial, results, raceType })}
         >{t('champ_save_round')}</button>
       </div>
     </div>
@@ -326,7 +341,6 @@ function StandingsTable({ championship, showAllRounds, t }) {
   const rounds = showAllRounds
     ? (championship.rounds || [])
     : (championship.rounds || []).filter((r) => r.isOfficial);
-  const isEndurance = championship.type === 'endurance';
 
   if (!rounds.length) return <p className="cp-empty">{t('champ_standings_empty')}</p>;
 
@@ -343,7 +357,7 @@ function StandingsTable({ championship, showAllRounds, t }) {
           <thead>
             <tr>
               <th>{t('champ_col_pos')}</th>
-              <th>{isEndurance ? t('champ_col_team') : t('champ_col_driver')}</th>
+              <th>{t('champ_participant')}</th>
               <th>{t('champ_col_pts')}</th>
               <th>{t('champ_col_wins')}</th>
               {rounds.map((r, i) => (
@@ -450,15 +464,16 @@ export default function ChampionshipPage() {
 
   // Create form
   const [name, setName] = useState('');
-  const [type, setType] = useState('sprint');
   const [pointsTable, setPointsTable] = useState([...DEFAULT_POINTS_TABLES.karting]);
   const [newChampPassword, setNewChampPassword] = useState('');
 
   // Settings form
   const [settingsName, setSettingsName] = useState('');
-  const [settingsType, setSettingsType] = useState('sprint');
   const [settingsPoints, setSettingsPoints] = useState([...DEFAULT_POINTS_TABLES.karting]);
   const [settingsPassword, setSettingsPassword] = useState('');
+
+  // Collapsible rounds
+  const [expandedRound, setExpandedRound] = useState(null);
 
   useEffect(() => { loadChampionships(); loadHeatHistory(); }, []);
 
@@ -494,7 +509,7 @@ export default function ChampionshipPage() {
 
   async function handleCreate() {
     if (!name.trim()) return;
-    const c = createChampionship({ name: name.trim(), type, pointsTable, adminPassword: newChampPassword });
+    const c = createChampionship({ name: name.trim(), pointsTable, adminPassword: newChampPassword });
     await persist(c, '');
     await loadChampionships();
     openDetail({ ...c, hasPassword: Boolean(newChampPassword) }, true);
@@ -506,11 +521,11 @@ export default function ChampionshipPage() {
     setSelected(c);
     setIsEditor(editor);
     setSettingsName(c.name);
-    setSettingsType(c.type);
     setSettingsPoints([...c.pointsTable]);
     setSettingsPassword('');
     setActiveTab('rounds');
     setEditingRound(null);
+    setExpandedRound(null);
     setPlanningRoundIndex(null);
     setView('detail');
   }
@@ -544,6 +559,7 @@ export default function ChampionshipPage() {
     const rounds = (selected.rounds || []).map((r, i) => i === ri ? updatedRound : r);
     updateSelected({ rounds });
     setEditingRound(null);
+    setExpandedRound(null);
   }
 
   function deleteRound(ri) {
@@ -553,7 +569,7 @@ export default function ChampionshipPage() {
   }
 
   function saveSettings() {
-    const patch = { name: settingsName.trim(), type: settingsType, pointsTable: settingsPoints };
+    const patch = { name: settingsName.trim(), pointsTable: settingsPoints };
     if (settingsPassword) patch.adminPassword = settingsPassword;
     updateSelected(patch);
   }
@@ -577,7 +593,7 @@ export default function ChampionshipPage() {
         <div className="admin-modal-overlay">
           <div className="admin-modal" style={{ maxWidth: '820px', maxHeight: '90vh', overflow: 'auto' }}>
             <ProRaceEventModal t={t} onClose={() => setPlanningRoundIndex(null)}
-              initialType={selected?.type === 'endurance' ? 'endurance' : 'sprint'}
+              initialType={planningRound?.raceType === 'endurance-team' ? 'endurance' : 'sprint'}
               draft={planningRound.eventPlan || null} trackSlug={trackSlug || ''}
               isSaving={planSaving} onApply={handlePlanApply} />
           </div>
@@ -659,18 +675,14 @@ export default function ChampionshipPage() {
                         {c.hasPassword && <span className="cp-card-lock" title={t('champ_lock_icon')}>🔒</span>}
                       </div>
                       <div className="cp-card-badges">
-                        <span className={`cp-type-badge cp-type-${c.type}`}>{c.type}</span>
                         {official > 0 && <span className="cp-official-pill">🏅 {official} {t('champ_official_plural')}</span>}
+                        <span className="cp-card-round-count">{c.rounds?.length || 0} {t('champ_tab_rounds')}</span>
                       </div>
                     </div>
                     <div className="cp-card-stats">
                       <div className="cp-card-stat">
-                        <span className="cp-card-stat-val">{c.rounds?.length || 0}</span>
-                        <span className="cp-card-stat-lbl">{t('champ_tab_rounds')}</span>
-                      </div>
-                      <div className="cp-card-stat">
                         <span className="cp-card-stat-val">{standings.length}</span>
-                        <span className="cp-card-stat-lbl">{c.type === 'endurance' ? t('champ_col_team') : t('champ_col_driver')}</span>
+                        <span className="cp-card-stat-lbl">{t('champ_participant')}</span>
                       </div>
                       {leader && (
                         <div className="cp-card-stat cp-card-stat-leader">
@@ -707,16 +719,6 @@ export default function ChampionshipPage() {
                   placeholder={t('champ_name_ph')} autoFocus />
               </label>
 
-              <div className="cp-field-label">{t('champ_type_label')}</div>
-              <div className="cp-type-tabs">
-                <button type="button" className={`cp-type-tab${type === 'sprint' ? ' is-active' : ''}`} onClick={() => setType('sprint')}>
-                  {t('champ_type_sprint')}
-                </button>
-                <button type="button" className={`cp-type-tab${type === 'endurance' ? ' is-active' : ''}`} onClick={() => setType('endurance')}>
-                  {t('champ_type_endurance')}
-                </button>
-              </div>
-
               <div className="cp-field-label">{t('champ_points_label')}</div>
               <PointsTableEditor value={pointsTable} onChange={setPointsTable} t={t} />
 
@@ -748,7 +750,6 @@ export default function ChampionshipPage() {
               <div className="cp-detail-hero-left">
                 <div className="cp-detail-title-row">
                   <h2 className="cp-detail-title">{selected.name}</h2>
-                  <span className={`cp-type-badge cp-type-${selected.type}`}>{selected.type}</span>
                   {officialRoundCount > 0 && <span className="cp-official-pill">🏅 {officialRoundCount} {t('champ_official_plural')}</span>}
                 </div>
               </div>
@@ -797,50 +798,60 @@ export default function ChampionshipPage() {
                     {(!selected.rounds || selected.rounds.length === 0) && (
                       <p className="cp-empty">{t('champ_rounds_empty')}</p>
                     )}
-                    {(selected.rounds || []).map((r, i) => (
-                      <div key={r.id} className={`cp-round-row${r.isOfficial ? ' is-official' : ''}`}>
-                        <div className="cp-round-left">
-                          <div className="cp-round-num-badge">
-                            {r.isOfficial ? '🏅' : `R${i + 1}`}
+                    {(selected.rounds || []).map((r, i) => {
+                      const isOpen = expandedRound === i;
+                      const rt = r.raceType || 'sprint';
+                      const rtLabels = {
+                        'sprint': 'Sprint',
+                        'endurance-team': 'Team Endurance',
+                        'endurance-solo': 'Solo Endurance',
+                        'best-lap': 'Best Lap',
+                      };
+                      return (
+                        <div key={r.id} className={`cp-round-row${r.isOfficial ? ' is-official' : ''}${isOpen ? ' is-open' : ''}`}>
+                          <div className="cp-round-header" onClick={() => setExpandedRound(isOpen ? null : i)}>
+                            <div className="cp-round-num-badge">
+                              {r.isOfficial ? '🏅' : `R${i + 1}`}
+                            </div>
+                            <div className="cp-round-info" style={{ flex: 1 }}>
+                              <span className="cp-round-label">{r.label || `Round ${i + 1}`}</span>
+                              {r.date && <span className="cp-round-meta" style={{ marginInlineStart: '0.5rem' }}>{r.date}{r.time ? ` · ${r.time}` : ''}</span>}
+                            </div>
+                            <span className={`cp-rt-badge cp-rt-${rt}`}>{rtLabels[rt] || rt}</span>
+                            <span className="cp-round-meta">{r.results?.length || 0}</span>
+                            {r.isOfficial
+                              ? <span className="cp-official-badge">🏅</span>
+                              : <span className="cp-unofficial-badge">⚠</span>
+                            }
+                            <span className="cp-round-chevron">{isOpen ? '▼' : '▶'}</span>
                           </div>
-                          <div className="cp-round-info">
-                            <span className="cp-round-label">{r.label || `Round ${i + 1}`}</span>
-                            <div className="cp-round-meta-row">
-                              {r.date && <span className="cp-round-meta">{r.date}{r.time ? ` · ${r.time}` : ''}</span>}
+                          {isOpen && (
+                            <div className="cp-round-body">
                               {r.trackSlug && <span className="cp-round-meta">📍 {r.trackSlug}</span>}
-                              <span className="cp-round-meta">
-                                {r.results?.length || 0} {selected.type === 'endurance' ? t('champ_round_teams') : t('champ_round_drivers')}
-                                {r.results?.[0] && ` · ${t('champ_round_winner')}: ${r.results[0].name}`}
-                              </span>
-                            </div>
-                            <div className="cp-round-badges-row">
-                              {r.isOfficial
-                                ? <span className="cp-official-badge">🏅 {t('champ_official')}</span>
-                                : <span className="cp-unofficial-badge">⚠ {t('champ_unofficial_label')}</span>
-                              }
+                              {r.results?.[0] && <span className="cp-round-meta">{t('champ_round_winner')}: {r.results[0].name}</span>}
                               {r.eventPlan && <span className="cp-linked-badge">✓ {t('champ_event_linked')}</span>}
+                              {isEditor && (
+                                <div className="cp-round-actions" onClick={(e) => e.stopPropagation()}>
+                                  <button type="button" className={`cp-tool-btn${r.eventPlan ? ' is-active' : ''}`}
+                                    onClick={() => setPlanningRoundIndex(i)}>
+                                    📋 {t('champ_plan_event')}
+                                  </button>
+                                  {r.eventPlan && r.trackSlug && (
+                                    <Link to={`/admin/${r.trackSlug}`} className="cp-tool-btn">
+                                      🏁 {t('champ_open_admin')}
+                                    </Link>
+                                  )}
+                                  <button type="button" className="cp-tool-btn" onClick={(e) => { e.stopPropagation(); setEditingRound(i); }}>
+                                    ✏ {t('champ_round_edit')}
+                                  </button>
+                                  <button type="button" className="cp-tool-btn cp-del-btn" onClick={(e) => { e.stopPropagation(); deleteRound(i); }}>✕</button>
+                                </div>
+                              )}
                             </div>
-                          </div>
+                          )}
                         </div>
-                        {isEditor && (
-                          <div className="cp-round-actions">
-                            <button type="button" className={`cp-tool-btn${r.eventPlan ? ' is-active' : ''}`}
-                              onClick={() => setPlanningRoundIndex(i)}>
-                              📋 {t('champ_plan_event')}
-                            </button>
-                            {r.eventPlan && r.trackSlug && (
-                              <Link to={`/admin/${r.trackSlug}`} className="cp-tool-btn">
-                                🏁 {t('champ_open_admin')}
-                              </Link>
-                            )}
-                            <button type="button" className="cp-tool-btn" onClick={() => setEditingRound(i)}>
-                              ✏ {t('champ_round_edit')}
-                            </button>
-                            <button type="button" className="cp-tool-btn cp-del-btn" onClick={() => deleteRound(i)}>✕</button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                     {isEditor && (
                       <button type="button" className="cp-add-round-btn" onClick={addRound}>
                         + {t('champ_add_round')}
@@ -879,15 +890,6 @@ export default function ChampionshipPage() {
                   <span>{t('champ_name_label')}</span>
                   <input type="text" dir="auto" value={settingsName} onChange={(e) => setSettingsName(e.target.value)} />
                 </label>
-                <div className="cp-field-label">{t('champ_type_label')}</div>
-                <div className="cp-type-tabs">
-                  <button type="button" className={`cp-type-tab${settingsType === 'sprint' ? ' is-active' : ''}`} onClick={() => setSettingsType('sprint')}>
-                    {t('champ_type_sprint')}
-                  </button>
-                  <button type="button" className={`cp-type-tab${settingsType === 'endurance' ? ' is-active' : ''}`} onClick={() => setSettingsType('endurance')}>
-                    {t('champ_type_endurance')}
-                  </button>
-                </div>
                 <div className="cp-field-label">{t('champ_points_label')}</div>
                 <PointsTableEditor value={settingsPoints} onChange={setSettingsPoints} t={t} />
 
