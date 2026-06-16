@@ -39,10 +39,16 @@ export const DEFAULT_POINTS_TABLES = {
   karting: [15, 12, 10, 8, 6, 4, 3, 2, 1],
 };
 
-export function createChampionship({ name, pointsTable = DEFAULT_POINTS_TABLES.karting, adminPassword = '' }) {
+/**
+ * scope: 'singular' — one championship, one standings table (e.g. BRKC)
+ * scope: 'multi-league' — parent championship with divisions each having their own standings,
+ *          plus an overall "grand" standings that accumulates across all divisions (e.g. Rock Cup)
+ */
+export function createChampionship({ name, pointsTable = DEFAULT_POINTS_TABLES.karting, adminPassword = '', scope = 'singular' }) {
   return {
     id: generateId(),
     name: name.trim(),
+    scope, // 'singular' | 'multi-league'
     allowedTypes: [],
     pointsTable: [...pointsTable],
     rounds: [],
@@ -62,6 +68,22 @@ export function createDivision({ name, pointsTable = DEFAULT_POINTS_TABLES.karti
   };
 }
 
+/**
+ * Session plan entry (within a round):
+ * {
+ *   id: string,
+ *   type: 'practice' | 'qualifying' | 'race' | 'ironcut',   // ironcut = solo timed endurance
+ *   label: string,         // e.g. "Practice 1", "Qualifying", "Race"
+ *   startTime: string,     // HH:MM
+ *   durationMinutes: number,
+ *   kartTransporter: boolean,  // karts move between sessions (transponder IDs reset)
+ *   notes: string,
+ * }
+ */
+export function createSession({ type = 'practice', label = '', startTime = '', durationMinutes = 15, kartTransporter = false, notes = '' } = {}) {
+  return { id: generateId(), type, label, startTime, durationMinutes, kartTransporter, notes };
+}
+
 export function createRound({
   label = '',
   date = null,
@@ -72,6 +94,7 @@ export function createRound({
   trackSlug = null,
   eventPlan = null,
   raceType = 'sprint',
+  sessions = [],
 } = {}) {
   return {
     id: generateId(),
@@ -84,6 +107,7 @@ export function createRound({
     trackSlug,
     eventPlan,
     raceType,
+    sessions, // SessionPlan[]
   };
 }
 
@@ -222,6 +246,7 @@ export function normalizeChampionship(raw) {
   return {
     id: raw.id || generateId(),
     name: raw.name || '',
+    scope: raw.scope === 'multi-league' ? 'multi-league' : 'singular',
     type: raw.type === 'endurance' ? 'endurance' : 'sprint',
     allowedTypes: raw.allowedTypes || [],
     pointsTable: Array.isArray(raw.pointsTable) ? raw.pointsTable.map(Number).filter((n) => !Number.isNaN(n)) : [...DEFAULT_POINTS_TABLES.karting],
@@ -302,6 +327,19 @@ export function computeOverallStandings(championship) {
   return standings.map((s, i) => ({ ...s, position: i + 1 }));
 }
 
+function normalizeSession(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: raw.id || generateId(),
+    type: ['practice', 'qualifying', 'race', 'ironcut'].includes(raw.type) ? raw.type : 'practice',
+    label: raw.label || '',
+    startTime: raw.startTime || '',
+    durationMinutes: Math.max(1, parseInt(raw.durationMinutes, 10) || 15),
+    kartTransporter: Boolean(raw.kartTransporter),
+    notes: raw.notes || '',
+  };
+}
+
 function normalizeRound(raw) {
   return {
     id: raw.id || generateId(),
@@ -314,6 +352,7 @@ function normalizeRound(raw) {
     trackSlug: raw.trackSlug || null,
     eventPlan: raw.eventPlan || null,
     raceType: raw.raceType || 'sprint',
+    sessions: Array.isArray(raw.sessions) ? raw.sessions.map(normalizeSession).filter(Boolean) : [],
   };
 }
 

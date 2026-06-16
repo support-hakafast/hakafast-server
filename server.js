@@ -839,6 +839,57 @@ app.post('/api/championships/:id/verify-password', (req, res) => {
   return res.json({ success: req.body?.password === existing.adminPassword });
 });
 
+// GET upcoming championship rounds for a track (calendar view for track admins)
+// Query: ?days=N (default 90) — how many days ahead to look
+app.get('/api/track-calendar/:trackSlug', (req, res) => {
+  const { trackSlug } = req.params;
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 90, 1), 365);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() + days);
+  const todayStr = today.toISOString().slice(0, 10);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const entries = [];
+  for (const c of globalChampionships) {
+    // Top-level rounds
+    for (const r of c.rounds || []) {
+      if (r.trackSlug === trackSlug && r.date && r.date >= todayStr && r.date <= cutoffStr) {
+        entries.push({
+          championshipId: c.id,
+          championshipName: c.name,
+          championshipScope: c.scope || 'singular',
+          divisionId: null,
+          divisionName: null,
+          round: { id: r.id, label: r.label, date: r.date, time: r.time || null, raceType: r.raceType || 'sprint', isOfficial: r.isOfficial || false },
+        });
+      }
+    }
+    // Division rounds
+    for (const div of c.divisions || []) {
+      for (const r of div.rounds || []) {
+        if (r.trackSlug === trackSlug && r.date && r.date >= todayStr && r.date <= cutoffStr) {
+          entries.push({
+            championshipId: c.id,
+            championshipName: c.name,
+            championshipScope: c.scope || 'singular',
+            divisionId: div.id,
+            divisionName: div.name,
+            round: { id: r.id, label: r.label, date: r.date, time: r.time || null, raceType: r.raceType || 'sprint', isOfficial: r.isOfficial || false },
+          });
+        }
+      }
+    }
+  }
+
+  entries.sort((a, b) => {
+    const da = a.round.date + (a.round.time || '00:00');
+    const db = b.round.date + (b.round.time || '00:00');
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+
+  return res.json({ success: true, trackSlug, entries });
+});
+
 // ── License verification ─────────────────────────────────────────────────────
 
 app.post('/api/admin/verify-license', (req, res) => {

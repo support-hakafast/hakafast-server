@@ -133,6 +133,7 @@ const AdminPanel = () => {
   const [hasPassword, setHasPassword] = useState(false);
   const [isLicensed, setIsLicensed] = useState(false);
   const [todayChampRounds, setTodayChampRounds] = useState([]);
+  const [upcomingChampRounds, setUpcomingChampRounds] = useState([]);
 
   const [allKarts, setAllKarts] = useState({});
   const [linesData, setLinesData] = useState({ ...DEFAULT_LINES });
@@ -308,6 +309,10 @@ const AdminPanel = () => {
     fetch(`/api/championships?trackSlug=${encodeURIComponent(trackSlug)}`)
       .then((r) => r.json())
       .then((d) => { if (d.todayRounds?.length) setTodayChampRounds(d.todayRounds); })
+      .catch(() => {});
+    fetch(`/api/track-calendar/${encodeURIComponent(trackSlug)}?days=60`)
+      .then((r) => r.json())
+      .then((d) => { if (d.entries?.length) setUpcomingChampRounds(d.entries); })
       .catch(() => {});
 
     if (usesIsolatedWorkspace(trackSlug)) {
@@ -1844,6 +1849,38 @@ const AdminPanel = () => {
           <Link to="/championship" className="admin-champ-today-link">
             {t('admin_championship')} →
           </Link>
+        </div>
+      )}
+
+      {upcomingChampRounds.filter((e) => {
+        const today = new Date().toISOString().slice(0, 10);
+        return e.round.date > today;
+      }).length > 0 && (
+        <div className="admin-champ-calendar">
+          <div className="admin-champ-calendar-title">
+            📅 Upcoming championship races at this track
+            <Link to="/championship" style={{ fontWeight: 400, fontSize: '0.78em', marginInlineStart: '0.5rem' }}>
+              {t('admin_championship')} →
+            </Link>
+          </div>
+          <div className="admin-champ-calendar-entries">
+            {upcomingChampRounds
+              .filter((e) => e.round.date > new Date().toISOString().slice(0, 10))
+              .slice(0, 6)
+              .map((entry, i) => {
+                const rtMap = { sprint: 'Sprint', 'endurance-team': 'Endurance', 'endurance-solo': 'Iron Solo', 'best-lap': 'Best Lap' };
+                return (
+                  <div key={i} className="admin-champ-cal-entry">
+                    <span className="admin-champ-cal-date">{entry.round.date}{entry.round.time ? ` · ${entry.round.time}` : ''}</span>
+                    <span className="admin-champ-cal-name">{entry.championshipName}</span>
+                    {entry.divisionName && <span className="admin-champ-cal-div">({entry.divisionName})</span>}
+                    <span className="admin-champ-cal-round">{entry.round.label}</span>
+                    <span className="admin-champ-cal-rt">{rtMap[entry.round.raceType] || entry.round.raceType}</span>
+                    {entry.round.isOfficial && <span className="admin-champ-cal-rt" style={{ background: '#fef9c3', color: '#92400e' }}>🏅 Official</span>}
+                  </div>
+                );
+              })}
+          </div>
         </div>
       )}
 
