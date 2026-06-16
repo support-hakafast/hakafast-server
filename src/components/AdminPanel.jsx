@@ -9,6 +9,7 @@ import HakafastLogo from './HakafastLogo.jsx';
 import AdvancedSettingsModal from './AdvancedSettingsModal.jsx';
 import EnduranceToolsModal from './EnduranceToolsModal.jsx';
 import ProRaceEventModal from './ProRaceEventModal.jsx';
+import ChampionshipModal from './ChampionshipModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
 import TimingColumnsPicker from './TimingColumnsPicker.jsx';
 import AdminWalkthrough, { isAdminTourDone } from './AdminWalkthrough.jsx';
@@ -197,6 +198,7 @@ const AdminPanel = () => {
   const [proEventSaving, setProEventSaving] = useState(false);
   const [plannedRaceEvent, setPlannedRaceEvent] = useState(null);
   const [showTrackPlannerModal, setShowTrackPlannerModal] = useState(false);
+  const [showChampionshipModal, setShowChampionshipModal] = useState(false);
   const [plannerSaving, setPlannerSaving] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(false);
@@ -1775,6 +1777,14 @@ const AdminPanel = () => {
           trackSlug={trackSlug}
         />
       )}
+      {showChampionshipModal && (
+        <ChampionshipModal
+          onClose={() => setShowChampionshipModal(false)}
+          t={t}
+          trackSlug={trackSlug}
+          darkMode={adminTheme === 'dark'}
+        />
+      )}
 
       <header className="admin-header">
         <div className="admin-header-brand">
@@ -2310,6 +2320,13 @@ const AdminPanel = () => {
                 {t('admin_pro_event_generate_next_round')}
               </button>
             )}
+            <button
+              type="button"
+              className="btn-muted btn-sidebar-tool btn-sidebar-championship"
+              onClick={() => setShowChampionshipModal(true)}
+            >
+              🏆 {t('admin_championship')}
+            </button>
           </div>
 
           <div className="heat-clock-bar">

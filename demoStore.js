@@ -82,6 +82,7 @@ function createStore(trackSlug = 'kart-demo') {
     currentHeat: [],
     drivers: [],
     heatHistory: [],
+    championships: [],
     clientSnapshot: null,
     nextHeat: [],
     nextHeatSettings: null,
@@ -208,6 +209,7 @@ function exportSnapshot(store) {
     autoFinishStartedAt: store.autoFinishStartedAt,
     autoFinishHeatNumber: store.autoFinishHeatNumber,
     heatHistory: store.heatHistory,
+    championships: store.championships,
     dailyHeat: store.dailyHeat,
     lapRecords: store.lapRecords,
     exportedAt: Date.now(),
@@ -241,6 +243,7 @@ function applySnapshot(store, snapshot) {
   if (snapshot.autoFinishStartedAt !== undefined) store.autoFinishStartedAt = snapshot.autoFinishStartedAt;
   if (snapshot.autoFinishHeatNumber !== undefined) store.autoFinishHeatNumber = snapshot.autoFinishHeatNumber;
   if (Array.isArray(snapshot.heatHistory)) store.heatHistory = snapshot.heatHistory;
+  if (Array.isArray(snapshot.championships)) store.championships = snapshot.championships;
   if (snapshot.dailyHeat) store.dailyHeat = snapshot.dailyHeat;
   if (snapshot.lapRecords) store.lapRecords = snapshot.lapRecords;
   if (snapshot.workspaceId) store.workspaceId = snapshot.workspaceId;

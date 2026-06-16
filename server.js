@@ -734,6 +734,23 @@ app.get('/api/results/:heatNumber', (req, res) => {
   return res.json({ success: true, heat });
 });
 
+// ── Championships ────────────────────────────────────────────────────────────
+
+app.get('/api/championships', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  return res.json({ success: true, championships: demo.championships || [] });
+});
+
+app.post('/api/championships', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const list = req.body?.championships;
+  if (!Array.isArray(list)) return res.status(400).json({ success: false, error: 'invalid_body' });
+  demo.championships = list;
+  return res.json({ success: true });
+});
+
 app.get('/api/webhooks/rentix/status', (req, res) => {
   const settings = rentixWebhook.getRentixSettings();
   return res.json({
