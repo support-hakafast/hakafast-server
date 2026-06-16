@@ -11,7 +11,8 @@ import {
 import { COUNTRIES, countryFlag } from '../data/countries.js';
 import { getTransponderSystem, normalizeTransponderId } from '../data/transponderSystems.js';
 
-const MAX_TEAMS = 80;
+const MAX_TEAMS_ENDURANCE = 80;
+const MAX_TEAMS_SPRINT = 150;
 
 export default function EnduranceTeamsEditor({
   t,
@@ -32,6 +33,7 @@ export default function EnduranceTeamsEditor({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const nameLabelKey = eventType === 'sprint' ? 'admin_sprint_heat_name_ph' : 'admin_endurance_team_name_ph';
   const isEndurance = eventType === 'endurance';
+  const MAX_TEAMS = isEndurance ? MAX_TEAMS_ENDURANCE : MAX_TEAMS_SPRINT;
   const atLimit = teams.length >= MAX_TEAMS;
   const transponderSys = getTransponderSystem(timingSystem);
   const hasTransponder = timingSystem !== 'manual';

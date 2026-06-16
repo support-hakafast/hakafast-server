@@ -3633,17 +3633,28 @@ html:has(.admin-no-scroll) body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: min(72vh, 680px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 .pro-race-event-modal.admin-modal-wide {
   width: min(720px, calc(100vw - 24px));
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .pro-race-event-modal .endurance-teams-list {
   max-height: min(36vh, 320px);
+}
+
+/* Inside the modal the panel scrolls, so ete2-list should not clip itself */
+.pro-race-event-modal .ete2-list {
+  max-height: none;
+  overflow-y: visible;
 }
 
 .pro-race-event-modal .endurance-team-card {
@@ -3704,17 +3715,18 @@ html:has(.admin-no-scroll) body {
 }
 
 .pro-event-type-tab.active {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: var(--navy);
+  border-color: var(--navy);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 128, 0.22);
   z-index: 1;
   position: relative;
 }
 
 .pro-event-type-tab:not(.active):hover {
   background: #f1f5f9;
-  color: #334155;
+  color: var(--navy);
+  border-color: #b8c0e0;
 }
 
 .pro-event-groups-text {
@@ -4687,8 +4699,9 @@ html:has(.admin-no-scroll) body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-height: min(54vh, 540px);
+  max-height: min(65vh, 700px);
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 2px;
 }
 
