@@ -227,13 +227,21 @@ export default function ProRaceEventModal({
               </select>
             </label>
             <div className="pro-event-timing-meta">
-              <span className={`pro-event-decoder-badge${decoderStatus?.connected ? ' is-live' : ''}`}>
-                {isNativeTransponderSystem(timingSystem)
-                  ? (decoderStatus?.connected
-                    ? t('admin_pro_event_decoder_connected')
-                    : t('admin_pro_event_decoder_idle'))
-                  : t('admin_pro_event_decoder_external')}
-              </span>
+              {isNativeTransponderSystem(timingSystem) ? (
+                decoderStatus?.connected ? (
+                  <span className="pro-event-decoder-badge is-live">
+                    {t('admin_pro_event_decoder_connected')}
+                  </span>
+                ) : (
+                  <span className="pro-event-decoder-badge is-warning">
+                    {t('admin_pro_event_decoder_idle')}
+                  </span>
+                )
+              ) : (
+                <span className="pro-event-decoder-badge is-external">
+                  {t('admin_pro_event_decoder_external')}
+                </span>
+              )}
               <p className="pro-event-groups-hint">
                 {t('admin_pro_event_timing_system_hint', {
                   format: transponderSys.idFormat,
