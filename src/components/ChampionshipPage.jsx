@@ -17,8 +17,7 @@ import {
 } from '../utils/championshipHelpers.js';
 import { COUNTRIES, countryFlag } from '../data/countries.js';
 import '../assets/AdminPanel.css';
-
-// ── Utility ─────────────────────────────────────────────────────────────────
+import '../assets/ChampionshipPage.css';
 
 function downloadTextFile(filename, content) {
   const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8' });
@@ -28,17 +27,11 @@ function downloadTextFile(filename, content) {
   URL.revokeObjectURL(url);
 }
 
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
-
-// Local storage key for championship admin sessions
 function sessionKey(id) { return `hf_champ_auth_${id}`; }
 function readSession(id) { try { return sessionStorage.getItem(sessionKey(id)) === 'true'; } catch { return false; } }
 function writeSession(id, v) { try { sessionStorage.setItem(sessionKey(id), v ? 'true' : ''); } catch {} }
 
-// ── Sub-components ──────────────────────────────────────────────────────────
-
+// ── Points table editor (editor-only) ────────────────────────────────────────
 function PointsTableEditor({ value, onChange, t }) {
   const [text, setText] = useState(value.join(', '));
   useEffect(() => { setText(value.join(', ')); }, [value]);
@@ -56,16 +49,16 @@ function PointsTableEditor({ value, onChange, t }) {
   }
 
   return (
-    <div className="champ-points-editor">
-      <div className="champ-points-presets">
+    <div className="cp-points-editor">
+      <div className="cp-points-presets">
         {presets.map(({ key, label }) => (
           <button key={key} type="button"
-            className={`champ-preset-btn${JSON.stringify(value) === JSON.stringify(DEFAULT_POINTS_TABLES[key]) ? ' is-active' : ''}`}
+            className={`cp-preset-btn${JSON.stringify(value) === JSON.stringify(DEFAULT_POINTS_TABLES[key]) ? ' is-active' : ''}`}
             onClick={() => { onChange(DEFAULT_POINTS_TABLES[key]); setText(DEFAULT_POINTS_TABLES[key].join(', ')); }}
           >{label}</button>
         ))}
       </div>
-      <label className="planner-field planner-field-compact" style={{ marginTop: '0.4rem' }}>
+      <label className="cp-field">
         <span>{t('champ_points_custom_label')}</span>
         <input type="text" value={text}
           onChange={(e) => setText(e.target.value)}
@@ -73,18 +66,19 @@ function PointsTableEditor({ value, onChange, t }) {
           placeholder={t('champ_points_custom_ph')}
         />
       </label>
-      <div className="champ-points-preview">
-        {value.map((pts, i) => <span key={i} className="champ-pts-chip">P{i + 1}={pts}</span>)}
+      <div className="cp-pts-preview">
+        {value.map((pts, i) => <span key={i} className="cp-pts-chip">P{i + 1}={pts}</span>)}
       </div>
     </div>
   );
 }
 
+// ── Driver/team row in round editor ──────────────────────────────────────────
 function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, onMoveDown, total, t }) {
   return (
-    <li className="champ-result-row">
-      <span className="champ-pos">{index + 1}</span>
-      <input type="text" dir="auto" className="champ-result-name-input"
+    <li className="cp-result-row">
+      <span className="cp-result-pos">{index + 1}</span>
+      <input type="text" dir="auto" className="cp-result-name"
         value={driver.name}
         onChange={(e) => onUpdate({ ...driver, name: e.target.value })}
         placeholder={isEndurance ? t('champ_add_team_ph') : t('champ_add_driver_ph')}
@@ -92,12 +86,12 @@ function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, o
       />
       {!isEndurance && (
         <>
-          <select className="champ-result-nation" value={driver.nationality || ''}
+          <select className="cp-result-nation" value={driver.nationality || ''}
             onChange={(e) => onUpdate({ ...driver, nationality: e.target.value })}>
             <option value="">—</option>
             {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{countryFlag(c.code)} {c.name}</option>)}
           </select>
-          <input type="text" dir="ltr" className="champ-result-kart"
+          <input type="text" dir="ltr" className="cp-result-kart"
             value={driver.kartNumber || ''}
             onChange={(e) => onUpdate({ ...driver, kartNumber: e.target.value })}
             placeholder={t('champ_kart_ph')}
@@ -105,22 +99,23 @@ function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, o
         </>
       )}
       {isEndurance && (
-        <input type="text" dir="auto" className="champ-result-drivers-input"
+        <input type="text" dir="auto" className="cp-result-drivers"
           value={(driver.drivers || []).join(', ')}
           onChange={(e) => onUpdate({ ...driver, drivers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
           placeholder={t('champ_drivers_ph')}
         />
       )}
-      <div className="champ-result-controls">
-        <button type="button" className="champ-mv-btn" onClick={onMoveUp} disabled={index === 0}>↑</button>
-        <button type="button" className="champ-mv-btn" onClick={onMoveDown} disabled={index === total - 1}>↓</button>
-        <button type="button" className="champ-mv-btn champ-action-delete" onClick={onRemove}>✕</button>
+      <div className="cp-result-btns">
+        <button type="button" className="cp-mv-btn" onClick={onMoveUp} disabled={index === 0}>↑</button>
+        <button type="button" className="cp-mv-btn" onClick={onMoveDown} disabled={index === total - 1}>↓</button>
+        <button type="button" className="cp-mv-btn cp-del-btn" onClick={onRemove}>✕</button>
       </div>
     </li>
   );
 }
 
-function RoundEditor({ round, championship, heatHistory, onSave, onCancel, isEditor, t, availableTracks }) {
+// ── Round editor panel (editor-only) ─────────────────────────────────────────
+function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) {
   const [label, setLabel] = useState(round.label || '');
   const [date, setDate] = useState(round.date || '');
   const [time, setTime] = useState(round.time || '');
@@ -166,49 +161,49 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, isEdi
   }
 
   return (
-    <div className="champ-round-editor">
-      <div className="champ-round-editor-header">
-        <h3>{round.label ? `${t('champ_round_edit')}: ${round.label}` : t('champ_add_round').replace('+ ', '')}</h3>
-        <button type="button" className="admin-modal-close champ-inline-close" onClick={onCancel}>×</button>
+    <div className="cp-round-editor">
+      <div className="cp-round-editor-top">
+        <h3 className="cp-round-editor-title">
+          {round.label ? `${t('champ_round_edit')}: ${round.label}` : t('champ_add_round').replace('+ ', '')}
+        </h3>
+        <button type="button" className="cp-close-btn" onClick={onCancel}>×</button>
       </div>
 
-      <div className="champ-round-editor-fields">
-        <label className="planner-field planner-field-compact">
+      <div className="cp-round-fields">
+        <label className="cp-field">
           <span>{t('champ_round_label')}</span>
           <input type="text" dir="auto" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t('champ_round_label_ph')} autoFocus />
         </label>
-        <label className="planner-field planner-field-compact">
+        <label className="cp-field">
           <span>{t('champ_round_date')}</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
-        <label className="planner-field planner-field-compact">
+        <label className="cp-field">
           <span>{t('champ_round_time')}</span>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </label>
-        <label className="planner-field planner-field-compact">
+        <label className="cp-field">
           <span>{t('champ_round_track')}</span>
           <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} placeholder="track-slug" />
         </label>
       </div>
 
-      {isEditor && (
-        <label className="champ-official-toggle">
-          <input type="checkbox" checked={isOfficial} onChange={(e) => setIsOfficial(e.target.checked)} />
-          <span>🏅 {t('champ_mark_official')}</span>
-          <span className="champ-official-hint">{t('champ_official_hint')}</span>
-        </label>
-      )}
+      <label className="cp-official-toggle">
+        <input type="checkbox" checked={isOfficial} onChange={(e) => setIsOfficial(e.target.checked)} />
+        <span>🏅 {t('champ_mark_official')}</span>
+        <span className="cp-official-hint">{t('champ_official_hint')}</span>
+      </label>
 
       {!isOfficial && (
-        <p className="champ-unofficial-note">⚠ {t('champ_unofficial_note')}</p>
+        <p className="cp-unofficial-note">⚠ {t('champ_unofficial_note')}</p>
       )}
 
       {heatHistory?.length > 0 && (
-        <div className="champ-heat-import">
-          <span className="champ-section-label">{t('champ_from_heat')}</span>
-          <div className="champ-heat-list">
+        <div className="cp-heat-import">
+          <span className="cp-section-label">{t('champ_from_heat')}</span>
+          <div className="cp-heat-chips">
             {heatHistory.slice().reverse().slice(0, 15).map((h, i) => (
-              <button key={i} type="button" className="champ-heat-chip" onClick={() => importFromHeat(h)}>
+              <button key={i} type="button" className="cp-heat-chip" onClick={() => importFromHeat(h)}>
                 #{h.heat_number}{h.heat_type ? ` · ${h.heat_type}` : ''}{h.results?.length ? ` (${h.results.length})` : ''}
               </button>
             ))}
@@ -216,41 +211,42 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, isEdi
         </div>
       )}
 
-      <div className="champ-results-section">
-        <div className="champ-results-toolbar">
-          <span className="champ-section-label">
+      <div className="cp-results-section">
+        <div className="cp-results-toolbar">
+          <span className="cp-section-label">
             {t('champ_results_label')} — {results.length} {isEndurance ? t('champ_round_teams') : t('champ_round_drivers')}
           </span>
-          <button type="button" className={`champ-action-btn${csvMode ? ' is-active' : ''}`} onClick={() => setCsvMode((v) => !v)}>
+          <button type="button" className={`cp-tool-btn${csvMode ? ' is-active' : ''}`} onClick={() => setCsvMode((v) => !v)}>
             {t('champ_csv_paste')}
           </button>
         </div>
         {csvMode && (
-          <div className="champ-csv-paste">
-            <textarea value={csvText} onChange={(e) => setCsvText(e.target.value)} placeholder={t('champ_csv_ph')} rows={6} />
-            <button type="button" className="btn-muted" onClick={applyCSV}>{t('champ_csv_apply')}</button>
+          <div className="cp-csv-paste">
+            <textarea value={csvText} onChange={(e) => setCsvText(e.target.value)} placeholder={t('champ_csv_ph')} rows={5} />
+            <button type="button" className="cp-tool-btn" onClick={applyCSV}>{t('champ_csv_apply')}</button>
           </div>
         )}
-        <ol className="champ-results-list">
+        <ol className="cp-results-list">
           {results.map((r, i) => (
             <DriverRow key={i} index={i} driver={r} isEndurance={isEndurance} total={results.length}
               onUpdate={(u) => updateResult(i, u)} onRemove={() => removeResult(i)}
               onMoveUp={() => moveResult(i, -1)} onMoveDown={() => moveResult(i, 1)} t={t} />
           ))}
-          {results.length === 0 && <li className="champ-empty" style={{ listStyle: 'none' }}>{t('champ_results_empty')}</li>}
+          {results.length === 0 && <li className="cp-empty-row">{t('champ_results_empty')}</li>}
         </ol>
-        <div className="champ-add-result">
-          <input type="text" dir="auto" value={addName} onChange={(e) => setAddName(e.target.value)}
+        <div className="cp-add-result">
+          <input type="text" dir="auto" value={addName}
+            onChange={(e) => setAddName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addResult(); } }}
             placeholder={isEndurance ? t('champ_add_team_ph') : t('champ_add_driver_ph')}
           />
-          <button type="button" className="btn-muted" onClick={addResult} disabled={!addName.trim()}>{t('champ_add_btn')}</button>
+          <button type="button" className="cp-tool-btn" onClick={addResult} disabled={!addName.trim()}>{t('champ_add_btn')}</button>
         </div>
       </div>
 
-      <div className="champ-round-editor-footer">
-        <button type="button" className="btn-muted" onClick={onCancel}>{t('champ_cancel')}</button>
-        <button type="button" className="btn-primary"
+      <div className="cp-round-editor-footer">
+        <button type="button" className="cp-btn-ghost" onClick={onCancel}>{t('champ_cancel')}</button>
+        <button type="button" className="cp-btn-primary"
           onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, time: time || null, trackSlug: trackSlug || null, isOfficial, results })}
         >{t('champ_save_round')}</button>
       </div>
@@ -258,6 +254,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, isEdi
   );
 }
 
+// ── Standings table ───────────────────────────────────────────────────────────
 function StandingsTable({ championship, showAllRounds, t }) {
   const standings = showAllRounds ? computeStandings(championship) : computeOfficialStandings(championship);
   const rounds = showAllRounds
@@ -265,18 +262,18 @@ function StandingsTable({ championship, showAllRounds, t }) {
     : (championship.rounds || []).filter((r) => r.isOfficial);
   const isEndurance = championship.type === 'endurance';
 
-  if (!rounds.length) return <p className="champ-empty">{t('champ_standings_empty')}</p>;
+  if (!rounds.length) return <p className="cp-empty">{t('champ_standings_empty')}</p>;
 
   return (
-    <div className="champ-standings">
-      <div className="champ-standings-toolbar">
-        <button type="button" className="champ-action-btn"
+    <div className="cp-standings">
+      <div className="cp-standings-toolbar">
+        <button type="button" className="cp-tool-btn"
           onClick={() => downloadTextFile(`${championship.name || 'championship'}-standings.csv`, exportStandingsCsv(championship))}>
           {t('champ_export_csv')}
         </button>
       </div>
-      <div className="champ-standings-table-wrap">
-        <table className="champ-standings-table">
+      <div className="cp-standings-wrap">
+        <table className="cp-standings-table">
           <thead>
             <tr>
               <th>{t('champ_col_pos')}</th>
@@ -284,28 +281,27 @@ function StandingsTable({ championship, showAllRounds, t }) {
               <th>{t('champ_col_pts')}</th>
               <th>{t('champ_col_wins')}</th>
               {rounds.map((r, i) => (
-                <th key={i} className="champ-round-th" title={r.date || ''}>
-                  {r.isOfficial ? '🏅' : ''}
-                  {r.label ? r.label.replace(/\s*[–-].*$/, '').trim() : `R${i + 1}`}
+                <th key={i} className="cp-round-th" title={r.date || ''}>
+                  {r.isOfficial ? '🏅' : ''}{r.label ? r.label.replace(/\s*[–-].*$/, '').trim() : `R${i + 1}`}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {standings.map((s) => (
-              <tr key={s.name} className={s.position === 1 ? 'champ-leader' : ''}>
-                <td className="champ-td-pos">{s.position}</td>
-                <td className="champ-td-name">{s.name}</td>
-                <td className="champ-td-pts"><strong>{s.points}</strong></td>
-                <td className="champ-td-wins">{s.wins || '—'}</td>
+              <tr key={s.name} className={s.position <= 3 ? `cp-pos-${s.position}` : ''}>
+                <td className="cp-td-pos">{s.position}</td>
+                <td className="cp-td-name">{s.name}</td>
+                <td className="cp-td-pts"><strong>{s.points}</strong></td>
+                <td className="cp-td-wins">{s.wins || '—'}</td>
                 {s.roundPoints.map((pts, ri) => (
-                  <td key={ri} className={`champ-td-round${s.roundPositions[ri] === 1 ? ' champ-td-win' : ''}`}>
+                  <td key={ri} className={`cp-td-round${s.roundPositions[ri] === 1 ? ' cp-td-win' : ''}`}>
                     {pts != null ? pts : '—'}
                   </td>
                 ))}
               </tr>
             ))}
-            {!standings.length && <tr><td colSpan={4 + rounds.length} className="champ-empty">{t('champ_results_empty')}</td></tr>}
+            {!standings.length && <tr><td colSpan={4 + rounds.length} className="cp-empty">{t('champ_results_empty')}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -313,8 +309,8 @@ function StandingsTable({ championship, showAllRounds, t }) {
   );
 }
 
-// ── Championship login widget ────────────────────────────────────────────────
-function ChampLoginWidget({ championship, onUnlock, t }) {
+// ── Login modal (shown when championship has a password) ──────────────────────
+function LoginModal({ championship, onUnlock, onClose, t }) {
   const [pwd, setPwd] = useState('');
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -336,15 +332,32 @@ function ChampLoginWidget({ championship, onUnlock, t }) {
   }
 
   return (
-    <div className="champ-login-widget">
-      <span className="champ-login-label">🔒 {t('champ_editor_login')}</span>
-      <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') tryLogin(); }}
-        placeholder={t('champ_editor_password_ph')} className="champ-login-input" />
-      <button type="button" className="btn-primary champ-login-btn" onClick={tryLogin} disabled={loading || !pwd.trim()}>
-        {loading ? '…' : t('champ_editor_unlock')}
-      </button>
-      {error && <span className="champ-login-error">{t('champ_editor_wrong_pw')}</span>}
+    <div className="cp-modal-overlay" onClick={onClose}>
+      <div className="cp-login-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cp-login-modal-header">
+          <div className="cp-login-modal-icon">🔒</div>
+          <div>
+            <h3 className="cp-login-modal-title">{t('champ_editor_login')}</h3>
+            <p className="cp-login-modal-sub">{championship.name}</p>
+          </div>
+        </div>
+        <input
+          type="password"
+          className="cp-login-input"
+          value={pwd}
+          onChange={(e) => setPwd(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') tryLogin(); }}
+          placeholder={t('champ_editor_password_ph')}
+          autoFocus
+        />
+        {error && <p className="cp-login-error">{t('champ_editor_wrong_pw')}</p>}
+        <div className="cp-login-modal-footer">
+          <button type="button" className="cp-btn-ghost" onClick={onClose}>{t('champ_cancel')}</button>
+          <button type="button" className="cp-btn-primary" onClick={tryLogin} disabled={loading || !pwd.trim()}>
+            {loading ? '…' : t('champ_editor_unlock')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -359,7 +372,7 @@ export default function ChampionshipPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [isEditor, setIsEditor] = useState(false); // authenticated as championship admin for `selected`
+  const [isEditor, setIsEditor] = useState(false);
   const [view, setView] = useState('list');
   const [activeTab, setActiveTab] = useState('rounds');
   const [editingRound, setEditingRound] = useState(null);
@@ -367,6 +380,7 @@ export default function ChampionshipPage() {
   const [showAllRounds, setShowAllRounds] = useState(false);
   const [planningRoundIndex, setPlanningRoundIndex] = useState(null);
   const [planSaving, setPlanSaving] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Create form
   const [name, setName] = useState('');
@@ -486,12 +500,11 @@ export default function ChampionshipPage() {
   }
 
   const planningRound = planningRoundIndex !== null ? selected?.rounds?.[planningRoundIndex] : null;
-  const adminLink = trackSlug ? `/admin/${trackSlug}` : '/admin';
-
+  const adminLink = trackSlug ? `/admin/${trackSlug}` : '/admin/kart-demo';
   const officialRoundCount = selected?.rounds?.filter((r) => r.isOfficial).length || 0;
 
   return (
-    <div className="champ-page">
+    <div className="cp-page">
 
       {/* ProRaceEventModal overlay */}
       {planningRound && (
@@ -505,156 +518,205 @@ export default function ChampionshipPage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="admin-header champ-page-header">
-        <div className="admin-header-brand">
-          <HakafastLogo to="/" className="admin-header-logo" />
-          <h1>🏆 {t('admin_championship')}</h1>
+      {/* Login modal */}
+      {showLoginModal && selected && (
+        <LoginModal
+          championship={selected}
+          t={t}
+          onUnlock={() => { setIsEditor(true); setShowLoginModal(false); }}
+          onClose={() => setShowLoginModal(false)}
+        />
+      )}
+
+      {/* ── Header ── */}
+      <header className="cp-header">
+        <div className="cp-header-brand">
+          <HakafastLogo to="/" className="cp-header-logo" />
+          <span className="cp-header-title">🏆 {t('admin_championship')}</span>
         </div>
-        <nav className="champ-page-nav">
+        <nav className="cp-header-nav">
           {view !== 'list' && (
-            <button type="button" className="btn-muted champ-nav-btn"
+            <button type="button" className="cp-nav-btn"
               onClick={() => { setView('list'); setSelected(null); setEditingRound(null); setPlanningRoundIndex(null); }}>
-              {t('champ_back_all')}
+              ← {t('champ_back_all')}
             </button>
           )}
-          <Link to={adminLink} className="btn-muted champ-nav-btn">{t('champ_back_admin')}</Link>
+          <Link to={adminLink} className="cp-nav-btn">{t('champ_back_admin')}</Link>
           <LanguageSwitcher />
         </nav>
       </header>
 
-      <main className="champ-page-body">
+      <main className="cp-main">
 
         {/* ── LIST ── */}
         {view === 'list' && (
-          <div className="champ-page-list">
-            <div className="champ-page-list-header">
+          <div className="cp-list-view">
+            <div className="cp-list-hero">
               <div>
-                <h2>{t('champ_page_title')}</h2>
-                <p className="champ-page-subtitle">{t('champ_page_subtitle')}</p>
+                <h1 className="cp-list-title">{t('champ_page_title')}</h1>
+                <p className="cp-list-sub">{t('champ_page_subtitle')}</p>
               </div>
-              <button type="button" className="btn-primary" onClick={() => setView('create')}>
-                {t('champ_create_new')}
+              <button type="button" className="cp-btn-primary" onClick={() => setView('create')}>
+                + {t('champ_create_new')}
               </button>
             </div>
 
-            {loading && <p className="champ-empty">{t('champ_saving')}</p>}
+            {loading && (
+              <div className="cp-loading">
+                <div className="cp-loading-spinner" />
+                <span>{t('champ_saving')}</span>
+              </div>
+            )}
 
             {!loading && championships.length === 0 && (
-              <div className="champ-onboarding">
-                <div className="champ-onboarding-icon">🏆</div>
-                <p className="champ-onboarding-title">{t('champ_list_empty_title')}</p>
-                <p className="champ-onboarding-desc">{t('champ_list_empty_desc')}</p>
-                <button type="button" className="btn-primary" style={{ marginTop: '1.25rem' }} onClick={() => setView('create')}>
+              <div className="cp-onboarding">
+                <div className="cp-onboarding-icon">🏆</div>
+                <h2 className="cp-onboarding-title">{t('champ_list_empty_title')}</h2>
+                <p className="cp-onboarding-desc">{t('champ_list_empty_desc')}</p>
+                <button type="button" className="cp-btn-primary" onClick={() => setView('create')}>
                   {t('champ_create_btn')}
                 </button>
               </div>
             )}
 
-            {championships.map((c) => {
-              const standings = computeStandings(c);
-              const leader = standings[0];
-              const official = (c.rounds || []).filter((r) => r.isOfficial).length;
-              return (
-                <div key={c.id} className="champ-list-card" onClick={() => openDetail(c)}>
-                  <div className="champ-list-card-body">
-                    <span className="champ-list-name">{c.name}</span>
-                    <span className={`champ-type-badge champ-type-${c.type}`}>{c.type}</span>
-                    <span className="champ-list-meta">{t('champ_rounds_count', { count: c.rounds?.length || 0 })}</span>
-                    {official > 0 && <span className="champ-official-count">🏅 {official} {t('champ_official_plural')}</span>}
-                    {leader && <span className="champ-list-leader">{t('champ_leader_prefix')}: {leader.name} — {leader.points} {t('champ_pts_suffix')}</span>}
-                    {c.hasPassword && <span className="champ-lock-icon">🔒</span>}
+            <div className="cp-cards-grid">
+              {championships.map((c) => {
+                const standings = computeStandings(c);
+                const leader = standings[0];
+                const official = (c.rounds || []).filter((r) => r.isOfficial).length;
+                return (
+                  <div key={c.id} className="cp-card" onClick={() => openDetail(c)} role="button" tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openDetail(c); }}>
+                    <div className="cp-card-top">
+                      <div className="cp-card-title-row">
+                        <h3 className="cp-card-name">{c.name}</h3>
+                        {c.hasPassword && <span className="cp-card-lock" title={t('champ_lock_icon')}>🔒</span>}
+                      </div>
+                      <div className="cp-card-badges">
+                        <span className={`cp-type-badge cp-type-${c.type}`}>{c.type}</span>
+                        {official > 0 && <span className="cp-official-pill">🏅 {official} {t('champ_official_plural')}</span>}
+                      </div>
+                    </div>
+                    <div className="cp-card-stats">
+                      <div className="cp-card-stat">
+                        <span className="cp-card-stat-val">{c.rounds?.length || 0}</span>
+                        <span className="cp-card-stat-lbl">{t('champ_tab_rounds')}</span>
+                      </div>
+                      <div className="cp-card-stat">
+                        <span className="cp-card-stat-val">{standings.length}</span>
+                        <span className="cp-card-stat-lbl">{c.type === 'endurance' ? t('champ_col_team') : t('champ_col_driver')}</span>
+                      </div>
+                      {leader && (
+                        <div className="cp-card-stat cp-card-stat-leader">
+                          <span className="cp-card-stat-val">{leader.name}</span>
+                          <span className="cp-card-stat-lbl">#{t('champ_col_pos')} 1 · {leader.points} {t('champ_pts_suffix')}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="cp-card-footer">
+                      <span className="cp-card-cta">
+                        {t('champ_rounds_count', { count: c.rounds?.length || 0 })} →
+                      </span>
+                    </div>
                   </div>
-                  <button type="button" className="champ-action-btn champ-action-delete"
-                    onClick={(e) => { e.stopPropagation(); deleteChampionship(c.id); }}
-                    title={t('champ_delete')}>✕</button>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* ── CREATE ── */}
         {view === 'create' && (
-          <div className="champ-page-create">
-            <div className="champ-page-section-header">
-              <h2>{t('champ_create_title')}</h2>
-              <button type="button" className="btn-muted champ-nav-btn" onClick={() => setView('list')}>{t('champ_back_all')}</button>
+          <div className="cp-create-view">
+            <div className="cp-section-header">
+              <h2 className="cp-section-title">{t('champ_create_title')}</h2>
+              <button type="button" className="cp-nav-btn" onClick={() => setView('list')}>← {t('champ_back_all')}</button>
             </div>
 
-            <label className="planner-field planner-field-compact">
-              <span>{t('champ_name_label')}</span>
-              <input type="text" dir="auto" value={name} onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) handleCreate(); }}
-                placeholder={t('champ_name_ph')} autoFocus />
-            </label>
+            <div className="cp-form-card">
+              <label className="cp-field">
+                <span>{t('champ_name_label')}</span>
+                <input type="text" dir="auto" value={name} onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) handleCreate(); }}
+                  placeholder={t('champ_name_ph')} autoFocus />
+              </label>
 
-            <div className="champ-section-label" style={{ marginTop: '1rem' }}>{t('champ_type_label')}</div>
-            <div className="champ-type-tabs">
-              <button type="button" className={`pro-event-type-tab${type === 'sprint' ? ' active' : ''}`} onClick={() => setType('sprint')}>
-                {t('champ_type_sprint')}
-              </button>
-              <button type="button" className={`pro-event-type-tab${type === 'endurance' ? ' active' : ''}`} onClick={() => setType('endurance')}>
-                {t('champ_type_endurance')}
-              </button>
-            </div>
+              <div className="cp-field-label">{t('champ_type_label')}</div>
+              <div className="cp-type-tabs">
+                <button type="button" className={`cp-type-tab${type === 'sprint' ? ' is-active' : ''}`} onClick={() => setType('sprint')}>
+                  {t('champ_type_sprint')}
+                </button>
+                <button type="button" className={`cp-type-tab${type === 'endurance' ? ' is-active' : ''}`} onClick={() => setType('endurance')}>
+                  {t('champ_type_endurance')}
+                </button>
+              </div>
 
-            <div className="champ-section-label" style={{ marginTop: '1rem' }}>{t('champ_points_label')}</div>
-            <PointsTableEditor value={pointsTable} onChange={setPointsTable} t={t} />
+              <div className="cp-field-label">{t('champ_points_label')}</div>
+              <PointsTableEditor value={pointsTable} onChange={setPointsTable} t={t} />
 
-            <label className="planner-field planner-field-compact" style={{ marginTop: '1rem' }}>
-              <span>🔒 {t('champ_admin_password_label')}</span>
-              <input type="password" value={newChampPassword} onChange={(e) => setNewChampPassword(e.target.value)}
-                placeholder={t('champ_admin_password_ph')} />
-            </label>
-            <p className="champ-password-hint">{t('champ_admin_password_hint')}</p>
+              <div className="cp-divider" />
 
-            <div className="champ-create-footer" style={{ marginTop: '1.5rem' }}>
-              <button type="button" className="btn-muted" onClick={() => setView('list')}>{t('champ_cancel')}</button>
-              <button type="button" className="btn-primary" onClick={handleCreate} disabled={!name.trim()}>
-                {t('champ_create_btn')}
-              </button>
+              <label className="cp-field">
+                <span>🔒 {t('champ_admin_password_label')}</span>
+                <input type="password" value={newChampPassword} onChange={(e) => setNewChampPassword(e.target.value)}
+                  placeholder={t('champ_admin_password_ph')} />
+              </label>
+              <p className="cp-hint">{t('champ_admin_password_hint')}</p>
+
+              <div className="cp-form-footer">
+                <button type="button" className="cp-btn-ghost" onClick={() => setView('list')}>{t('champ_cancel')}</button>
+                <button type="button" className="cp-btn-primary" onClick={handleCreate} disabled={!name.trim()}>
+                  {t('champ_create_btn')}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* ── DETAIL ── */}
         {view === 'detail' && selected && (
-          <div className="champ-page-detail">
-            <div className="champ-page-detail-header">
-              <div>
-                <h2>{selected.name}</h2>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
-                  <span className={`champ-type-badge champ-type-${selected.type}`}>{selected.type}</span>
-                  {officialRoundCount > 0 && <span className="champ-official-count">🏅 {officialRoundCount} {t('champ_official_plural')}</span>}
+          <div className="cp-detail-view">
+
+            {/* Detail hero bar */}
+            <div className="cp-detail-hero">
+              <div className="cp-detail-hero-left">
+                <div className="cp-detail-title-row">
+                  <h2 className="cp-detail-title">{selected.name}</h2>
+                  <span className={`cp-type-badge cp-type-${selected.type}`}>{selected.type}</span>
+                  {officialRoundCount > 0 && <span className="cp-official-pill">🏅 {officialRoundCount} {t('champ_official_plural')}</span>}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                {saving && <span className="champ-saving-badge">{t('champ_saving')}</span>}
-                {!isEditor && selected.hasPassword && (
-                  <ChampLoginWidget championship={selected} t={t} onUnlock={() => setIsEditor(true)} />
-                )}
-                {isEditor && <span className="champ-editor-badge">✏ {t('champ_editor_mode')}</span>}
+              <div className="cp-detail-hero-right">
+                {saving && <span className="cp-saving-badge">{t('champ_saving')}</span>}
+                {isEditor ? (
+                  <span className="cp-editor-badge">✏ {t('champ_editor_mode')}</span>
+                ) : selected.hasPassword ? (
+                  <button type="button" className="cp-unlock-btn" onClick={() => setShowLoginModal(true)}>
+                    🔒 {t('champ_editor_login')}
+                  </button>
+                ) : null}
               </div>
             </div>
 
-            <div className="champ-edit-tabs">
-              <button className={`champ-edit-tab${activeTab === 'rounds' ? ' active' : ''}`} onClick={() => setActiveTab('rounds')}>
-                {t('champ_tab_rounds')} ({selected.rounds?.length || 0})
+            {/* Tabs */}
+            <div className="cp-tabs">
+              <button className={`cp-tab${activeTab === 'rounds' ? ' is-active' : ''}`} onClick={() => setActiveTab('rounds')}>
+                {t('champ_tab_rounds')}
+                <span className="cp-tab-count">{selected.rounds?.length || 0}</span>
               </button>
-              <button className={`champ-edit-tab${activeTab === 'standings' ? ' active' : ''}`} onClick={() => setActiveTab('standings')}>
+              <button className={`cp-tab${activeTab === 'standings' ? ' is-active' : ''}`} onClick={() => setActiveTab('standings')}>
                 {t('champ_tab_standings')}
               </button>
               {isEditor && (
-                <button className={`champ-edit-tab${activeTab === 'settings' ? ' active' : ''}`} onClick={() => setActiveTab('settings')}>
+                <button className={`cp-tab${activeTab === 'settings' ? ' is-active' : ''}`} onClick={() => setActiveTab('settings')}>
                   {t('champ_tab_settings')}
                 </button>
               )}
             </div>
 
-            {/* ROUNDS */}
+            {/* ROUNDS tab */}
             {activeTab === 'rounds' && (
-              <div className="champ-rounds-panel">
+              <div className="cp-rounds-panel">
                 {editingRound !== null && selected.rounds[editingRound] ? (
                   <RoundEditor
                     round={selected.rounds[editingRound]}
@@ -662,74 +724,79 @@ export default function ChampionshipPage() {
                     heatHistory={heatHistory}
                     onSave={(updated) => saveRound(editingRound, updated)}
                     onCancel={() => setEditingRound(null)}
-                    isEditor={isEditor}
                     t={t}
                   />
                 ) : (
                   <>
                     {(!selected.rounds || selected.rounds.length === 0) && (
-                      <p className="champ-empty">{t('champ_rounds_empty')}</p>
+                      <p className="cp-empty">{t('champ_rounds_empty')}</p>
                     )}
                     {(selected.rounds || []).map((r, i) => (
-                      <div key={r.id} className={`champ-round-row${r.isOfficial ? ' champ-round-official' : ''}`}>
-                        <div className="champ-round-info">
-                          <span className="champ-round-num">{r.isOfficial ? '🏅' : ''}R{i + 1}</span>
-                          <div className="champ-round-meta">
-                            <span className="champ-round-label">{r.label || `Round ${i + 1}`}</span>
-                            {r.date && <span className="champ-round-date">{r.date}{r.time ? ` · ${r.time}` : ''}</span>}
-                            {r.trackSlug && <span className="champ-round-track">📍 {r.trackSlug}</span>}
-                            <span className="champ-round-count">
-                              {r.results?.length || 0} {selected.type === 'endurance' ? t('champ_round_teams') : t('champ_round_drivers')}
-                              {r.results?.[0] && ` · ${t('champ_round_winner')}: ${r.results[0].name}`}
-                            </span>
-                            {!r.isOfficial && <span className="champ-unofficial-badge">⚠ {t('champ_unofficial_label')}</span>}
-                            {r.eventPlan && <span className="champ-event-linked-badge">✓ {t('champ_event_linked')}</span>}
+                      <div key={r.id} className={`cp-round-row${r.isOfficial ? ' is-official' : ''}`}>
+                        <div className="cp-round-left">
+                          <div className="cp-round-num-badge">
+                            {r.isOfficial ? '🏅' : `R${i + 1}`}
+                          </div>
+                          <div className="cp-round-info">
+                            <span className="cp-round-label">{r.label || `Round ${i + 1}`}</span>
+                            <div className="cp-round-meta-row">
+                              {r.date && <span className="cp-round-meta">{r.date}{r.time ? ` · ${r.time}` : ''}</span>}
+                              {r.trackSlug && <span className="cp-round-meta">📍 {r.trackSlug}</span>}
+                              <span className="cp-round-meta">
+                                {r.results?.length || 0} {selected.type === 'endurance' ? t('champ_round_teams') : t('champ_round_drivers')}
+                                {r.results?.[0] && ` · ${t('champ_round_winner')}: ${r.results[0].name}`}
+                              </span>
+                            </div>
+                            <div className="cp-round-badges-row">
+                              {r.isOfficial
+                                ? <span className="cp-official-badge">🏅 {t('champ_official')}</span>
+                                : <span className="cp-unofficial-badge">⚠ {t('champ_unofficial_label')}</span>
+                              }
+                              {r.eventPlan && <span className="cp-linked-badge">✓ {t('champ_event_linked')}</span>}
+                            </div>
                           </div>
                         </div>
                         {isEditor && (
-                          <div className="champ-round-actions">
-                            <button type="button" className={`champ-action-btn${r.eventPlan ? ' is-active' : ''}`}
-                              onClick={() => setPlanningRoundIndex(i)} title={t('champ_event_link_hint')}>
+                          <div className="cp-round-actions">
+                            <button type="button" className={`cp-tool-btn${r.eventPlan ? ' is-active' : ''}`}
+                              onClick={() => setPlanningRoundIndex(i)}>
                               📋 {t('champ_plan_event')}
                             </button>
                             {r.eventPlan && r.trackSlug && (
-                              <Link to={`/admin/${r.trackSlug}`} className="champ-action-btn">
+                              <Link to={`/admin/${r.trackSlug}`} className="cp-tool-btn">
                                 🏁 {t('champ_open_admin')}
                               </Link>
                             )}
-                            <button type="button" className="champ-action-btn" onClick={() => setEditingRound(i)}>
+                            <button type="button" className="cp-tool-btn" onClick={() => setEditingRound(i)}>
                               ✏ {t('champ_round_edit')}
                             </button>
-                            <button type="button" className="champ-action-btn champ-action-delete" onClick={() => deleteRound(i)}>✕</button>
+                            <button type="button" className="cp-tool-btn cp-del-btn" onClick={() => deleteRound(i)}>✕</button>
                           </div>
                         )}
                       </div>
                     ))}
                     {isEditor && (
-                      <button type="button" className="btn-primary champ-add-round-btn" onClick={addRound}>
-                        {t('champ_add_round')}
+                      <button type="button" className="cp-add-round-btn" onClick={addRound}>
+                        + {t('champ_add_round')}
                       </button>
-                    )}
-                    {!isEditor && selected.hasPassword && (selected.rounds?.length === 0) && (
-                      <p className="champ-empty" style={{ fontStyle: 'italic' }}>{t('champ_login_to_edit')}</p>
                     )}
                   </>
                 )}
               </div>
             )}
 
-            {/* STANDINGS */}
+            {/* STANDINGS tab */}
             {activeTab === 'standings' && (
               <div>
                 {officialRoundCount > 0 && (
-                  <div className="champ-standings-mode-toggle">
+                  <div className="cp-mode-toggle">
                     <button type="button"
-                      className={`champ-action-btn${!showAllRounds ? ' is-active' : ''}`}
+                      className={`cp-mode-btn${!showAllRounds ? ' is-active' : ''}`}
                       onClick={() => setShowAllRounds(false)}>
                       🏅 {t('champ_official_only')}
                     </button>
                     <button type="button"
-                      className={`champ-action-btn${showAllRounds ? ' is-active' : ''}`}
+                      className={`cp-mode-btn${showAllRounds ? ' is-active' : ''}`}
                       onClick={() => setShowAllRounds(true)}>
                       {t('champ_all_rounds')}
                     </button>
@@ -739,37 +806,39 @@ export default function ChampionshipPage() {
               </div>
             )}
 
-            {/* SETTINGS — editor only */}
+            {/* SETTINGS tab — editor only */}
             {activeTab === 'settings' && isEditor && (
-              <div className="champ-settings-panel">
-                <label className="planner-field planner-field-compact">
+              <div className="cp-settings-panel">
+                <label className="cp-field">
                   <span>{t('champ_name_label')}</span>
                   <input type="text" dir="auto" value={settingsName} onChange={(e) => setSettingsName(e.target.value)} />
                 </label>
-                <div className="champ-section-label" style={{ marginTop: '1rem' }}>{t('champ_type_label')}</div>
-                <div className="champ-type-tabs">
-                  <button type="button" className={`pro-event-type-tab${settingsType === 'sprint' ? ' active' : ''}`} onClick={() => setSettingsType('sprint')}>
+                <div className="cp-field-label">{t('champ_type_label')}</div>
+                <div className="cp-type-tabs">
+                  <button type="button" className={`cp-type-tab${settingsType === 'sprint' ? ' is-active' : ''}`} onClick={() => setSettingsType('sprint')}>
                     {t('champ_type_sprint')}
                   </button>
-                  <button type="button" className={`pro-event-type-tab${settingsType === 'endurance' ? ' active' : ''}`} onClick={() => setSettingsType('endurance')}>
+                  <button type="button" className={`cp-type-tab${settingsType === 'endurance' ? ' is-active' : ''}`} onClick={() => setSettingsType('endurance')}>
                     {t('champ_type_endurance')}
                   </button>
                 </div>
-                <div className="champ-section-label" style={{ marginTop: '1rem' }}>{t('champ_points_label')}</div>
+                <div className="cp-field-label">{t('champ_points_label')}</div>
                 <PointsTableEditor value={settingsPoints} onChange={setSettingsPoints} t={t} />
 
-                <label className="planner-field planner-field-compact" style={{ marginTop: '1rem' }}>
+                <div className="cp-divider" />
+
+                <label className="cp-field">
                   <span>🔒 {t('champ_change_password_label')}</span>
                   <input type="password" value={settingsPassword} onChange={(e) => setSettingsPassword(e.target.value)}
                     placeholder={t('champ_change_password_ph')} />
                 </label>
 
-                <div className="champ-settings-footer" style={{ marginTop: '1.5rem' }}>
-                  <button type="button" className="champ-action-btn champ-action-delete"
+                <div className="cp-settings-footer">
+                  <button type="button" className="cp-tool-btn cp-del-btn"
                     onClick={() => { if (window.confirm(t('champ_delete_confirm', { name: selected.name }))) deleteChampionship(selected.id); }}>
                     {t('champ_delete')}
                   </button>
-                  <button type="button" className="btn-primary" onClick={saveSettings}>
+                  <button type="button" className="cp-btn-primary" onClick={saveSettings}>
                     {t('champ_settings_save')}
                   </button>
                 </div>

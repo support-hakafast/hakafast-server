@@ -2339,12 +2339,14 @@ const AdminPanel = () => {
                 {t('admin_pro_event_generate_next_round')}
               </button>
             )}
-            <Link
-              to="/championship"
-              className="btn-muted btn-sidebar-tool btn-sidebar-championship"
-            >
-              🏆 {t('admin_championship')}
-            </Link>
+            {isLicensed && (
+              <Link
+                to="/championship"
+                className="btn-muted btn-sidebar-tool btn-sidebar-championship"
+              >
+                🏆 {t('admin_championship')}
+              </Link>
+            )}
             {!isLicensed && (
               <button
                 type="button"
