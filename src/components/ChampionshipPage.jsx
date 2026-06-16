@@ -48,6 +48,7 @@ function PointsTableEditor({ value, onChange, t }) {
   useEffect(() => { setText(value.join(', ')); }, [value]);
 
   const presets = [
+    { key: 'classic', label: t('champ_preset_classic') },
     { key: 'karting', label: t('champ_preset_karting') },
     { key: 'f1', label: t('champ_preset_f1') },
     { key: 'top5', label: t('champ_preset_top5') },
@@ -145,16 +146,18 @@ function collectKnownParticipants(championship) {
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
-const SESSION_TYPES = [
-  { key: 'practice', label: 'Practice', emoji: '🔄' },
-  { key: 'qualifying', label: 'Qualifying', emoji: '⏱' },
-  { key: 'race', label: 'Race', emoji: '🏁' },
-  { key: 'ironcut', label: 'Iron Cut (timed solo)', emoji: '⏳' },
+const SESSION_TYPE_KEYS = [
+  { key: 'practice', tKey: 'champ_session_type_practice', emoji: '🔄' },
+  { key: 'qualifying', tKey: 'champ_session_type_qualifying', emoji: '⏱' },
+  { key: 'race', tKey: 'champ_session_type_race', emoji: '🏁' },
+  { key: 'ironcut', tKey: 'champ_session_type_ironcut', emoji: '⏳' },
 ];
+// Resolved with actual labels at render time (needs t)
+const SESSION_TYPES = SESSION_TYPE_KEYS; // kept for backward compat — use tKey
 
-function SessionsEditor({ sessions, onChange }) {
+function SessionsEditor({ sessions, onChange, t }) {
   function addSession() {
-    onChange([...sessions, createSession({ type: 'practice', label: 'Practice 1', durationMinutes: 15 })]);
+    onChange([...sessions, createSession({ type: 'practice', label: t('champ_session_type_practice'), durationMinutes: 15 })]);
   }
   function updateSession(i, patch) {
     onChange(sessions.map((s, idx) => idx === i ? { ...s, ...patch } : s));
@@ -173,30 +176,27 @@ function SessionsEditor({ sessions, onChange }) {
   return (
     <div className="cp-sessions-editor">
       <div className="cp-section-label" style={{ marginBottom: '0.5rem' }}>
-        📋 Event Sessions
-        <span style={{ fontWeight: 400, fontSize: '0.8em', marginInlineStart: '0.5rem', opacity: 0.7 }}>
-          Schedule: practice → qualifying → race
-        </span>
+        📋 {t('champ_session_label')}
       </div>
       {sessions.length === 0 && (
-        <p className="cp-empty" style={{ marginBottom: '0.5rem' }}>No sessions yet — add your first session below.</p>
+        <p className="cp-empty" style={{ marginBottom: '0.5rem' }}>{t('champ_session_empty')}</p>
       )}
       {sessions.map((s, i) => {
-        const typeInfo = SESSION_TYPES.find((t) => t.key === s.type) || SESSION_TYPES[0];
+        const typeInfo = SESSION_TYPE_KEYS.find((x) => x.key === s.type) || SESSION_TYPE_KEYS[0];
         return (
           <div key={s.id} className="cp-session-row">
             <div className="cp-session-row-top">
               <select value={s.type} onChange={(e) => updateSession(i, { type: e.target.value })} className="cp-session-type-sel">
-                {SESSION_TYPES.map((t) => <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>)}
+                {SESSION_TYPE_KEYS.map((x) => <option key={x.key} value={x.key}>{x.emoji} {t(x.tKey)}</option>)}
               </select>
               <input type="text" dir="auto" value={s.label} onChange={(e) => updateSession(i, { label: e.target.value })}
-                placeholder={typeInfo.label} className="cp-session-label-input" />
+                placeholder={t(typeInfo.tKey)} className="cp-session-label-input" />
               <input type="time" value={s.startTime} onChange={(e) => updateSession(i, { startTime: e.target.value })}
-                className="cp-session-time-input" title="Start time" />
+                className="cp-session-time-input" />
               <input type="number" min={1} max={360} value={s.durationMinutes}
                 onChange={(e) => updateSession(i, { durationMinutes: parseInt(e.target.value, 10) || 15 })}
-                className="cp-session-dur-input" title="Duration (minutes)" />
-              <span style={{ fontSize: '0.75em', opacity: 0.6 }}>min</span>
+                className="cp-session-dur-input" />
+              <span style={{ fontSize: '0.75em', opacity: 0.6 }}>{t('champ_session_duration')}</span>
               <div className="cp-session-btns">
                 <button type="button" className="cp-mv-btn" onClick={() => moveSession(i, -1)} disabled={i === 0}>↑</button>
                 <button type="button" className="cp-mv-btn" onClick={() => moveSession(i, 1)} disabled={i === sessions.length - 1}>↓</button>
@@ -206,17 +206,17 @@ function SessionsEditor({ sessions, onChange }) {
             <div className="cp-session-row-opts">
               <label className="cp-session-opt">
                 <input type="checkbox" checked={s.kartTransporter} onChange={(e) => updateSession(i, { kartTransporter: e.target.checked })} />
-                <span>🔄 Kart transporter between sessions</span>
-                <span style={{ fontSize: '0.75em', opacity: 0.6 }}>(karts rotate — transponder IDs change)</span>
+                <span>🔄 {t('champ_session_kart_transporter')}</span>
+                <span style={{ fontSize: '0.75em', opacity: 0.6 }}>{t('champ_session_kart_transporter_hint')}</span>
               </label>
               <input type="text" dir="auto" value={s.notes} onChange={(e) => updateSession(i, { notes: e.target.value })}
-                placeholder="Notes…" className="cp-session-notes" />
+                placeholder={t('champ_session_notes_ph')} className="cp-session-notes" />
             </div>
           </div>
         );
       })}
       <button type="button" className="cp-tool-btn" onClick={addSession} style={{ marginTop: '0.5rem' }}>
-        + Add session
+        {t('champ_session_add')}
       </button>
     </div>
   );
@@ -230,7 +230,9 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
   const [trackSlug, setTrackSlug] = useState(round.trackSlug || '');
   const [isOfficial, setIsOfficial] = useState(round.isOfficial || false);
   const [raceType, setRaceType] = useState(round.raceType || 'sprint');
+  const [divisionId, setDivisionId] = useState(round.divisionId || null);
   const [sessions, setSessions] = useState(round.sessions || []);
+  const isMultiLeague = championship.scope === 'multi-league' && (championship.divisions || []).length > 0;
   const [results, setResults] = useState(() =>
     (round.results || []).map((r) => ({ ...r, nationality: r.nationality || '', kartNumber: r.kartNumber || '' }))
   );
@@ -310,6 +312,17 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
           <span>{t('champ_round_track')}</span>
           <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} placeholder="track-slug" />
         </label>
+        {isMultiLeague && (
+          <label className="cp-field">
+            <span>{t('champ_round_division')}</span>
+            <select value={divisionId || ''} onChange={(e) => setDivisionId(e.target.value || null)} className="cp-field-select">
+              <option value="">{t('champ_round_division_main')}</option>
+              {(championship.divisions || []).map((div) => (
+                <option key={div.id} value={div.id}>{div.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <div className="cp-field-label">{t('champ_racetype_label')}</div>
@@ -336,7 +349,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
         <p className="cp-unofficial-note">⚠ {t('champ_unofficial_note')}</p>
       )}
 
-      <SessionsEditor sessions={sessions} onChange={setSessions} />
+      <SessionsEditor sessions={sessions} onChange={setSessions} t={t} />
 
       {/* Results section — locked until day after event */}
       <div className="cp-results-section">
@@ -424,7 +437,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
       <div className="cp-round-editor-footer">
         <button type="button" className="cp-btn-ghost" onClick={onCancel}>{t('champ_cancel')}</button>
         <button type="button" className="cp-btn-primary"
-          onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, time: time || null, trackSlug: trackSlug || null, isOfficial, results, raceType, sessions })}
+          onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, time: time || null, trackSlug: trackSlug || null, isOfficial, results, raceType, sessions, divisionId: divisionId || null })}
         >{t('champ_save_round')}</button>
       </div>
     </div>
@@ -822,7 +835,7 @@ export default function ChampionshipPage() {
                       </div>
                       <div className="cp-card-badges">
                         {official > 0 && <span className="cp-official-pill">🏅 {official} {t('champ_official_plural')}</span>}
-                        {c.scope === 'multi-league' && <span className="cp-scope-badge cp-scope-multi">Multi-league</span>}
+                        {c.scope === 'multi-league' && <span className="cp-scope-badge cp-scope-multi">{t('champ_scope_multi')}</span>}
                         <span className="cp-card-round-count">{c.rounds?.length || 0} {t('champ_tab_rounds')}</span>
                       </div>
                     </div>
@@ -866,19 +879,19 @@ export default function ChampionshipPage() {
                   placeholder={t('champ_name_ph')} autoFocus />
               </label>
 
-              <div className="cp-field-label">Championship structure</div>
+              <div className="cp-field-label">{t('champ_scope_label')}</div>
               <div className="cp-scope-tabs">
                 <button type="button"
                   className={`cp-scope-tab${scope === 'singular' ? ' is-active' : ''}`}
                   onClick={() => setScope('singular')}>
-                  <strong>Singular</strong>
-                  <span>One championship, one standings table (e.g. BRKC)</span>
+                  <strong>{t('champ_scope_singular')}</strong>
+                  <span>{t('champ_scope_singular_desc')}</span>
                 </button>
                 <button type="button"
                   className={`cp-scope-tab${scope === 'multi-league' ? ' is-active' : ''}`}
                   onClick={() => setScope('multi-league')}>
-                  <strong>Multi-league</strong>
-                  <span>Parent cup with inner leagues — each has own standings + a grand overall (e.g. Rock Cup)</span>
+                  <strong>{t('champ_scope_multi')}</strong>
+                  <span>{t('champ_scope_multi_desc')}</span>
                 </button>
               </div>
 
@@ -914,7 +927,7 @@ export default function ChampionshipPage() {
                 <div className="cp-detail-title-row">
                   <h2 className="cp-detail-title">{selected.name}</h2>
                   {officialRoundCount > 0 && <span className="cp-official-pill">🏅 {officialRoundCount} {t('champ_official_plural')}</span>}
-                  {selected.scope === 'multi-league' && <span className="cp-scope-badge cp-scope-multi">Multi-league</span>}
+                  {selected.scope === 'multi-league' && <span className="cp-scope-badge cp-scope-multi">{t('champ_scope_multi')}</span>}
                 </div>
               </div>
               <div className="cp-detail-hero-right">
@@ -1070,12 +1083,12 @@ export default function ChampionshipPage() {
                                 {(r.sessions || []).length > 0 && (
                                   <div className="cp-round-sessions-summary">
                                     {r.sessions.map((s) => {
-                                      const si = SESSION_TYPES.find((x) => x.key === s.type) || SESSION_TYPES[0];
+                                      const si = SESSION_TYPE_KEYS.find((x) => x.key === s.type) || SESSION_TYPE_KEYS[0];
                                       return (
                                         <span key={s.id} className={`cp-session-chip cp-session-${s.type}`}>
-                                          {si.emoji} {s.label || si.label}
+                                          {si.emoji} {s.label || t(si.tKey)}
                                           {s.startTime && ` · ${s.startTime}`}
-                                          {s.durationMinutes > 0 && ` · ${s.durationMinutes}min`}
+                                          {s.durationMinutes > 0 && ` · ${s.durationMinutes}${t('champ_session_duration')}`}
                                           {s.kartTransporter && ' · 🔄'}
                                         </span>
                                       );

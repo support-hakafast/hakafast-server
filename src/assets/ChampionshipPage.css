@@ -1500,3 +1500,6 @@ html:has(.cp-page) body {
 .admin-champ-cal-round { color: #222; font-weight: 600; }
 .admin-champ-cal-rt { font-size: 0.62rem; padding: 0.08rem 0.35rem; border-radius: 4px; background: #e8edf8; color: #5060a0; font-weight: 700; white-space: nowrap; }
 .admin-champ-cal-div { font-size: 0.7rem; color: #7080b0; font-style: italic; }
+
+/* Division assignment dropdown in round editor */
+.cp-field-select { width: 100%; padding: 0.38rem 0.55rem; border: 1.5px solid #d1d9f0; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; }

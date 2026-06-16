@@ -33,6 +33,7 @@
  */
 
 export const DEFAULT_POINTS_TABLES = {
+  classic: [30, 25, 21, 18, 15, 12, 9, 6, 3, 1],
   f1: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
   simple: [3, 2, 1],
   top5: [10, 7, 5, 3, 1],
@@ -95,6 +96,7 @@ export function createRound({
   eventPlan = null,
   raceType = 'sprint',
   sessions = [],
+  divisionId = null,
 } = {}) {
   return {
     id: generateId(),
@@ -108,6 +110,7 @@ export function createRound({
     eventPlan,
     raceType,
     sessions, // SessionPlan[]
+    divisionId,
   };
 }
 
@@ -353,6 +356,7 @@ function normalizeRound(raw) {
     eventPlan: raw.eventPlan || null,
     raceType: raw.raceType || 'sprint',
     sessions: Array.isArray(raw.sessions) ? raw.sessions.map(normalizeSession).filter(Boolean) : [],
+    divisionId: raw.divisionId || null,
   };
 }
 

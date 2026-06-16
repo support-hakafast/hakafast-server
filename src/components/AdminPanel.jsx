@@ -1858,7 +1858,7 @@ const AdminPanel = () => {
       }).length > 0 && (
         <div className="admin-champ-calendar">
           <div className="admin-champ-calendar-title">
-            📅 Upcoming championship races at this track
+            📅 {t('admin_champ_upcoming')}
             <Link to="/championship" style={{ fontWeight: 400, fontSize: '0.78em', marginInlineStart: '0.5rem' }}>
               {t('admin_championship')} →
             </Link>

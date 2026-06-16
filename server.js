@@ -851,15 +851,16 @@ app.get('/api/track-calendar/:trackSlug', (req, res) => {
 
   const entries = [];
   for (const c of globalChampionships) {
-    // Top-level rounds
+    // Top-level rounds (may have divisionId if organizer assigned them to a league)
     for (const r of c.rounds || []) {
       if (r.trackSlug === trackSlug && r.date && r.date >= todayStr && r.date <= cutoffStr) {
+        const assignedDiv = r.divisionId ? (c.divisions || []).find((d) => d.id === r.divisionId) : null;
         entries.push({
           championshipId: c.id,
           championshipName: c.name,
           championshipScope: c.scope || 'singular',
-          divisionId: null,
-          divisionName: null,
+          divisionId: assignedDiv?.id || null,
+          divisionName: assignedDiv?.name || null,
           round: { id: r.id, label: r.label, date: r.date, time: r.time || null, raceType: r.raceType || 'sprint', isOfficial: r.isOfficial || false },
         });
       }

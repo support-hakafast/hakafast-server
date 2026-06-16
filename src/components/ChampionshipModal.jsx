@@ -22,6 +22,7 @@ function downloadTextFile(filename, content, mimeType = 'text/csv;charset=utf-8'
 }
 
 const PRESET_LABELS = {
+  classic: 'Classic (30-25-21-18-15-12-9-6-3-1)',
   karting: 'Karting (15-12-10-8-6-4-3-2-1)',
   f1: 'F1 (25-18-15-12-10-8-6-4-2-1)',
   top5: 'Top 5 (10-7-5-3-1)',
