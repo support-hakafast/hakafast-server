@@ -1014,16 +1014,57 @@ html:has(.admin-no-scroll) body {
 .endurance-bulk-import {
   margin-top: 0.5rem;
   font-size: 0.78rem;
+  border: 1.5px dashed #e2e8f0;
+  border-radius: 10px;
+  padding: 0.1rem 0.75rem;
+}
+
+.endurance-bulk-import[open] {
+  padding: 0.65rem 0.75rem;
+  background: #f8fafc;
 }
 
 .endurance-bulk-import summary {
   cursor: pointer;
   font-weight: 700;
-  color: #475569;
+  color: #64748b;
+  padding: 0.5rem 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  user-select: none;
+}
+
+.endurance-bulk-import summary::before {
+  content: '▸';
+  font-size: 0.75rem;
+  color: #94a3b8;
+  transition: transform 0.15s;
+}
+
+.endurance-bulk-import[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.endurance-bulk-import summary::-webkit-details-marker {
+  display: none;
 }
 
 .endurance-bulk-apply {
-  margin-top: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.admin-modal-dark .endurance-bulk-import {
+  border-color: #334155;
+}
+
+.admin-modal-dark .endurance-bulk-import[open] {
+  background: #0f172a;
+}
+
+.admin-modal-dark .endurance-bulk-import summary {
+  color: #94a3b8;
 }
 
 .pro-event-settings-compact .pro-event-settings-row {
@@ -2625,10 +2666,16 @@ html:has(.admin-no-scroll) body {
   color: var(--admin-text-muted, #94a3b8);
 }
 
+.admin-modal-dark .pro-event-type-tab:not(.active):hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
 .admin-modal-dark .pro-event-type-tab.active {
   background: #0f766e;
   border-color: #0f766e;
   color: #fff;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.35);
 }
 
 .admin-modal-dark .race-event-schedule-body strong {
@@ -3628,26 +3675,46 @@ html:has(.admin-no-scroll) body {
 }
 
 .pro-event-type-tabs {
+  padding: 0 24px 16px;
   display: flex;
-  gap: 8px;
-  padding: 0 24px 12px;
+  gap: 0;
 }
 
 .pro-event-type-tab {
   flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  padding: 11px 16px;
+  border: 1.5px solid #cbd5e1;
   background: #f8fafc;
-  color: #334155;
-  font-weight: 600;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 0.9rem;
   cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.pro-event-type-tab:first-child {
+  border-radius: 10px 0 0 10px;
+  border-inline-end-width: 0;
+}
+
+.pro-event-type-tab:last-child {
+  border-radius: 0 10px 10px 0;
+  border-inline-start-width: 0;
 }
 
 .pro-event-type-tab.active {
   background: #0f766e;
   border-color: #0f766e;
   color: #fff;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+  z-index: 1;
+  position: relative;
+}
+
+.pro-event-type-tab:not(.active):hover {
+  background: #f1f5f9;
+  color: #334155;
 }
 
 .pro-event-groups-text {
@@ -3712,15 +3779,20 @@ html:has(.admin-no-scroll) body {
 }
 
 .pro-event-section {
-  padding: 10px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
   background: #f8fafc;
 }
 
 .pro-event-section > .field-label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
 }
 
 .pro-event-section .planner-field-compact {
@@ -4381,33 +4453,45 @@ html:has(.admin-no-scroll) body {
 /* === Event planner v2 — race-organizer teams editor === */
 .pro-event-timing-system {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr);
-  gap: 0.75rem;
+  grid-template-columns: minmax(13rem, 1fr) minmax(0, 2fr);
+  gap: 1rem;
   align-items: start;
-  margin-bottom: 0.75rem;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #f8fafc;
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f0fdf9 100%);
+  box-shadow: 0 1px 4px rgba(15, 118, 110, 0.06);
 }
 
 .pro-event-timing-meta {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.4rem;
 }
 
 .pro-event-decoder-badge {
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   align-self: flex-start;
-  padding: 0.2rem 0.55rem;
+  padding: 0.25rem 0.65rem;
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
   background: #f1f5f9;
   color: #64748b;
   border: 1px solid #e2e8f0;
+  letter-spacing: 0.02em;
+}
+
+.pro-event-decoder-badge::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #94a3b8;
+  flex-shrink: 0;
 }
 
 .pro-event-decoder-badge.is-live {
@@ -4416,129 +4500,179 @@ html:has(.admin-no-scroll) body {
   border-color: #86efac;
 }
 
+.pro-event-decoder-badge.is-live::before {
+  background: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .endurance-teams-editor-v2 {
   margin-bottom: 0.85rem;
 }
 
+/* ─── Toolbar ─── */
 .ete-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .ete-toolbar-title {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.15rem;
 }
 
 .ete-team-count {
-  font-size: 0.78rem;
-  color: #64748b;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .ete-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.3rem;
   align-items: center;
 }
 
 .ete-tool-btn {
-  border: 1px solid #cbd5e1;
+  border: 1.5px solid #e2e8f0;
   background: #fff;
-  color: #334155;
+  color: #475569;
   border-radius: 8px;
-  padding: 0.4rem 0.65rem;
-  font-size: 0.78rem;
+  padding: 0.38rem 0.7rem;
+  font-size: 0.77rem;
   font-weight: 700;
   cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  letter-spacing: 0.01em;
 }
 
 .ete-tool-btn:hover {
-  background: #f1f5f9;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
 }
 
 .ete-tool-btn-primary {
   border-color: #0f766e;
   background: #0f766e;
   color: #fff;
+  box-shadow: 0 1px 4px rgba(15, 118, 110, 0.2);
 }
 
 .ete-tool-btn-primary:hover {
   background: #0d9488;
+  border-color: #0d9488;
 }
 
 .ete-tool-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
+/* ─── Hint ─── */
 .ete-hint {
-  margin: 0 0 0.6rem;
-  font-size: 0.8rem;
-  color: #64748b;
+  margin: 0 0 0.65rem;
+  font-size: 0.79rem;
+  color: #94a3b8;
+  line-height: 1.4;
 }
 
+/* ─── Teams list ─── */
 .ete-teams-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.55rem;
   max-height: min(52vh, 520px);
   overflow-y: auto;
+  padding-right: 2px;
 }
 
+.ete-teams-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ete-teams-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ete-teams-list::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+/* ─── Team card ─── */
 .ete-team-card {
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid #e2e8f0;
   border-radius: 12px;
   background: #fff;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.ete-team-card:hover {
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
 }
 
 .ete-team-card.is-ready {
-  border-inline-start: 4px solid #10b981;
+  border-inline-start: 3px solid #10b981;
 }
 
+/* ─── Team header ─── */
 .ete-team-header {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.65rem 0.75rem;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
   background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .ete-team-card.is-collapsed .ete-team-header {
   border-bottom: none;
   align-items: center;
+  padding: 0.6rem 0.85rem;
 }
 
+/* ─── Team badge ─── */
 .ete-team-badge {
   flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
+  width: 1.85rem;
+  height: 1.85rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #0f766e;
   color: #fff;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
+/* ─── Team fields ─── */
 .ete-team-fields {
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(7rem, 1fr) minmax(6rem, 0.8fr);
+  grid-template-columns: minmax(0, 2fr) minmax(7rem, 1fr) minmax(6rem, 0.85fr);
   gap: 0.5rem;
   align-items: end;
 }
@@ -4555,72 +4689,82 @@ html:has(.admin-no-scroll) body {
 }
 
 .ete-field-label {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: #64748b;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
 }
 
+/* ─── Inputs ─── */
 .ete-text-input,
 .ete-select {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid #cbd5e1;
+  padding: 0.5rem 0.65rem;
+  border: 1.5px solid #e2e8f0;
   border-radius: 8px;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   background: #fff;
+  color: #1e293b;
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 
 .ete-text-input:focus,
 .ete-select:focus {
-  outline: 2px solid #99f6e4;
+  outline: none;
   border-color: #0d9488;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
 }
 
 .ete-transponder-input {
   font-family: ui-monospace, Consolas, monospace;
-  font-size: 0.85rem;
+  font-size: 0.83rem;
+  letter-spacing: 0.04em;
 }
 
+/* ─── Collapsed summary ─── */
 .ete-team-summary-btn {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.75rem;
+  gap: 0.25rem 0.6rem;
   border: none;
   background: transparent;
   text-align: start;
   cursor: pointer;
-  padding: 0.15rem 0;
+  padding: 0.1rem 0;
 }
 
 .ete-summary-name {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #0f172a;
+  font-weight: 700;
 }
 
 .ete-summary-meta {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: #64748b;
 }
 
 .ete-ready-dot {
   display: inline-flex;
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1rem;
+  height: 1rem;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: #10b981;
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
+  font-weight: 900;
+  margin-inline-start: 0.25rem;
 }
 
+/* ─── Team actions ─── */
 .ete-team-actions {
   display: flex;
   gap: 0.3rem;
@@ -4628,25 +4772,43 @@ html:has(.admin-no-scroll) body {
 }
 
 .ete-icon-btn {
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid #e2e8f0;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1.5px solid #e2e8f0;
   border-radius: 8px;
   background: #fff;
-  color: #475569;
+  color: #64748b;
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.ete-icon-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
 }
 
 .ete-icon-btn-danger {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: #fff5f5;
+  color: #dc2626;
   border-color: #fecaca;
 }
 
+.ete-icon-btn-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+/* ─── Members panel ─── */
 .ete-members-panel {
-  padding: 0.5rem 0.75rem 0.75rem;
+  padding: 0.65rem 0.85rem 0.85rem;
+  background: #fff;
 }
 
 .ete-members-grid {
@@ -4661,11 +4823,12 @@ html:has(.admin-no-scroll) body {
 }
 
 .ete-members-head {
-  font-size: 0.65rem;
+  font-size: 0.63rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: #94a3b8;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.4rem;
   padding: 0 0.15rem;
 }
 
@@ -4689,25 +4852,36 @@ html:has(.admin-no-scroll) body {
 .ete-starter-btn {
   width: 2.25rem;
   height: 2.25rem;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid #e2e8f0;
   border-radius: 8px;
   background: #fff;
   color: #cbd5e1;
-  font-size: 1.1rem;
+  font-size: 1rem;
   cursor: pointer;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.ete-starter-btn:hover {
+  background: #fefce8;
+  border-color: #fde68a;
+  color: #ca8a04;
 }
 
 .ete-starter-btn.is-active {
   background: #fef3c7;
   border-color: #f59e0b;
   color: #b45309;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
 }
 
 .ete-add-member {
-  margin-top: 0.5rem;
+  margin-top: 0.55rem;
   width: 100%;
-  border: 1px dashed #94a3b8;
+  border: 1.5px dashed #cbd5e1;
   background: #f8fafc;
   color: #0f766e;
   border-radius: 8px;
@@ -4715,32 +4889,122 @@ html:has(.admin-no-scroll) body {
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.ete-add-member:hover {
+  background: #f0fdf9;
+  border-color: #5eead4;
+}
+
+/* ─── Dark mode overrides ─── */
+.admin-modal-dark .ete-toolbar {
+  border-color: #334155;
 }
 
 .admin-modal-dark .ete-team-card,
 .admin-modal-dark .pro-event-timing-system {
   background: #1e293b;
   border-color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .admin-modal-dark .ete-team-header {
   background: #0f172a;
-  border-color: #334155;
+  border-color: #1e293b;
+}
+
+.admin-modal-dark .ete-members-panel {
+  background: #1e293b;
 }
 
 .admin-modal-dark .ete-text-input,
-.admin-modal-dark .ete-select,
-.admin-modal-dark .ete-tool-btn,
-.admin-modal-dark .ete-icon-btn {
+.admin-modal-dark .ete-select {
   background: #0f172a;
   border-color: #475569;
   color: #e2e8f0;
+}
+
+.admin-modal-dark .ete-text-input:focus,
+.admin-modal-dark .ete-select:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+}
+
+.admin-modal-dark .ete-tool-btn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #94a3b8;
+}
+
+.admin-modal-dark .ete-tool-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.admin-modal-dark .ete-icon-btn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #94a3b8;
+}
+
+.admin-modal-dark .ete-icon-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.admin-modal-dark .ete-icon-btn-danger {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.3);
+  color: #f87171;
+}
+
+.admin-modal-dark .ete-add-member {
+  background: #0f172a;
+  border-color: #334155;
+  color: #5eead4;
+}
+
+.admin-modal-dark .ete-add-member:hover {
+  background: #134e4a;
+  border-color: #2dd4bf;
 }
 
 .admin-modal-dark .ete-summary-name {
   color: #f1f5f9;
 }
 
+.admin-modal-dark .ete-starter-btn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #475569;
+}
+
+.admin-modal-dark .pro-event-timing-system {
+  background: linear-gradient(135deg, #1e293b 0%, #0f2a26 100%);
+}
+
+.admin-modal-dark .pro-event-decoder-badge {
+  background: #0f172a;
+  border-color: #475569;
+  color: #94a3b8;
+}
+
+.admin-modal-dark .pro-event-decoder-badge::before {
+  background: #475569;
+}
+
+.admin-modal-dark .pro-event-decoder-badge.is-live {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(22, 163, 74, 0.4);
+  color: #4ade80;
+}
+
+.admin-modal-dark .pro-event-decoder-badge.is-live::before {
+  background: #4ade80;
+}
+
+/* ─── Responsive ─── */
 @media (max-width: 720px) {
   .pro-event-timing-system {
     grid-template-columns: 1fr;
@@ -4767,27 +5031,31 @@ html:has(.admin-no-scroll) body {
   }
 }
 
-/* Collapsed team summary — high contrast */
+/* ─── Collapsed team card ─── */
 .ete-team-card.is-collapsed {
-  background: #ecfdf5;
-  border-color: #6ee7b7;
+  background: #f0fdf9;
+  border-color: #a7f3d0;
 }
 
 .ete-team-card.is-collapsed .ete-team-header {
-  background: #d1fae5;
+  background: #ecfdf5;
+}
+
+.ete-team-card.is-collapsed .ete-team-badge {
+  background: #10b981;
 }
 
 .ete-summary-name {
-  color: #064e3b !important;
-  font-weight: 800;
+  color: #065f46 !important;
+  font-weight: 700;
 }
 
 .ete-summary-meta {
-  color: #047857 !important;
+  color: #059669 !important;
 }
 
 .ete-team-summary-btn:hover .ete-summary-name {
-  color: #022c22 !important;
+  color: #034d38 !important;
 }
 
 .admin-modal-dark .ete-team-card.is-collapsed {
@@ -4797,6 +5065,10 @@ html:has(.admin-no-scroll) body {
 
 .admin-modal-dark .ete-team-card.is-collapsed .ete-team-header {
   background: #115e59;
+}
+
+.admin-modal-dark .ete-team-card.is-collapsed .ete-team-badge {
+  background: #0d9488;
 }
 
 .admin-modal-dark .ete-summary-name {
