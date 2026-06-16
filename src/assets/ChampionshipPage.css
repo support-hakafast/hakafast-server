@@ -1,5 +1,10 @@
 /* ── Championship Page ─────────────────────────────────────────────────────── */
 
+html:has(.cp-page),
+html:has(.cp-page) body {
+  overflow-x: hidden;
+}
+
 .cp-page {
   min-height: 100vh;
   background: var(--dark-bg, #f7fafc);
@@ -7,6 +12,7 @@
   flex-direction: column;
   font-family: system-ui, sans-serif;
   color: var(--navy);
+  overflow-x: hidden;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────────── */
@@ -1127,13 +1133,132 @@
   padding-top: 0.25rem;
 }
 
+/* ── Global overflow guard ────────────────────────────────────────────────── */
+
+.cp-page,
+.cp-page * {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* Prevent any child from blowing out the viewport */
+.cp-page {
+  overflow-x: hidden;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  .cp-main { padding: 1.25rem 0.85rem 3rem; }
-  .cp-detail-hero { padding: 0.9rem 1rem; }
-  .cp-rounds-panel { padding: 0.75rem 0.85rem 1rem; }
-  .cp-settings-panel { padding: 0.85rem; }
-  .cp-standings-panel { padding: 0.75rem 0.85rem 1rem; }
+  /* Main padding */
+  .cp-main { padding: 1rem 0.75rem 3rem; }
+
+  /* Header stacks brand + nav vertically, title shrinks */
+  .cp-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+  .cp-header-nav {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .cp-header-title { font-size: 0.95rem; }
+  .cp-nav-btn { font-size: 0.75rem; padding: 0.28rem 0.65rem; }
+
+  /* List hero stacks */
+  .cp-list-hero { flex-direction: column; gap: 0.75rem; }
+  .cp-list-title { font-size: 1.25rem; }
+  .cp-btn-primary,
+  .cp-btn-ghost { width: 100%; justify-content: center; }
+  .cp-list-hero .cp-btn-primary { width: auto; }
+
+  /* Cards single column */
   .cp-cards-grid { grid-template-columns: 1fr; }
+
+  /* Card stats wrap to 2 cols */
+  .cp-card-stats { gap: 0.65rem; }
+
+  /* Create view */
+  .cp-form-card { padding: 1rem; }
+  .cp-round-fields { grid-template-columns: 1fr; }
+
+  /* Detail hero */
+  .cp-detail-hero {
+    flex-direction: column;
+    padding: 0.9rem 1rem;
+    gap: 0.65rem;
+  }
+  .cp-detail-hero-right { width: 100%; justify-content: flex-start; }
+
+  /* Tabs scroll horizontally if they overflow */
+  .cp-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding: 0 0.5rem;
+  }
+  .cp-tab { padding: 0.6rem 0.75rem; font-size: 0.8rem; white-space: nowrap; }
+
+  /* Rounds panel */
+  .cp-rounds-panel { padding: 0.75rem 0.75rem 1rem; gap: 0.55rem; }
+
+  /* Round rows stack */
+  .cp-round-row { flex-direction: column; gap: 0.55rem; padding: 0.75rem; }
+  .cp-round-left { width: 100%; }
+  .cp-round-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .cp-tool-btn { font-size: 0.72rem; padding: 0.28rem 0.6rem; }
+
+  /* Round editor */
+  .cp-round-editor { padding: 0.9rem 0.85rem; gap: 0.75rem; }
+
+  /* Result rows — drop kart number on very small screens */
+  .cp-result-kart { width: 4rem; }
+  .cp-result-nation { max-width: 5.5rem; }
+
+  /* Standings panels */
+  .cp-standings-panel { padding: 0.75rem 0.75rem 1rem; }
+  .cp-settings-panel { padding: 0.9rem 0.85rem; }
+  .cp-settings-footer { flex-direction: column-reverse; gap: 0.5rem; }
+  .cp-settings-footer .cp-btn-primary { width: 100%; }
+  .cp-settings-footer .cp-tool-btn { width: 100%; justify-content: center; }
+
+  /* Mode toggle full width */
+  .cp-mode-toggle { flex-direction: row; }
+  .cp-mode-btn { flex: 1; text-align: center; justify-content: center; }
+
+  /* Standings table — allow horizontal scroll, lock first 2 cols */
+  .cp-standings-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cp-standings-table { font-size: 0.78rem; }
+  .cp-standings-table th,
+  .cp-standings-table td { padding: 0.35rem 0.45rem; }
+
+  /* Form footer */
+  .cp-form-footer { flex-direction: column-reverse; gap: 0.4rem; }
+  .cp-form-footer .cp-btn-primary,
+  .cp-form-footer .cp-btn-ghost { width: 100%; justify-content: center; }
+
+  /* Round editor footer */
+  .cp-round-editor-footer { flex-direction: column-reverse; gap: 0.4rem; }
+  .cp-round-editor-footer .cp-btn-primary,
+  .cp-round-editor-footer .cp-btn-ghost { width: 100%; justify-content: center; }
+
+  /* Login modal */
+  .cp-login-modal { padding: 1.35rem 1.1rem; border-radius: 16px; }
+
+  /* Points presets wrap */
+  .cp-points-presets { gap: 0.3rem; }
+  .cp-preset-btn { font-size: 0.7rem; padding: 0.2rem 0.5rem; }
+}
+
+@media (max-width: 400px) {
+  .cp-header-title { display: none; } /* logo alone is enough on tiny screens */
+  .cp-result-nation { display: none; } /* too cramped */
+  .cp-result-kart { display: none; }
 }
