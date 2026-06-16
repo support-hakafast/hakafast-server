@@ -223,10 +223,16 @@ function formatLapGap(count) {
   return `+${count} Laps`;
 }
 
-function trackGapSeconds(row, ahead, lapToSec) {
+function trackGapSeconds(row, ahead, lapToSec, lapDiff = 0) {
   const aheadPos = ahead.track_position ?? 0;
   const rowPos = row.track_position ?? 0;
-  const trackGap = aheadPos - rowPos;
+
+  // When ahead is exactly one lap ahead (e.g. just crossed the line while row
+  // hasn't yet), the positional gap wraps around: row is at ~0.9 and ahead is
+  // at ~0.0, so naively aheadPos - rowPos is negative. The real fractional gap
+  // is the remaining track fraction for row plus however far ahead has gone on
+  // the new lap: (1 - rowPos) + aheadPos.
+  const trackGap = lapDiff === 1 ? (1 - rowPos) + aheadPos : aheadPos - rowPos;
   if (trackGap <= 0.001) return null;
 
   const aheadLap = lapToSec(ahead.last_lap_time);
@@ -238,21 +244,23 @@ function trackGapSeconds(row, ahead, lapToSec) {
 }
 
 /**
- * Gap measured by timing-line crossing order: once both karts have crossed
- * the line for the same lap count, the gap is simply the difference between
- * their crossing timestamps - this mirrors how a real race timing system
- * reports the interval, and stays correct through mid-lap overtakes since
- * whichever kart crosses the line first is the one currently ahead.
+ * Gap by timing-line crossing order: once both karts have crossed the line
+ * for the same lap, the gap is the crossing-timestamp delta. Correct through
+ * mid-lap overtakes — whoever crossed first is ahead by definition.
+ * Returns null for any other lap-count combination (handled by caller).
  */
 function crossingGapSeconds(row, ahead) {
   const aheadLaps = ahead.lap_count || 0;
   const rowLaps = row.lap_count || 0;
-  if (aheadLaps !== rowLaps) return null;
+  const lapDiff = aheadLaps - rowLaps;
 
   const aheadAt = ahead.last_lap_at;
   const rowAt = row.last_lap_at;
   if (!aheadAt || !rowAt) return null;
 
+  if (lapDiff !== 0) return null;
+
+  // Same lap: gap is purely crossing-time delta.
   const gap = (rowAt - aheadAt) / 1000;
   if (gap <= 0.001) return null;
   return gap;
@@ -280,7 +288,7 @@ export function gapToCarAhead(row, ahead, heatType, lapToSecondsFn = lapToSecond
   const rowLaps = row.lap_count || 0;
   const lapDiff = aheadLaps - rowLaps;
 
-  if (lapDiff >= 1) {
+  if (lapDiff >= 2) {
     return formatLapGap(lapDiff);
   }
 
@@ -292,13 +300,22 @@ export function gapToCarAhead(row, ahead, heatType, lapToSecondsFn = lapToSecond
     if (rowPen > aheadPen) return `+${rowPen - aheadPen}s`;
   }
 
-  // Once both karts have crossed the line for this lap, the crossing-order
-  // gap is the authoritative value. Until then, fall back to a live estimate
-  // based on track position so the gap doesn't sit frozen mid-lap.
+  // Once both karts have crossed the line for the same lap, crossing-time delta
+  // is the authoritative gap — it stays correct through mid-lap overtakes.
   const crossingSec = crossingGapSeconds(row, ahead);
   if (crossingSec != null) return `+${crossingSec.toFixed(3)}`;
 
-  const estSec = trackGapSeconds(row, ahead, lapToSecondsFn);
+  // lapDiff=1 mid-lap window: leader crossed lap N, follower hasn't yet.
+  // Use track position to estimate. trackGapSeconds handles the wrap-around
+  // (follower at ~0.9, leader at ~0.0) when lapDiff=1 is passed.
+  if (lapDiff === 1) {
+    const estSec = trackGapSeconds(row, ahead, lapToSecondsFn, 1);
+    if (estSec != null) return `+${estSec.toFixed(3)}`;
+    return formatLapGap(1);
+  }
+
+  // Same lap, no crossing data yet (lap 1 in progress): estimate from position.
+  const estSec = trackGapSeconds(row, ahead, lapToSecondsFn, 0);
   if (estSec != null) return `+${estSec.toFixed(3)}`;
 
   return '—';

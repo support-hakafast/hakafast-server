@@ -1645,7 +1645,15 @@ function processTransponderLap(store, transponderId, lapTimeSec = null) {
     ? Number(lapTimeSec)
     : (now - prevLapAt) / 1000;
 
-  recordLapCrossing(store, ot, row, lapSec);
+  // When the transponder reports an explicit lap time, reconstruct the crossing
+  // timestamp from the previous crossing + the reported lap duration.
+  // This keeps lastLapAt consistent across all karts regardless of server
+  // processing order or jitter — essential for accurate gap calculation.
+  const crossingAt = lapTimeSec != null && !Number.isNaN(Number(lapTimeSec))
+    ? prevLapAt + lapSec * 1000
+    : now;
+
+  recordLapCrossing(store, ot, row, lapSec, { at: crossingAt });
   ot.simulatedLaps = row.lap_count;
 
   return {

@@ -21,10 +21,13 @@ export default function EnduranceTeamsEditor({
   groupsLabelKey = 'admin_pro_event_groups_endurance',
   onImportError,
   timingSystem = 'mylaps_tranx',
+  trackWeight = false,
+  onTrackWeightChange,
 }) {
   const fileRef = useRef(null);
   const teams = groupsToTeamRecords(groups, { preserveRaw: true });
   const [driversLineDraft, setDriversLineDraft] = useState({});
+  const [collapsed, setCollapsed] = useState(() => new Set());
   const [transponderOpen, setTransponderOpen] = useState({});
   const [overflowOpen, setOverflowOpen] = useState(false);
   const nameLabelKey = eventType === 'sprint' ? 'admin_sprint_heat_name_ph' : 'admin_endurance_team_name_ph';
@@ -47,9 +50,26 @@ export default function EnduranceTeamsEditor({
     updateTeams(teams.map((team, i) => (i === teamIndex ? { ...team, ...patch } : team)));
   };
 
+  const collapseTeam = (teamIndex) => {
+    setCollapsed((prev) => new Set([...prev, teamIndex]));
+  };
+
+  const expandTeam = (teamIndex) => {
+    setCollapsed((prev) => { const n = new Set(prev); n.delete(teamIndex); return n; });
+  };
+
   const updateDriversLine = (teamIndex, line) => {
     setDriversLineDraft((prev) => ({ ...prev, [teamIndex]: line }));
     updateTeam(teamIndex, { members: parseTeamDriversLine(line) });
+  };
+
+  const handleDriversBlur = (teamIndex) => {
+    // Auto-collapse when team name + at least one driver are present
+    const team = teams[teamIndex];
+    if (!team) return;
+    const hasName = team.name?.trim();
+    const hasDrivers = (team.members || []).some((m) => m?.name?.trim());
+    if (hasName && hasDrivers) collapseTeam(teamIndex);
   };
 
   const getDriversLineValue = (teamIndex, team) => {
@@ -160,6 +180,18 @@ export default function EnduranceTeamsEditor({
           <span className="ete2-count">{teams.length}/{MAX_TEAMS}</span>
         </div>
         <div className="ete2-actions">
+          {/* Weight monitoring toggle */}
+          {onTrackWeightChange && (
+            <button
+              type="button"
+              className={`ete2-toggle-btn${trackWeight ? ' is-on' : ''}`}
+              onClick={() => onTrackWeightChange(!trackWeight)}
+              title={t('admin_pro_event_track_weight')}
+            >
+              ⚖ {t('admin_pro_event_track_weight')}
+            </button>
+          )}
+
           <button
             type="button"
             className="ete2-btn ete2-btn-primary"
@@ -195,7 +227,9 @@ export default function EnduranceTeamsEditor({
       </div>
 
       <p className="ete2-hint">
-        {t('admin_endurance_drivers_line_ph')}
+        {trackWeight
+          ? t('admin_endurance_drivers_line_ph')
+          : t('admin_endurance_drivers_line_ph').replace(/\(\d+kg\)/g, '').replace(/\s+,/g, ',')}
       </p>
 
       {atLimit && (
@@ -206,33 +240,50 @@ export default function EnduranceTeamsEditor({
       <ul className="ete2-list">
         {teams.map((team, teamIndex) => {
           const ready = isTeamReady(team);
+          const isCollapsed = collapsed.has(teamIndex);
           const namedMembers = (team.members || []).filter((m) => m?.name?.trim());
-          const starterMember = team.members?.find((m) => m.starter && m?.name?.trim())
-            || namedMembers[0];
           const showTransponder = transponderOpen[teamIndex];
+          const starterMember = namedMembers.find((m) => m.starter) || namedMembers[0];
 
           return (
             <li
               key={`team-${teamIndex}`}
-              className={`ete2-card${ready ? ' is-ready' : ''}`}
+              className={`ete2-card${ready ? ' is-ready' : ''}${isCollapsed ? ' is-collapsed' : ''}`}
             >
               {/* ── Card header row ── */}
-              <div className="ete2-card-header">
+              <div className="ete2-card-header" onClick={isCollapsed ? () => expandTeam(teamIndex) : undefined} style={isCollapsed ? { cursor: 'pointer' } : undefined}>
                 <span className="ete2-badge" aria-hidden>{teamIndex + 1}</span>
 
-                <input
-                  type="text"
-                  className="ete2-name-input"
-                  dir="auto"
-                  value={team.name}
-                  onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
-                  placeholder={t(nameLabelKey)}
-                  aria-label={t(nameLabelKey)}
-                  autoComplete="off"
-                />
+                {isCollapsed ? (
+                  /* Collapsed summary — click anywhere to expand */
+                  <div className="ete2-collapsed-summary">
+                    <span className="ete2-collapsed-name">{team.name || t('admin_endurance_team_unnamed')}</span>
+                    <span className="ete2-collapsed-drivers">
+                      {namedMembers.map((m, mi) => (
+                        <span key={mi} className={m.starter ? 'ete2-collapsed-starter' : ''}>
+                          {m.name.trim()}
+                          {m.starter && ' ★'}
+                          {trackWeight && m.weightKg && m.weightKg !== '0' && ` ${m.weightKg}kg`}
+                          {mi < namedMembers.length - 1 && ' · '}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    className="ete2-name-input"
+                    dir="auto"
+                    value={team.name}
+                    onChange={(e) => updateTeam(teamIndex, { name: e.target.value })}
+                    placeholder={t(nameLabelKey)}
+                    aria-label={t(nameLabelKey)}
+                    autoComplete="off"
+                  />
+                )}
 
-                {/* Transponder toggle (only when timing system requires it) */}
-                {hasTransponder && (
+                {/* Transponder toggle — hidden when collapsed */}
+                {hasTransponder && !isCollapsed && (
                   <button
                     type="button"
                     className={`ete2-transponder-toggle${showTransponder ? ' is-open' : ''}${team.transponderId ? ' has-value' : ''}`}
@@ -250,148 +301,176 @@ export default function EnduranceTeamsEditor({
                   <span className="ete2-ready-badge" aria-label="ready">✓</span>
                 )}
 
-                <button
-                  type="button"
-                  className="ete2-remove-btn"
-                  onClick={() => removeTeam(teamIndex)}
-                  disabled={teams.length <= 1}
-                  aria-label={t('admin_endurance_remove_team')}
-                  title={t('admin_endurance_remove_team')}
-                >
-                  ×
-                </button>
-              </div>
-
-              {/* ── Transponder row (expandable) ── */}
-              {hasTransponder && showTransponder && (
-                <div className="ete2-transponder-row">
-                  <span className="ete2-transponder-label">
-                    {t('admin_endurance_team_transponder')} · {transponderSys.idFormat}
-                  </span>
-                  <input
-                    type="text"
-                    className="ete2-transponder-input"
-                    dir="ltr"
-                    value={team.transponderId || ''}
-                    onChange={(e) => handleTeamTransponderChange(teamIndex, e.target.value)}
-                    placeholder={transponderSys.idExample}
-                    autoComplete="off"
-                  />
-                </div>
-              )}
-
-              {/* ── Drivers body ── */}
-              <div className="ete2-drivers-body">
-                {isEndurance ? (
-                  /* Endurance: text line input + clickable driver chips */
-                  <>
-                    <input
-                      type="text"
-                      className="ete2-drivers-input"
-                      dir="auto"
-                      value={getDriversLineValue(teamIndex, team)}
-                      onChange={(e) => updateDriversLine(teamIndex, e.target.value)}
-                      placeholder={t('admin_endurance_drivers_line_ph')}
-                      autoComplete="off"
-                    />
-                    {/* Driver chips — click any to set as race starter */}
-                    {namedMembers.length > 0 ? (
-                      <div className="ete2-driver-chips">
-                        {namedMembers.map((m, mi) => {
-                          const isStarter = m.starter;
-                          const realIndex = team.members.indexOf(m);
-                          const hasWeight = m.weightKg !== '' && m.weightKg != null && m.weightKg !== '0';
-                          return (
-                            <button
-                              key={mi}
-                              type="button"
-                              className={`ete2-driver-chip${isStarter ? ' is-starter' : ''}`}
-                              onClick={() => setStarter(teamIndex, realIndex)}
-                              title={isStarter ? t('admin_endurance_starter_short') : t('admin_endurance_set_starter')}
-                            >
-                              <span className="ete2-chip-name">{m.name.trim()}</span>
-                              {hasWeight && (
-                                <span className="ete2-chip-weight">{m.weightKg}kg</span>
-                              )}
-                              {isStarter && <span className="ete2-starter-flag" aria-hidden>★</span>}
-                            </button>
-                          );
-                        })}
-                        <span className="ete2-chips-hint">{t('admin_endurance_tap_starter_hint')}</span>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  /* Sprint: individual member rows with transponder per driver */
-                  <>
-                    <ul className="ete2-sprint-members">
-                      {team.members.map((member, memberIndex) => (
-                        <li key={`m-${teamIndex}-${memberIndex}`} className="ete2-sprint-member">
-                          <button
-                            type="button"
-                            className={`ete2-starter-btn${member.starter ? ' is-active' : ''}`}
-                            onClick={() => setStarter(teamIndex, memberIndex)}
-                            title={member.starter ? 'Starter' : 'Set as starter'}
-                            aria-label={member.starter ? 'Starter' : 'Set as starter'}
-                          >
-                            ★
-                          </button>
-                          <input
-                            type="text"
-                            className="ete2-member-name"
-                            dir="auto"
-                            value={member.name}
-                            onChange={(e) => updateMember(teamIndex, memberIndex, { name: e.target.value })}
-                            placeholder={t('admin_driver_placeholder')}
-                            autoComplete="off"
-                          />
-                          <select
-                            className="ete2-member-nation"
-                            value={member.nationality || ''}
-                            onChange={(e) => updateMember(teamIndex, memberIndex, { nationality: e.target.value })}
-                            aria-label={t('admin_endurance_member_nationality')}
-                          >
-                            <option value="">
-                              {team.nationality
-                                ? `${countryFlag(team.nationality)} `
-                                : '—'}
-                            </option>
-                            {COUNTRIES.map((c) => (
-                              <option key={c.code} value={c.code}>
-                                {countryFlag(c.code)} {c.name}
-                              </option>
-                            ))}
-                          </select>
-                          {hasTransponder && (
-                            <input
-                              type="text"
-                              className="ete2-member-transponder"
-                              dir="ltr"
-                              value={member.transponderId || ''}
-                              onChange={(e) => handleTransponderChange(teamIndex, memberIndex, e.target.value)}
-                              placeholder={transponderSys.idExample}
-                              title={transponderSys.idFormat}
-                              autoComplete="off"
-                            />
-                          )}
-                          <button
-                            type="button"
-                            className="ete2-remove-member"
-                            onClick={() => removeMember(teamIndex, memberIndex)}
-                            disabled={team.members.length <= 1}
-                            aria-label={t('admin_endurance_remove_member')}
-                          >
-                            ×
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <button type="button" className="ete2-add-member" onClick={() => addMember(teamIndex)}>
-                      + {t('admin_endurance_add_member')}
-                    </button>
-                  </>
+                {!isCollapsed && (
+                  <button
+                    type="button"
+                    className="ete2-remove-btn"
+                    onClick={() => removeTeam(teamIndex)}
+                    disabled={teams.length <= 1}
+                    aria-label={t('admin_endurance_remove_team')}
+                    title={t('admin_endurance_remove_team')}
+                  >
+                    ×
+                  </button>
                 )}
               </div>
+
+              {/* Expanded content */}
+              {!isCollapsed && (
+                <>
+                  {/* ── Transponder row (expandable) ── */}
+                  {hasTransponder && showTransponder && (
+                    <div className="ete2-transponder-row">
+                      <span className="ete2-transponder-label">
+                        {t('admin_endurance_team_transponder')} · {transponderSys.idFormat}
+                      </span>
+                      <input
+                        type="text"
+                        className="ete2-transponder-input"
+                        dir="ltr"
+                        value={team.transponderId || ''}
+                        onChange={(e) => handleTeamTransponderChange(teamIndex, e.target.value)}
+                        placeholder={transponderSys.idExample}
+                        autoComplete="off"
+                      />
+                    </div>
+                  )}
+
+                  {/* ── Drivers body ── */}
+                  <div className="ete2-drivers-body">
+                    {isEndurance ? (
+                      <>
+                        <input
+                          type="text"
+                          className="ete2-drivers-input"
+                          dir="auto"
+                          value={getDriversLineValue(teamIndex, team)}
+                          onChange={(e) => updateDriversLine(teamIndex, e.target.value)}
+                          onBlur={() => handleDriversBlur(teamIndex)}
+                          placeholder={trackWeight ? t('admin_endurance_drivers_line_ph') : 'Joe, Dan, Sara'}
+                          autoComplete="off"
+                        />
+                        {/* Driver chips — click to set starter, weight inputs when trackWeight */}
+                        {namedMembers.length > 0 && (
+                          <div className="ete2-driver-chips">
+                            {namedMembers.map((m, mi) => {
+                              const isStarter = m.starter;
+                              const realIndex = team.members.indexOf(m);
+                              const hasWeight = m.weightKg !== '' && m.weightKg != null && m.weightKg !== '0';
+                              return (
+                                <div key={mi} className={`ete2-chip-wrap${isStarter ? ' is-starter' : ''}`}>
+                                  <button
+                                    type="button"
+                                    className={`ete2-driver-chip${isStarter ? ' is-starter' : ''}`}
+                                    onClick={() => setStarter(teamIndex, realIndex)}
+                                    title={isStarter ? t('admin_endurance_starter_short') : t('admin_endurance_set_starter')}
+                                  >
+                                    <span className="ete2-chip-name">{m.name.trim()}</span>
+                                    {!trackWeight && hasWeight && (
+                                      <span className="ete2-chip-weight">{m.weightKg}kg</span>
+                                    )}
+                                    {isStarter && <span className="ete2-starter-flag" aria-hidden>★</span>}
+                                  </button>
+                                  {trackWeight && (
+                                    <input
+                                      type="number"
+                                      className="ete2-weight-input"
+                                      value={m.weightKg || ''}
+                                      onChange={(e) => updateMember(teamIndex, realIndex, { weightKg: e.target.value })}
+                                      placeholder="kg"
+                                      min="30"
+                                      max="200"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                            <span className="ete2-chips-hint">{t('admin_endurance_tap_starter_hint')}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      /* Sprint mode */
+                      <>
+                        <ul className="ete2-sprint-members">
+                          {team.members.map((member, memberIndex) => (
+                            <li key={`m-${teamIndex}-${memberIndex}`} className="ete2-sprint-member">
+                              <button
+                                type="button"
+                                className={`ete2-starter-btn${member.starter ? ' is-active' : ''}`}
+                                onClick={() => setStarter(teamIndex, memberIndex)}
+                                title={member.starter ? t('admin_endurance_starter_short') : t('admin_endurance_set_starter')}
+                                aria-label={member.starter ? t('admin_endurance_starter_short') : t('admin_endurance_set_starter')}
+                              >
+                                ★
+                              </button>
+                              <input
+                                type="text"
+                                className="ete2-member-name"
+                                dir="auto"
+                                value={member.name}
+                                onChange={(e) => updateMember(teamIndex, memberIndex, { name: e.target.value })}
+                                placeholder={t('admin_driver_placeholder')}
+                                autoComplete="off"
+                              />
+                              {trackWeight && (
+                                <input
+                                  type="number"
+                                  className="ete2-weight-input"
+                                  value={member.weightKg || ''}
+                                  onChange={(e) => updateMember(teamIndex, memberIndex, { weightKg: e.target.value })}
+                                  placeholder="kg"
+                                  min="30"
+                                  max="200"
+                                />
+                              )}
+                              <select
+                                className="ete2-member-nation"
+                                value={member.nationality || ''}
+                                onChange={(e) => updateMember(teamIndex, memberIndex, { nationality: e.target.value })}
+                                aria-label={t('admin_endurance_member_nationality')}
+                              >
+                                <option value="">
+                                  {team.nationality ? `${countryFlag(team.nationality)} ` : '—'}
+                                </option>
+                                {COUNTRIES.map((c) => (
+                                  <option key={c.code} value={c.code}>
+                                    {countryFlag(c.code)} {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                              {hasTransponder && (
+                                <input
+                                  type="text"
+                                  className="ete2-member-transponder"
+                                  dir="ltr"
+                                  value={member.transponderId || ''}
+                                  onChange={(e) => handleTransponderChange(teamIndex, memberIndex, e.target.value)}
+                                  placeholder={transponderSys.idExample}
+                                  title={transponderSys.idFormat}
+                                  autoComplete="off"
+                                />
+                              )}
+                              <button
+                                type="button"
+                                className="ete2-remove-member"
+                                onClick={() => removeMember(teamIndex, memberIndex)}
+                                disabled={team.members.length <= 1}
+                                aria-label={t('admin_endurance_remove_member')}
+                              >
+                                ×
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        <button type="button" className="ete2-add-member" onClick={() => addMember(teamIndex)}>
+                          + {t('admin_endurance_add_member')}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </li>
           );
         })}

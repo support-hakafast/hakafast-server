@@ -44,6 +44,7 @@ export default function ProRaceEventModal({
   const [advanceCount, setAdvanceCount] = useState(String(draft?.advanceCount ?? 2));
   const [defaultNationality, setDefaultNationality] = useState(draft?.defaultNationality || '');
   const [timingSystem, setTimingSystem] = useState(draft?.timingSystem || 'mylaps_tranx');
+  const [trackWeight, setTrackWeight] = useState(draft?.trackWeight ?? false);
   const [decoderStatus, setDecoderStatus] = useState(null);
 
   useEffect(() => {
@@ -132,6 +133,7 @@ export default function ProRaceEventModal({
       advanceCount: parseInt(advanceCount, 10) || 2,
       defaultNationality,
       timingSystem,
+      trackWeight,
       prepOnly,
       updatedAt: Date.now(),
     });
@@ -257,6 +259,8 @@ export default function ProRaceEventModal({
             eventType={eventType}
             trackSlug={trackSlug}
             timingSystem={timingSystem}
+            trackWeight={trackWeight}
+            onTrackWeightChange={setTrackWeight}
             groupsLabelKey={isEndurance ? 'admin_pro_event_groups_endurance' : 'admin_pro_event_groups_sprint'}
             onChange={handleGroupsChange}
             onImportError={(msg) => setImportMessage(msg)}

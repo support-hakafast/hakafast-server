@@ -507,7 +507,9 @@ export function buildRaceSchedulePreview(event) {
         name: driverDisplayName(d),
         starter: Boolean(d.starter),
       })),
-      note: index === 0 && durationLabel
+      note: null,
+      // Duration meta surfaced at the schedule header level, not per-group
+      _durationMeta: index === 0 && durationLabel
         ? { duration: durationLabel, stintMin: normalized.stintMinutes }
         : null,
     };

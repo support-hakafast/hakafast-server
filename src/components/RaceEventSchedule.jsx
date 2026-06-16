@@ -4,10 +4,22 @@ export default function RaceEventSchedule({ t, items, eventType, turnoverSec }) 
   if (!items?.length) return null;
 
   const isSprint = eventType === 'sprint';
+  const durationMeta = !isSprint ? items.find((item) => item._durationMeta)?._durationMeta : null;
 
   return (
     <div className="race-event-schedule">
-      <span className="field-label">{t('admin_pro_event_schedule')}</span>
+      <div className="race-event-schedule-header">
+        <span className="field-label">{t('admin_pro_event_schedule')}</span>
+        {durationMeta && (
+          <span className="race-event-schedule-meta-badge">
+            {durationMeta.duration}
+            {durationMeta.stintMin > 0 && (
+              <span className="race-event-schedule-meta-sep">·</span>
+            )}
+            {durationMeta.stintMin > 0 && t('admin_pro_event_stint_min_short', { min: durationMeta.stintMin })}
+          </span>
+        )}
+      </div>
       <ol className="race-event-schedule-list">
         {items.map((item) => (
           <li key={`${item.order}-${item.title}`} className="race-event-schedule-item">
@@ -32,14 +44,6 @@ export default function RaceEventSchedule({ t, items, eventType, turnoverSec }) 
               {item.note?.turnoverSec != null && (
                 <span className="race-event-schedule-note">
                   {t('admin_pro_event_schedule_turnover', { sec: item.note.turnoverSec })}
-                </span>
-              )}
-              {item.note?.duration && (
-                <span className="race-event-schedule-note">
-                  {t('admin_pro_event_schedule_endurance_meta', {
-                    duration: item.note.duration,
-                    stint: item.note.stintMin,
-                  })}
                 </span>
               )}
             </div>
