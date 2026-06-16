@@ -7,8 +7,11 @@ import ProRaceEventModal from './ProRaceEventModal.jsx';
 import {
   createChampionship,
   createRound,
+  createDivision,
   computeStandings,
   computeOfficialStandings,
+  computeDivisionStandings,
+  computeOverallStandings,
   exportStandingsCsv,
   resultsFromHeatHistory,
   parseRoundResultsCsv,
@@ -28,8 +31,15 @@ function downloadTextFile(filename, content) {
 }
 
 function sessionKey(id) { return `hf_champ_auth_${id}`; }
+function sessionPwKey(id) { return `hf_champ_pw_${id}`; }
 function readSession(id) { try { return sessionStorage.getItem(sessionKey(id)) === 'true'; } catch { return false; } }
-function writeSession(id, v) { try { sessionStorage.setItem(sessionKey(id), v ? 'true' : ''); } catch {} }
+function readSessionPw(id) { try { return sessionStorage.getItem(sessionPwKey(id)) || ''; } catch { return ''; } }
+function writeSession(id, v, pw) {
+  try {
+    sessionStorage.setItem(sessionKey(id), v ? 'true' : '');
+    if (pw) sessionStorage.setItem(sessionPwKey(id), pw);
+  } catch {}
+}
 
 // ── Points table editor (editor-only) ────────────────────────────────────────
 function PointsTableEditor({ value, onChange, t }) {
@@ -303,7 +313,12 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
                 autoComplete="off"
                 onChange={(e) => { setAddName(e.target.value); setSuggestions([]); }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); addResult(); }
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addResult();
+                    // keep focus so user can type the next entry immediately
+                    setTimeout(() => document.getElementById(addInputId)?.focus(), 0);
+                  }
                   if (e.key === 'Escape') { setSuggestions([]); }
                 }}
                 placeholder={isEndurance ? t('champ_add_team_ph') : t('champ_add_driver_ph')}
@@ -405,7 +420,7 @@ function LoginModal({ championship, onUnlock, onClose, t }) {
         body: JSON.stringify({ password: pwd }),
       });
       const data = await res.json();
-      if (data.success) { writeSession(championship.id, true); onUnlock(); }
+      if (data.success) { writeSession(championship.id, true, pwd); onUnlock(pwd); }
       else setError(true);
     } catch { setError(true); }
     finally { setLoading(false); }
@@ -475,6 +490,12 @@ export default function ChampionshipPage() {
   // Collapsible rounds
   const [expandedRound, setExpandedRound] = useState(null);
 
+  // Division (sub-championship) state
+  const [activeDivisionId, setActiveDivisionId] = useState(null); // null = top-level rounds
+  const [expandedDivRound, setExpandedDivRound] = useState(null);
+  const [editingDivRound, setEditingDivRound] = useState(null); // { divId, ri }
+  const [newDivName, setNewDivName] = useState('');
+
   useEffect(() => { loadChampionships(); loadHeatHistory(); }, []);
 
   const loadChampionships = useCallback(async () => {
@@ -522,7 +543,7 @@ export default function ChampionshipPage() {
     setIsEditor(editor);
     setSettingsName(c.name);
     setSettingsPoints([...c.pointsTable]);
-    setSettingsPassword('');
+    setSettingsPassword(readSessionPw(c.id));
     setActiveTab('rounds');
     setEditingRound(null);
     setExpandedRound(null);
@@ -534,7 +555,7 @@ export default function ChampionshipPage() {
     const updated = { ...selected, ...patch, updatedAt: Date.now() };
     setSelected(updated);
     setChampionships((prev) => prev.map((c) => c.id === updated.id ? updated : c));
-    persist(updated, selected.adminPassword || settingsPassword);
+    persist(updated, selected.adminPassword || settingsPassword || readSessionPw(selected.id));
   }
 
   async function deleteChampionship(id) {
@@ -566,6 +587,49 @@ export default function ChampionshipPage() {
     const rounds = (selected.rounds || []).filter((_, i) => i !== ri);
     updateSelected({ rounds });
     if (editingRound === ri) setEditingRound(null);
+  }
+
+  // ── Division (sub-championship) handlers ──────────────────────────────────
+  function addDivision() {
+    if (!newDivName.trim()) return;
+    const div = createDivision({ name: newDivName.trim(), pointsTable: selected.pointsTable });
+    updateSelected({ divisions: [...(selected.divisions || []), div] });
+    setNewDivName('');
+    setActiveDivisionId(div.id);
+  }
+
+  function deleteDivision(divId) {
+    updateSelected({ divisions: (selected.divisions || []).filter((d) => d.id !== divId) });
+    if (activeDivisionId === divId) setActiveDivisionId(null);
+  }
+
+  function addDivRound(divId) {
+    const divisions = (selected.divisions || []).map((d) => {
+      if (d.id !== divId) return d;
+      const round = createRound({ label: `Round ${(d.rounds?.length || 0) + 1}` });
+      const rounds = [...(d.rounds || []), round];
+      setEditingDivRound({ divId, ri: rounds.length - 1 });
+      return { ...d, rounds };
+    });
+    updateSelected({ divisions });
+  }
+
+  function saveDivRound(divId, ri, updatedRound) {
+    const divisions = (selected.divisions || []).map((d) => {
+      if (d.id !== divId) return d;
+      return { ...d, rounds: d.rounds.map((r, i) => i === ri ? updatedRound : r) };
+    });
+    updateSelected({ divisions });
+    setEditingDivRound(null);
+    setExpandedDivRound(null);
+  }
+
+  function deleteDivRound(divId, ri) {
+    const divisions = (selected.divisions || []).map((d) => {
+      if (d.id !== divId) return d;
+      return { ...d, rounds: d.rounds.filter((_, i) => i !== ri) };
+    });
+    updateSelected({ divisions });
   }
 
   function saveSettings() {
@@ -605,7 +669,7 @@ export default function ChampionshipPage() {
         <LoginModal
           championship={selected}
           t={t}
-          onUnlock={() => { setIsEditor(true); setShowLoginModal(false); }}
+          onUnlock={(pw) => { setIsEditor(true); setShowLoginModal(false); if (pw) setSettingsPassword(pw); }}
           onClose={() => setShowLoginModal(false)}
         />
       )}
@@ -784,88 +848,187 @@ export default function ChampionshipPage() {
             {/* ROUNDS tab */}
             {activeTab === 'rounds' && (
               <div className="cp-rounds-panel">
-                {editingRound !== null && selected.rounds[editingRound] ? (
-                  <RoundEditor
-                    round={selected.rounds[editingRound]}
-                    championship={selected}
-                    heatHistory={heatHistory}
-                    onSave={(updated) => saveRound(editingRound, updated)}
-                    onCancel={() => setEditingRound(null)}
-                    t={t}
-                  />
-                ) : (
-                  <>
-                    {(!selected.rounds || selected.rounds.length === 0) && (
-                      <p className="cp-empty">{t('champ_rounds_empty')}</p>
-                    )}
-                    {(selected.rounds || []).map((r, i) => {
-                      const isOpen = expandedRound === i;
-                      const rt = r.raceType || 'sprint';
-                      const rtLabels = {
-                        'sprint': 'Sprint',
-                        'endurance-team': 'Team Endurance',
-                        'endurance-solo': 'Solo Endurance',
-                        'best-lap': 'Best Lap',
-                      };
-                      return (
-                        <div key={r.id} className={`cp-round-row${r.isOfficial ? ' is-official' : ''}${isOpen ? ' is-open' : ''}`}>
-                          <div className="cp-round-header" onClick={() => setExpandedRound(isOpen ? null : i)}>
-                            <div className="cp-round-num-badge">
-                              {r.isOfficial ? '🏅' : `R${i + 1}`}
-                            </div>
-                            <div className="cp-round-info" style={{ flex: 1 }}>
-                              <span className="cp-round-label">{r.label || `Round ${i + 1}`}</span>
-                              {r.date && <span className="cp-round-meta" style={{ marginInlineStart: '0.5rem' }}>{r.date}{r.time ? ` · ${r.time}` : ''}</span>}
-                            </div>
-                            <span className={`cp-rt-badge cp-rt-${rt}`}>{rtLabels[rt] || rt}</span>
-                            <span className="cp-round-meta">{r.results?.length || 0}</span>
-                            {r.isOfficial
-                              ? <span className="cp-official-badge">🏅</span>
-                              : <span className="cp-unofficial-badge">⚠</span>
-                            }
-                            <span className="cp-round-chevron">{isOpen ? '▼' : '▶'}</span>
-                          </div>
-                          {isOpen && (
-                            <div className="cp-round-body">
-                              {r.trackSlug && <span className="cp-round-meta">📍 {r.trackSlug}</span>}
-                              {r.results?.[0] && <span className="cp-round-meta">{t('champ_round_winner')}: {r.results[0].name}</span>}
-                              {r.eventPlan && <span className="cp-linked-badge">✓ {t('champ_event_linked')}</span>}
-                              {isEditor && (
-                                <div className="cp-round-actions" onClick={(e) => e.stopPropagation()}>
-                                  <button type="button" className={`cp-tool-btn${r.eventPlan ? ' is-active' : ''}`}
-                                    onClick={() => setPlanningRoundIndex(i)}>
-                                    📋 {t('champ_plan_event')}
-                                  </button>
-                                  {r.eventPlan && r.trackSlug && (
-                                    <Link to={`/admin/${r.trackSlug}`} className="cp-tool-btn">
-                                      🏁 {t('champ_open_admin')}
-                                    </Link>
-                                  )}
-                                  <button type="button" className="cp-tool-btn" onClick={(e) => { e.stopPropagation(); setEditingRound(i); }}>
-                                    ✏ {t('champ_round_edit')}
-                                  </button>
-                                  <button type="button" className="cp-tool-btn cp-del-btn" onClick={(e) => { e.stopPropagation(); deleteRound(i); }}>✕</button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {isEditor && (
-                      <button type="button" className="cp-add-round-btn" onClick={addRound}>
-                        + {t('champ_add_round')}
+
+                {/* Division nav pills */}
+                {((selected.divisions || []).length > 0 || isEditor) && (
+                  <div className="cp-division-nav">
+                    <button
+                      type="button"
+                      className={`cp-division-pill${activeDivisionId === null ? ' is-active' : ''}`}
+                      onClick={() => { setActiveDivisionId(null); setExpandedRound(null); setEditingRound(null); }}
+                    >
+                      🏁 {t('champ_div_main')}
+                    </button>
+                    {(selected.divisions || []).map((div) => (
+                      <button
+                        key={div.id}
+                        type="button"
+                        className={`cp-division-pill${activeDivisionId === div.id ? ' is-active' : ''}`}
+                        onClick={() => { setActiveDivisionId(div.id); setExpandedDivRound(null); setEditingDivRound(null); }}
+                      >
+                        {div.name}
+                        {isEditor && (
+                          <span className="cp-div-del" onClick={(e) => { e.stopPropagation(); deleteDivision(div.id); }}>×</span>
+                        )}
                       </button>
+                    ))}
+                    {isEditor && (
+                      <div className="cp-div-add-row">
+                        <input
+                          type="text" dir="auto" value={newDivName}
+                          onChange={(e) => setNewDivName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') addDivision(); }}
+                          placeholder={t('champ_div_add_ph')}
+                          className="cp-div-name-input"
+                        />
+                        <button type="button" className="cp-tool-btn" onClick={addDivision} disabled={!newDivName.trim()}>
+                          + {t('champ_div_add')}
+                        </button>
+                      </div>
                     )}
-                  </>
+                  </div>
                 )}
+
+                {/* Active division info banner */}
+                {activeDivisionId !== null && (() => {
+                  const div = (selected.divisions || []).find((d) => d.id === activeDivisionId);
+                  if (!div) return null;
+                  return (
+                    <div className="cp-div-banner">
+                      <span className="cp-div-banner-name">{div.name}</span>
+                      <span className="cp-div-banner-sub">{t('champ_div_own_standings')}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Round list — top-level or division */}
+                {(() => {
+                  const isDiv = activeDivisionId !== null;
+                  const div = isDiv ? (selected.divisions || []).find((d) => d.id === activeDivisionId) : null;
+                  const rounds = isDiv ? (div?.rounds || []) : (selected.rounds || []);
+                  const editingIdx = isDiv ? editingDivRound?.ri : editingRound;
+                  const expandedIdx = isDiv ? expandedDivRound : expandedRound;
+                  const setEditing = isDiv
+                    ? (i) => setEditingDivRound(i !== null ? { divId: activeDivisionId, ri: i } : null)
+                    : setEditingRound;
+                  const setExpanded = isDiv ? setExpandedDivRound : setExpandedRound;
+                  const onSave = isDiv
+                    ? (ri, updated) => saveDivRound(activeDivisionId, ri, updated)
+                    : saveRound;
+                  const onDelete = isDiv
+                    ? (ri) => deleteDivRound(activeDivisionId, ri)
+                    : deleteRound;
+                  const onAddRound = isDiv
+                    ? () => addDivRound(activeDivisionId)
+                    : addRound;
+                  const championship4editor = isDiv ? { ...selected, rounds: div?.rounds || [] } : selected;
+
+                  const rtLabels = {
+                    sprint: t('champ_racetype_sprint'),
+                    'endurance-team': t('champ_racetype_endurance_team'),
+                    'endurance-solo': t('champ_racetype_endurance_solo'),
+                    'best-lap': t('champ_racetype_best_lap'),
+                  };
+
+                  if (editingIdx !== null && rounds[editingIdx]) {
+                    return (
+                      <RoundEditor
+                        round={rounds[editingIdx]}
+                        championship={championship4editor}
+                        heatHistory={heatHistory}
+                        onSave={(updated) => onSave(editingIdx, updated)}
+                        onCancel={() => setEditing(null)}
+                        t={t}
+                      />
+                    );
+                  }
+
+                  return (
+                    <>
+                      {rounds.length === 0 && <p className="cp-empty">{t('champ_rounds_empty')}</p>}
+                      {rounds.map((r, i) => {
+                        const isOpen = expandedIdx === i;
+                        const rt = r.raceType || 'sprint';
+                        return (
+                          <div key={r.id} className={`cp-round-row${r.isOfficial ? ' is-official' : ''}${isOpen ? ' is-open' : ''}`}>
+                            <div className="cp-round-header" onClick={() => setExpanded(isOpen ? null : i)}>
+                              <div className="cp-round-num-badge">{r.isOfficial ? '🏅' : `R${i + 1}`}</div>
+                              <div className="cp-round-info" style={{ flex: 1 }}>
+                                <span className="cp-round-label">{r.label || `Round ${i + 1}`}</span>
+                                {r.date && <span className="cp-round-meta" style={{ marginInlineStart: '0.5rem' }}>{r.date}{r.time ? ` · ${r.time}` : ''}</span>}
+                              </div>
+                              <span className={`cp-rt-badge cp-rt-${rt}`}>{rtLabels[rt] || rt}</span>
+                              <span className="cp-round-meta">{r.results?.length || 0}</span>
+                              {r.isOfficial ? <span className="cp-official-badge">🏅</span> : <span className="cp-unofficial-badge">⚠</span>}
+                              <span className="cp-round-chevron">{isOpen ? '▼' : '▶'}</span>
+                            </div>
+                            {isOpen && (
+                              <div className="cp-round-body">
+                                {r.trackSlug && <span className="cp-round-meta">📍 {r.trackSlug}</span>}
+                                {r.results?.[0] && <span className="cp-round-meta">{t('champ_round_winner')}: {r.results[0].name}</span>}
+                                {r.eventPlan && <span className="cp-linked-badge">✓ {t('champ_event_linked')}</span>}
+                                {isEditor && (
+                                  <div className="cp-round-actions" onClick={(e) => e.stopPropagation()}>
+                                    {!isDiv && (
+                                      <>
+                                        <button type="button" className={`cp-tool-btn${r.eventPlan ? ' is-active' : ''}`}
+                                          onClick={() => setPlanningRoundIndex(i)}>
+                                          📋 {t('champ_plan_event')}
+                                        </button>
+                                        {r.eventPlan && r.trackSlug && (
+                                          <Link to={`/admin/${r.trackSlug}`} className="cp-tool-btn">
+                                            🏁 {t('champ_open_admin')}
+                                          </Link>
+                                        )}
+                                      </>
+                                    )}
+                                    <button type="button" className="cp-tool-btn" onClick={(e) => { e.stopPropagation(); setEditing(i); }}>
+                                      ✏ {t('champ_round_edit')}
+                                    </button>
+                                    <button type="button" className="cp-tool-btn cp-del-btn" onClick={(e) => { e.stopPropagation(); onDelete(i); }}>✕</button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {isEditor && (
+                        <button type="button" className="cp-add-round-btn" onClick={onAddRound}>
+                          + {t('champ_add_round')}
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
 
             {/* STANDINGS tab */}
             {activeTab === 'standings' && (
-              <div>
-                {officialRoundCount > 0 && (
+              <div className="cp-standings-panel">
+                {/* Division standings selector */}
+                {(selected.divisions || []).length > 0 && (
+                  <div className="cp-division-nav" style={{ marginBottom: '1rem' }}>
+                    <button
+                      type="button"
+                      className={`cp-division-pill${activeDivisionId === null ? ' is-active' : ''}`}
+                      onClick={() => setActiveDivisionId(null)}
+                    >
+                      🏆 {t('champ_div_overall')}
+                    </button>
+                    {(selected.divisions || []).map((div) => (
+                      <button key={div.id} type="button"
+                        className={`cp-division-pill${activeDivisionId === div.id ? ' is-active' : ''}`}
+                        onClick={() => setActiveDivisionId(div.id)}
+                      >
+                        {div.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {officialRoundCount > 0 && activeDivisionId === null && (
                   <div className="cp-mode-toggle">
                     <button type="button"
                       className={`cp-mode-btn${!showAllRounds ? ' is-active' : ''}`}
@@ -879,7 +1042,31 @@ export default function ChampionshipPage() {
                     </button>
                   </div>
                 )}
-                <StandingsTable championship={selected} showAllRounds={showAllRounds || officialRoundCount === 0} t={t} />
+
+                {activeDivisionId === null ? (
+                  (selected.divisions || []).length > 0 ? (
+                    // Overall standings aggregates top-level + all divisions
+                    <StandingsTable
+                      championship={{ ...selected, rounds: [
+                        ...(selected.rounds || []),
+                        ...(selected.divisions || []).flatMap((d) => d.rounds || [])
+                      ]}}
+                      showAllRounds={true}
+                      t={t}
+                    />
+                  ) : (
+                    <StandingsTable championship={selected} showAllRounds={showAllRounds || officialRoundCount === 0} t={t} />
+                  )
+                ) : (() => {
+                  const div = (selected.divisions || []).find((d) => d.id === activeDivisionId);
+                  if (!div) return null;
+                  return (
+                    <>
+                      <p className="cp-div-standings-label">{div.name} — {t('champ_div_own_standings')}</p>
+                      <StandingsTable championship={{ ...selected, pointsTable: div.pointsTable, rounds: div.rounds || [] }} showAllRounds={true} t={t} />
+                    </>
+                  );
+                })()}
               </div>
             )}
 

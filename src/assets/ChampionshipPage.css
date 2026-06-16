@@ -1019,6 +1019,87 @@ html:has(.cp-page) body {
   padding: 1rem 1.25rem 1.25rem;
 }
 
+/* ── Divisions (sub-championships) ────────────────────────────────────────── */
+
+.cp-division-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1.5px solid #e8edf8;
+  margin-bottom: 0.85rem;
+  align-items: center;
+}
+
+.cp-division-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.32rem 0.8rem;
+  border-radius: 20px;
+  border: 1.5px solid #d1d9f0;
+  background: #fff;
+  color: #8090b8;
+  cursor: pointer;
+  transition: all 0.13s;
+  white-space: nowrap;
+}
+.cp-division-pill:hover { border-color: var(--navy); color: var(--navy); }
+.cp-division-pill.is-active { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+.cp-div-del {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin-inline-start: 0.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.05rem 0.15rem;
+  border-radius: 3px;
+}
+.cp-div-del:hover { opacity: 1; background: rgba(255,255,255,0.2); }
+
+.cp-div-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.cp-div-name-input {
+  border: 1.5px solid #d1d9f0;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  background: #fff;
+  color: var(--navy);
+  font-family: inherit;
+  width: 10rem;
+  transition: border-color 0.13s;
+}
+.cp-div-name-input:focus { outline: none; border-color: var(--navy); }
+
+.cp-div-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.85rem;
+  background: rgba(0, 0, 128, 0.05);
+  border: 1.5px solid rgba(0, 0, 128, 0.15);
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+}
+.cp-div-banner-name { font-weight: 800; font-size: 0.88rem; color: var(--navy); }
+.cp-div-banner-sub { font-size: 0.72rem; color: #8090b8; }
+
+.cp-div-standings-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1.5px solid #e8edf8;
+}
+
 .cp-mode-toggle {
   display: flex;
   gap: 0.4rem;

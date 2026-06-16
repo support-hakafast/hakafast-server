@@ -46,9 +46,19 @@ export function createChampionship({ name, pointsTable = DEFAULT_POINTS_TABLES.k
     allowedTypes: [],
     pointsTable: [...pointsTable],
     rounds: [],
+    divisions: [], // sub-championships: [{ id, name, pointsTable, rounds[] }]
     adminPassword: adminPassword || '',
     createdAt: Date.now(),
     updatedAt: Date.now(),
+  };
+}
+
+export function createDivision({ name, pointsTable = DEFAULT_POINTS_TABLES.karting } = {}) {
+  return {
+    id: generateId(),
+    name: (name || '').trim(),
+    pointsTable: [...pointsTable],
+    rounds: [],
   };
 }
 
@@ -216,10 +226,80 @@ export function normalizeChampionship(raw) {
     allowedTypes: raw.allowedTypes || [],
     pointsTable: Array.isArray(raw.pointsTable) ? raw.pointsTable.map(Number).filter((n) => !Number.isNaN(n)) : [...DEFAULT_POINTS_TABLES.karting],
     rounds: Array.isArray(raw.rounds) ? raw.rounds.map(normalizeRound) : [],
+    divisions: Array.isArray(raw.divisions) ? raw.divisions.map(normalizeDivision) : [],
     adminPassword: raw.adminPassword || '',
     createdAt: raw.createdAt || Date.now(),
     updatedAt: raw.updatedAt || Date.now(),
   };
+}
+
+function normalizeDivision(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: raw.id || generateId(),
+    name: raw.name || '',
+    pointsTable: Array.isArray(raw.pointsTable) ? raw.pointsTable.map(Number).filter((n) => !Number.isNaN(n)) : [...DEFAULT_POINTS_TABLES.karting],
+    rounds: Array.isArray(raw.rounds) ? raw.rounds.map(normalizeRound) : [],
+  };
+}
+
+/**
+ * Compute standings for a single division.
+ * Uses the division's own pointsTable and rounds.
+ */
+export function computeDivisionStandings(division) {
+  return computeStandings({ pointsTable: division.pointsTable, rounds: division.rounds || [] });
+}
+
+/**
+ * Compute overall championship standings across top-level rounds AND all divisions.
+ * Points from top-level rounds use championship.pointsTable.
+ * Points from each division use that division's own pointsTable.
+ * All accumulated by participant name.
+ */
+export function computeOverallStandings(championship) {
+  const map = new Map();
+
+  function ensure(name, totalRounds) {
+    if (!map.has(name)) map.set(name, { name, points: 0, wins: 0, podiums: 0, roundPoints: Array(totalRounds).fill(null), roundPositions: Array(totalRounds).fill(null) });
+    return map.get(name);
+  }
+
+  // Count total rounds for column allocation
+  const divRounds = (championship.divisions || []).flatMap((d) => d.rounds || []);
+  const allRounds = [...(championship.rounds || []), ...divRounds];
+  const total = allRounds.length;
+
+  let ri = 0;
+  function accumulateRounds(rounds, pointsTable) {
+    rounds.forEach((round) => {
+      (round.results || []).forEach((r) => {
+        const entry = ensure(r.name, total);
+        const pos = r.position;
+        const pts = pos >= 1 && pos <= pointsTable.length ? pointsTable[pos - 1] : 0;
+        entry.points += pts;
+        entry.roundPoints[ri] = pts;
+        entry.roundPositions[ri] = pos;
+        if (pos === 1) entry.wins += 1;
+        if (pos <= 3) entry.podiums += 1;
+      });
+      ri++;
+    });
+  }
+
+  accumulateRounds(championship.rounds || [], championship.pointsTable || []);
+  for (const div of championship.divisions || []) {
+    accumulateRounds(div.rounds || [], div.pointsTable || championship.pointsTable || []);
+  }
+
+  const standings = [...map.values()].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (b.podiums !== a.podiums) return b.podiums - a.podiums;
+    return a.name.localeCompare(b.name);
+  });
+
+  return standings.map((s, i) => ({ ...s, position: i + 1 }));
 }
 
 function normalizeRound(raw) {
