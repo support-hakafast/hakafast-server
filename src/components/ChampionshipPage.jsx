@@ -114,6 +114,26 @@ function DriverRow({ driver, index, isEndurance, onUpdate, onRemove, onMoveUp, o
   );
 }
 
+// Returns true when results may be entered: event date must be yesterday or earlier
+function canEnterResults(dateStr) {
+  if (!dateStr) return false;
+  const eventDay = new Date(dateStr + 'T00:00:00');
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  return eventDay < tomorrow; // strictly before today = at least 1 day ago
+}
+
+// Collect every unique participant name across all rounds of the championship
+function collectKnownParticipants(championship) {
+  const names = new Set();
+  for (const r of championship.rounds || []) {
+    for (const res of r.results || []) {
+      if (res.name) names.add(res.name);
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
 // ── Round editor panel (editor-only) ─────────────────────────────────────────
 function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) {
   const [label, setLabel] = useState(round.label || '');
@@ -127,12 +147,26 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
   const [csvText, setCsvText] = useState('');
   const [csvMode, setCsvMode] = useState(false);
   const [addName, setAddName] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
   const isEndurance = championship.type === 'endurance';
 
-  function addResult() {
-    if (!addName.trim()) return;
-    setResults((prev) => [...prev, { name: addName.trim(), position: prev.length + 1, nationality: '', kartNumber: '', ...(isEndurance ? { drivers: [] } : {}) }]);
-    setAddName('');
+  // Results are locked until the day after the event
+  const resultsUnlocked = canEnterResults(date);
+  const knownParticipants = collectKnownParticipants(championship);
+  const addInputId = `cp-add-input-${round.id || 'new'}`;
+
+  const filteredSuggestions = addName.trim().length > 0
+    ? knownParticipants.filter((n) =>
+        n.toLowerCase().includes(addName.toLowerCase()) &&
+        !results.some((r) => r.name === n)
+      )
+    : [];
+
+  function addResult(name) {
+    const n = (name || addName).trim();
+    if (!n) return;
+    setResults((prev) => [...prev, { name: n, position: prev.length + 1, nationality: '', kartNumber: '', ...(isEndurance ? { drivers: [] } : {}) }]);
+    setAddName(''); setSuggestions([]);
   }
   function updateResult(i, updated) {
     setResults((prev) => prev.map((r, idx) => idx === i ? { ...updated, position: idx + 1 } : r));
@@ -198,50 +232,82 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
         <p className="cp-unofficial-note">⚠ {t('champ_unofficial_note')}</p>
       )}
 
-      {heatHistory?.length > 0 && (
-        <div className="cp-heat-import">
-          <span className="cp-section-label">{t('champ_from_heat')}</span>
-          <div className="cp-heat-chips">
-            {heatHistory.slice().reverse().slice(0, 15).map((h, i) => (
-              <button key={i} type="button" className="cp-heat-chip" onClick={() => importFromHeat(h)}>
-                #{h.heat_number}{h.heat_type ? ` · ${h.heat_type}` : ''}{h.results?.length ? ` (${h.results.length})` : ''}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
+      {/* Results section — locked until day after event */}
       <div className="cp-results-section">
         <div className="cp-results-toolbar">
           <span className="cp-section-label">
             {t('champ_results_label')} — {results.length} {isEndurance ? t('champ_round_teams') : t('champ_round_drivers')}
           </span>
-          <button type="button" className={`cp-tool-btn${csvMode ? ' is-active' : ''}`} onClick={() => setCsvMode((v) => !v)}>
-            {t('champ_csv_paste')}
-          </button>
+          {resultsUnlocked && (
+            <button type="button" className={`cp-tool-btn${csvMode ? ' is-active' : ''}`} onClick={() => setCsvMode((v) => !v)}>
+              {t('champ_csv_paste')}
+            </button>
+          )}
         </div>
-        {csvMode && (
-          <div className="cp-csv-paste">
-            <textarea value={csvText} onChange={(e) => setCsvText(e.target.value)} placeholder={t('champ_csv_ph')} rows={5} />
-            <button type="button" className="cp-tool-btn" onClick={applyCSV}>{t('champ_csv_apply')}</button>
-          </div>
+
+        {!date && (
+          <p className="cp-results-lock-msg">📅 {t('champ_results_set_date_first')}</p>
         )}
-        <ol className="cp-results-list">
-          {results.map((r, i) => (
-            <DriverRow key={i} index={i} driver={r} isEndurance={isEndurance} total={results.length}
-              onUpdate={(u) => updateResult(i, u)} onRemove={() => removeResult(i)}
-              onMoveUp={() => moveResult(i, -1)} onMoveDown={() => moveResult(i, 1)} t={t} />
-          ))}
-          {results.length === 0 && <li className="cp-empty-row">{t('champ_results_empty')}</li>}
-        </ol>
-        <div className="cp-add-result">
-          <input type="text" dir="auto" value={addName}
-            onChange={(e) => setAddName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addResult(); } }}
-            placeholder={isEndurance ? t('champ_add_team_ph') : t('champ_add_driver_ph')}
-          />
-          <button type="button" className="cp-tool-btn" onClick={addResult} disabled={!addName.trim()}>{t('champ_add_btn')}</button>
-        </div>
+        {date && !resultsUnlocked && (
+          <p className="cp-results-lock-msg">🔒 {t('champ_results_locked_until_after')}</p>
+        )}
+
+        {resultsUnlocked && (
+          <>
+            {heatHistory?.length > 0 && (
+              <div className="cp-heat-import">
+                <span className="cp-section-label">{t('champ_from_heat')}</span>
+                <div className="cp-heat-chips">
+                  {heatHistory.slice().reverse().slice(0, 15).map((h, i) => (
+                    <button key={i} type="button" className="cp-heat-chip" onClick={() => importFromHeat(h)}>
+                      #{h.heat_number}{h.heat_type ? ` · ${h.heat_type}` : ''}{h.results?.length ? ` (${h.results.length})` : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {csvMode && (
+              <div className="cp-csv-paste">
+                <textarea value={csvText} onChange={(e) => setCsvText(e.target.value)} placeholder={t('champ_csv_ph')} rows={5} />
+                <button type="button" className="cp-tool-btn" onClick={applyCSV}>{t('champ_csv_apply')}</button>
+              </div>
+            )}
+
+            <ol className="cp-results-list">
+              {results.map((r, i) => (
+                <DriverRow key={i} index={i} driver={r} isEndurance={isEndurance} total={results.length}
+                  onUpdate={(u) => updateResult(i, u)} onRemove={() => removeResult(i)}
+                  onMoveUp={() => moveResult(i, -1)} onMoveDown={() => moveResult(i, 1)} t={t} />
+              ))}
+              {results.length === 0 && <li className="cp-empty-row">{t('champ_results_empty')}</li>}
+            </ol>
+
+            <div className="cp-add-result" style={{ position: 'relative' }}>
+              <input id={addInputId} type="text" dir="auto" value={addName}
+                autoComplete="off"
+                onChange={(e) => { setAddName(e.target.value); setSuggestions([]); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); addResult(); }
+                  if (e.key === 'Escape') { setSuggestions([]); }
+                }}
+                placeholder={isEndurance ? t('champ_add_team_ph') : t('champ_add_driver_ph')}
+              />
+              <button type="button" className="cp-tool-btn" onClick={() => addResult()} disabled={!addName.trim()}>{t('champ_add_btn')}</button>
+              {filteredSuggestions.length > 0 && (
+                <ul className="cp-autocomplete">
+                  {filteredSuggestions.map((name) => (
+                    <li key={name}>
+                      <button type="button" onMouseDown={(e) => { e.preventDefault(); addResult(name); }}>
+                        {name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="cp-round-editor-footer">

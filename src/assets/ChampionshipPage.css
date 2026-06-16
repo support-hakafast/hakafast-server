@@ -956,6 +956,51 @@ html:has(.cp-page) body {
   padding: 0.75rem 0;
 }
 
+/* Results locked message */
+.cp-results-lock-msg {
+  font-size: 0.8rem;
+  color: #8090b8;
+  background: #f7fafc;
+  border: 1.5px dashed #d1d9f0;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  margin: 0;
+  text-align: center;
+}
+
+/* Autocomplete dropdown */
+.cp-autocomplete {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  background: #fff;
+  border: 1.5px solid #d1d9f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 128, 0.12);
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem 0;
+  z-index: 50;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+.cp-autocomplete li button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.42rem 0.85rem;
+  font-size: 0.83rem;
+  font-family: inherit;
+  color: var(--navy);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.cp-autocomplete li button:hover {
+  background: #f0f4ff;
+}
+
 .cp-round-editor-footer {
   display: flex;
   gap: 0.5rem;
