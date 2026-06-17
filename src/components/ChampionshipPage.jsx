@@ -269,6 +269,46 @@ function SessionsEditor({ sessions, onChange, t }) {
   );
 }
 
+// ── Track field: dropdown when venues saved, plain input otherwise ────────────
+function TrackField({ venues, trackSlug, setTrackSlug, t }) {
+  if (!venues.length) {
+    return (
+      <label className="cp-field">
+        <span>{t('champ_round_track')}</span>
+        <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} placeholder="track-slug" />
+      </label>
+    );
+  }
+  const venueMatch = venues.some((v) => v.slug === trackSlug);
+  const isCustom = Boolean(trackSlug && !venueMatch);
+  const selectVal = isCustom ? '__custom__' : (trackSlug || '');
+  return (
+    <label className="cp-field">
+      <span>{t('champ_round_track')}</span>
+      <div className="cp-track-field-row">
+        <select
+          value={selectVal}
+          onChange={(e) => {
+            if (e.target.value === '__custom__') setTrackSlug('');
+            else setTrackSlug(e.target.value);
+          }}
+          className="cp-field-select"
+        >
+          <option value="">{t('champ_venue_select_ph')}</option>
+          {venues.map((v, i) => (
+            <option key={i} value={v.slug}>{v.name}{v.slug ? ` (${v.slug})` : ''}</option>
+          ))}
+          <option value="__custom__">{t('champ_venue_custom')}</option>
+        </select>
+        {isCustom && (
+          <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)}
+            placeholder="track-slug" className="cp-venue-slug-input" autoFocus />
+        )}
+      </div>
+    </label>
+  );
+}
+
 // ── Round editor panel (editor-only) ─────────────────────────────────────────
 function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) {
   const [label, setLabel] = useState(round.label || '');
@@ -355,39 +395,12 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
           <span>{t('champ_round_time')}</span>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </label>
-        <label className="cp-field">
-          <span>{t('champ_round_track')}</span>
-          {(championship.venues || []).length > 0 ? (() => {
-            const venueMatch = (championship.venues || []).some((v) => v.slug === trackSlug);
-            const isCustom = trackSlug && !venueMatch;
-            const selectVal = isCustom ? '__custom__' : (trackSlug || '');
-            return (
-              <div className="cp-track-field-row">
-                <select
-                  value={selectVal}
-                  onChange={(e) => {
-                    if (e.target.value === '__custom__') setTrackSlug('');
-                    else setTrackSlug(e.target.value);
-                  }}
-                  className="cp-field-select"
-                >
-                  <option value="">{t('champ_venue_select_ph')}</option>
-                  {(championship.venues || []).map((v, i) => (
-                    <option key={i} value={v.slug}>{v.name}{v.slug ? ` (${v.slug})` : ''}</option>
-                  ))}
-                  <option value="__custom__">{t('champ_venue_custom')}</option>
-                </select>
-                {isCustom && (
-                  <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)}
-                    placeholder="track-slug" className="cp-venue-slug-input" autoFocus />
-                )}
-              </div>
-            );
-          })()
-          ) : (
-            <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} placeholder="track-slug" />
-          )}
-        </label>
+        <TrackField
+          venues={championship.venues || []}
+          trackSlug={trackSlug}
+          setTrackSlug={setTrackSlug}
+          t={t}
+        />
         {isMultiLeague && (
           <label className="cp-field">
             <span>{t('champ_round_division')}</span>
