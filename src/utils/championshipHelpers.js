@@ -54,6 +54,7 @@ export function createChampionship({ name, pointsTable = DEFAULT_POINTS_TABLES.k
     pointsTable: [...pointsTable],
     rounds: [],
     divisions: [], // sub-championships: [{ id, name, pointsTable, rounds[] }]
+    venues: [], // [{ name: string, slug: string }] — reusable track list for this championship
     adminPassword: adminPassword || '',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -255,6 +256,7 @@ export function normalizeChampionship(raw) {
     pointsTable: Array.isArray(raw.pointsTable) ? raw.pointsTable.map(Number).filter((n) => !Number.isNaN(n)) : [...DEFAULT_POINTS_TABLES.karting],
     rounds: Array.isArray(raw.rounds) ? raw.rounds.map(normalizeRound) : [],
     divisions: Array.isArray(raw.divisions) ? raw.divisions.map(normalizeDivision) : [],
+    venues: Array.isArray(raw.venues) ? raw.venues.filter((v) => v && v.name) : [],
     adminPassword: raw.adminPassword || '',
     createdAt: raw.createdAt || Date.now(),
     updatedAt: raw.updatedAt || Date.now(),

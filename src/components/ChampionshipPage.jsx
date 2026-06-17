@@ -42,6 +42,53 @@ function writeSession(id, v, pw) {
   } catch {}
 }
 
+// ── Venue list editor (in championship settings) ──────────────────────────────
+function VenuesEditor({ venues, onChange, t }) {
+  const [newName, setNewName] = useState('');
+  const [newSlug, setNewSlug] = useState('');
+
+  function add() {
+    const name = newName.trim();
+    if (!name) return;
+    const slug = newSlug.trim() || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    if (venues.some((v) => v.slug === slug || v.name.toLowerCase() === name.toLowerCase())) return;
+    onChange([...venues, { name, slug }]);
+    setNewName(''); setNewSlug('');
+  }
+
+  function remove(i) { onChange(venues.filter((_, idx) => idx !== i)); }
+
+  return (
+    <div className="cp-venues-editor">
+      <div className="cp-section-label" style={{ marginBottom: '0.4rem' }}>
+        📍 {t('champ_venues_label')}
+        <span style={{ fontWeight: 400, fontSize: '0.78em', marginInlineStart: '0.5rem', opacity: 0.7 }}>{t('champ_venues_hint')}</span>
+      </div>
+      {venues.length === 0 && <p className="cp-empty" style={{ marginBottom: '0.4rem' }}>{t('champ_venues_empty')}</p>}
+      <div className="cp-venues-list">
+        {venues.map((v, i) => (
+          <div key={i} className="cp-venue-row">
+            <span className="cp-venue-name">{v.name}</span>
+            {v.slug && <span className="cp-venue-slug">{v.slug}</span>}
+            <button type="button" className="cp-mv-btn cp-del-btn" onClick={() => remove(i)}>✕</button>
+          </div>
+        ))}
+      </div>
+      <div className="cp-venues-add-row">
+        <input type="text" dir="auto" value={newName} onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
+          placeholder={t('champ_venue_name_ph')} className="cp-venue-name-input" />
+        <input type="text" dir="ltr" value={newSlug} onChange={(e) => setNewSlug(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
+          placeholder={t('champ_venue_slug_ph')} className="cp-venue-slug-input" />
+        <button type="button" className="cp-tool-btn" onClick={add} disabled={!newName.trim()}>
+          {t('champ_venue_add')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Points table editor (editor-only) ────────────────────────────────────────
 function PointsTableEditor({ value, onChange, t }) {
   const [text, setText] = useState(value.join(', '));
@@ -310,7 +357,36 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
         </label>
         <label className="cp-field">
           <span>{t('champ_round_track')}</span>
-          <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} placeholder="track-slug" />
+          {(championship.venues || []).length > 0 ? (() => {
+            const venueMatch = (championship.venues || []).some((v) => v.slug === trackSlug);
+            const isCustom = trackSlug && !venueMatch;
+            const selectVal = isCustom ? '__custom__' : (trackSlug || '');
+            return (
+              <div className="cp-track-field-row">
+                <select
+                  value={selectVal}
+                  onChange={(e) => {
+                    if (e.target.value === '__custom__') setTrackSlug('');
+                    else setTrackSlug(e.target.value);
+                  }}
+                  className="cp-field-select"
+                >
+                  <option value="">{t('champ_venue_select_ph')}</option>
+                  {(championship.venues || []).map((v, i) => (
+                    <option key={i} value={v.slug}>{v.name}{v.slug ? ` (${v.slug})` : ''}</option>
+                  ))}
+                  <option value="__custom__">{t('champ_venue_custom')}</option>
+                </select>
+                {isCustom && (
+                  <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)}
+                    placeholder="track-slug" className="cp-venue-slug-input" autoFocus />
+                )}
+              </div>
+            );
+          })()
+          ) : (
+            <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} placeholder="track-slug" />
+          )}
         </label>
         {isMultiLeague && (
           <label className="cp-field">
@@ -581,6 +657,7 @@ export default function ChampionshipPage() {
   const [settingsName, setSettingsName] = useState('');
   const [settingsPoints, setSettingsPoints] = useState([...DEFAULT_POINTS_TABLES.karting]);
   const [settingsPassword, setSettingsPassword] = useState('');
+  const [settingsVenues, setSettingsVenues] = useState([]);
 
   // Collapsible rounds
   const [expandedRound, setExpandedRound] = useState(null);
@@ -639,6 +716,7 @@ export default function ChampionshipPage() {
     setSettingsName(c.name);
     setSettingsPoints([...c.pointsTable]);
     setSettingsPassword(readSessionPw(c.id));
+    setSettingsVenues([...(c.venues || [])]);
     setActiveTab('rounds');
     setEditingRound(null);
     setExpandedRound(null);
@@ -728,7 +806,7 @@ export default function ChampionshipPage() {
   }
 
   function saveSettings() {
-    const patch = { name: settingsName.trim(), pointsTable: settingsPoints };
+    const patch = { name: settingsName.trim(), pointsTable: settingsPoints, venues: settingsVenues };
     if (settingsPassword) patch.adminPassword = settingsPassword;
     updateSelected(patch);
   }
@@ -1207,6 +1285,10 @@ export default function ChampionshipPage() {
                 </label>
                 <div className="cp-field-label">{t('champ_points_label')}</div>
                 <PointsTableEditor value={settingsPoints} onChange={setSettingsPoints} t={t} />
+
+                <div className="cp-divider" />
+
+                <VenuesEditor venues={settingsVenues} onChange={setSettingsVenues} t={t} />
 
                 <div className="cp-divider" />
 

@@ -1503,3 +1503,18 @@ html:has(.cp-page) body {
 
 /* Division assignment dropdown in round editor */
 .cp-field-select { width: 100%; padding: 0.38rem 0.55rem; border: 1.5px solid #d1d9f0; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; }
+
+/* ── Venues editor (in championship settings) ────────────────────────────────── */
+.cp-venues-editor { margin: 0.5rem 0; }
+.cp-venues-list { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.5rem; }
+.cp-venue-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; background: #f5f7ff; border: 1px solid #e1e6f5; border-radius: 6px; }
+.cp-venue-name { font-weight: 600; font-size: 0.83rem; flex: 1; }
+.cp-venue-slug { font-size: 0.72rem; color: #7080b0; font-family: monospace; background: #e8edf8; padding: 0.1rem 0.35rem; border-radius: 4px; }
+.cp-venues-add-row { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+.cp-venue-name-input { flex: 2; min-width: 120px; padding: 0.32rem 0.5rem; border: 1.5px solid #d1d9f0; border-radius: 7px; font-size: 0.83rem; }
+.cp-venue-slug-input { flex: 1; min-width: 90px; padding: 0.32rem 0.5rem; border: 1.5px solid #d1d9f0; border-radius: 7px; font-size: 0.83rem; font-family: monospace; }
+
+/* ── Track venue picker row in round editor ──────────────────────────────────── */
+.cp-track-field-row { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+.cp-track-field-row .cp-field-select { flex: 1; }
+.cp-track-field-row .cp-venue-slug-input { flex: 1; min-width: 120px; }

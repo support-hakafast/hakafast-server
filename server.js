@@ -795,22 +795,34 @@ app.get('/api/championships', (req, res) => {
   return res.json({ success: true, championships: sanitized, todayRounds });
 });
 
-// POST create a championship (requires championship admin password in body)
+// POST upsert a single championship OR bulk-replace all (legacy modal format)
 app.post('/api/championships', (req, res) => {
-  const { championship } = req.body || {};
+  const body = req.body || {};
+
+  // Bulk replace (legacy ChampionshipModal format: { championships: [...] })
+  if (Array.isArray(body.championships)) {
+    globalChampionships = body.championships.map((c) => ({
+      ...c,
+      updatedAt: Date.now(),
+      createdAt: c.createdAt || Date.now(),
+    }));
+    saveGlobalChampionships(globalChampionships);
+    return res.json({ success: true });
+  }
+
+  // Single upsert (ChampionshipPage format: { championship, password })
+  const { championship } = body;
   if (!championship || !championship.name) {
     return res.status(400).json({ success: false, error: 'invalid_body' });
   }
   const existing = globalChampionships.find((c) => c.id === championship.id);
   if (existing) {
-    // Update: verify admin password
-    if (existing.adminPassword && req.body.password !== existing.adminPassword) {
+    if (existing.adminPassword && body.password !== existing.adminPassword) {
       return res.json({ success: false, error: 'bad_password' });
     }
     const updated = { ...existing, ...championship, id: existing.id, updatedAt: Date.now() };
     globalChampionships = globalChampionships.map((c) => c.id === existing.id ? updated : c);
   } else {
-    // Create new
     globalChampionships = [...globalChampionships, { ...championship, createdAt: Date.now(), updatedAt: Date.now() }];
   }
   saveGlobalChampionships(globalChampionships);
