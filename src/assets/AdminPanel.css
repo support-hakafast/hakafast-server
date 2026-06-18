@@ -3771,6 +3771,42 @@ html:has(.admin-no-scroll) body {
   line-height: 1.4;
 }
 
+/* ── FIA / SWS format UI ─────────────────────────────────────────────────────── */
+.pro-event-format-row {
+  display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+.pro-event-format-tabs {
+  display: flex; gap: 0.3rem; flex-wrap: wrap;
+}
+.pro-event-fmt-tab {
+  padding: 0.3rem 0.75rem; border-radius: 20px;
+  border: 1.5px solid #d1d9f0; background: #f5f7ff; color: #4a5580;
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  transition: all 0.12s;
+}
+.pro-event-fmt-tab.is-active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.pro-event-fia-info {
+  background: #f0f5ff; border: 1px solid #c7d7f8; border-radius: 8px;
+  padding: 0.55rem 0.75rem; margin-bottom: 0.25rem;
+}
+.pro-event-fia-rule { font-size: 0.8rem; font-weight: 700; color: var(--navy); margin: 0 0 0.3rem; }
+.pro-event-fia-rules-list {
+  margin: 0; padding-inline-start: 1.2rem;
+  font-size: 0.78rem; color: #3a4a80; line-height: 1.55;
+}
+.pro-event-toggle-row {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  font-size: 0.82rem; cursor: pointer; font-weight: 600; color: #3a4a80;
+}
+.pro-event-toggle-row input { cursor: pointer; accent-color: var(--navy); }
+.pro-event-toggle-row .pro-event-groups-hint { font-weight: 400; }
+.pro-event-section { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.2rem; }
+.admin-modal-dark .pro-event-fmt-tab { background: #1e293b; border-color: #334155; color: #94a3b8; }
+.admin-modal-dark .pro-event-fmt-tab.is-active { background: #6366f1; border-color: #6366f1; color: #fff; }
+.admin-modal-dark .pro-event-fia-info { background: #0f172a; border-color: #1e293b; }
+.admin-modal-dark .pro-event-fia-rules-list { color: #94a3b8; }
+
 .pro-event-parse-warning {
   margin: 0;
   color: #b45309;
@@ -6324,6 +6360,111 @@ html:has(.admin-no-scroll) body {
   background: linear-gradient(135deg, #1c1400 0%, #2a1d00 50%, #1c1400 100%);
   border-color: #fbbf24;
 }
+
+/* ── Sprint heats panel (sidebar) ────────────────────────────────────────────── */
+.sprint-heats-panel {
+  margin-top: 0.6rem;
+  background: #f5f7ff;
+  border: 1.5px solid #d1d9f0;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+}
+.sprint-heats-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.sprint-heats-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.sprint-heat-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 7px;
+  font-size: 0.76rem;
+  border: 1.5px solid transparent;
+}
+.sprint-heat-item.is-active {
+  background: rgba(0, 0, 128, 0.07);
+  border-color: var(--navy);
+}
+.sprint-heat-item.is-done {
+  opacity: 0.55;
+}
+.sprint-heat-item.is-pending {
+  color: #6070a0;
+}
+.sprint-heat-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 1.3rem;
+  text-align: center;
+  padding: 0.1rem 0.2rem;
+  border-radius: 4px;
+  background: #e8edf8;
+  color: #4a5580;
+  flex-shrink: 0;
+}
+.sprint-heat-item.is-active .sprint-heat-badge { background: var(--navy); color: #fff; }
+.sprint-heat-item.is-done .sprint-heat-badge { background: #d1fae5; color: #065f46; }
+.sprint-heat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.sprint-heat-name {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 0.77rem;
+}
+.sprint-heat-num {
+  font-size: 0.68rem;
+  color: #8090b8;
+  font-family: monospace;
+}
+.sprint-heat-drivers {
+  font-size: 0.7rem;
+  color: #4a5580;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 18rem;
+}
+.admin-theme-dark .sprint-heats-panel {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+.admin-theme-dark .sprint-heat-badge { background: #1e293b; color: #94a3b8; }
+.admin-theme-dark .sprint-heat-item.is-active { background: rgba(99,102,241,0.1); border-color: #6366f1; }
+.admin-theme-dark .sprint-heat-item.is-active .sprint-heat-badge { background: #6366f1; color: #fff; }
+.admin-theme-dark .sprint-heat-name { color: #e2e8f0; }
+.admin-theme-dark .sprint-heat-drivers { color: #94a3b8; }
+
+/* ── Kart number input in EnduranceTeamsEditor sprint mode ──────────────────── */
+.ete2-kart-number {
+  width: 3.5rem;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.82rem;
+  border: 1.5px solid #d1d9f0;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--navy);
+  background: #f8f9ff;
+  flex-shrink: 0;
+}
+.ete2-kart-number:focus { outline: none; border-color: var(--navy); background: #fff; }
 
 .admin-modal-dark .champ-list-card { background: #0f172a; border-color: #1e293b; }
 .admin-modal-dark .champ-list-card:hover { background: #0c1a25; border-color: #0d9488; }

@@ -2384,6 +2384,37 @@ const AdminPanel = () => {
             )}
           </div>
 
+          {isLicensed && heatType === 'sprint' && plannedRaceEvent?.type === 'sprint' && (() => {
+            const sprintSessions = plannedRaceEvent.sessions || buildSessionsFromGroups(plannedRaceEvent.groups);
+            const activeIdx = plannedRaceEvent.activeSessionIndex || 0;
+            if (!sprintSessions.length) return null;
+            return (
+              <div className="sprint-heats-panel">
+                <div className="sprint-heats-title">{t('admin_sprint_heats_title')} · R{plannedRaceEvent.round || 1}</div>
+                <ol className="sprint-heats-list">
+                  {sprintSessions.map((sess, i) => {
+                    const isDone = i < activeIdx;
+                    const isActive = i === activeIdx;
+                    const savedHeatNum = plannedRaceEvent.heatNumbers?.[i];
+                    return (
+                      <li key={i} className={`sprint-heat-item${isDone ? ' is-done' : isActive ? ' is-active' : ' is-pending'}`}>
+                        <span className="sprint-heat-badge">{isDone ? '✓' : isActive ? '▶' : i + 1}</span>
+                        <div className="sprint-heat-info">
+                          <span className="sprint-heat-name">{sess.name || `${t('admin_sprint_heat_label')} ${i + 1}`}</span>
+                          {savedHeatNum && <span className="sprint-heat-num">#{savedHeatNum}</span>}
+                          <span className="sprint-heat-drivers">
+                            {(sess.drivers || []).slice(0, 6).map((d) => (typeof d === 'string' ? d : d.name)).join(' · ')}
+                            {(sess.drivers || []).length > 6 && ` +${(sess.drivers || []).length - 6}`}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            );
+          })()}
+
           <div className="heat-clock-bar">
             <span className="field-label">{t('admin_heat_timer')}</span>
             <span className={`heat-clock-value${getHeatClockClassName(displayHeatClock)}`}>

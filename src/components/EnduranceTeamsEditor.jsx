@@ -301,18 +301,17 @@ export default function EnduranceTeamsEditor({
                     ))}
                   </select>
 
-                  {hasTransponder && (
-                    <input
-                      type="text"
-                      className="ete2-member-transponder"
-                      dir="ltr"
-                      value={firstMember.transponderId || ''}
-                      onChange={(e) => updateMember(teamIndex, 0, { transponderId: normalizeTransponderId(e.target.value, timingSystem) })}
-                      placeholder={transponderSys.idExample}
-                      title={transponderSys.idFormat}
-                      autoComplete="off"
-                    />
-                  )}
+                  <input
+                    type="number"
+                    className="ete2-kart-number"
+                    dir="ltr"
+                    value={firstMember.kartNumber || ''}
+                    onChange={(e) => updateMember(teamIndex, 0, { kartNumber: e.target.value })}
+                    placeholder="#"
+                    min="1"
+                    max="999"
+                    title={t('admin_sprint_kart_number')}
+                  />
 
                   {isReady && <span className="ete2-ready-badge" aria-label="ready">✓</span>}
 

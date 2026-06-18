@@ -42,6 +42,10 @@ export default function ProRaceEventModal({
   const [turnoverSec, setTurnoverSec] = useState(String(draft?.turnoverSec ?? 120));
   const [enduranceRules, setEnduranceRules] = useState(draft?.enduranceRules || '');
   const [advanceCount, setAdvanceCount] = useState(String(draft?.advanceCount ?? 2));
+  const [sprintFormat, setSprintFormat] = useState(draft?.sprintFormat || 'fia');
+  const [reverseGrid, setReverseGrid] = useState(draft?.reverseGrid !== false);
+  const [kartRotation, setKartRotation] = useState(draft?.kartRotation || 'plus1');
+  const [enduranceFormat, setEnduranceFormat] = useState(draft?.enduranceFormat || 'sws');
   const [defaultNationality, setDefaultNationality] = useState(draft?.defaultNationality || '');
   const [timingSystem, setTimingSystem] = useState(draft?.timingSystem || 'mylaps_tranx');
   const [trackWeight, setTrackWeight] = useState(draft?.trackWeight ?? false);
@@ -109,9 +113,12 @@ export default function ProRaceEventModal({
     const nextTeams = groupsToTeamRecords(groups, { preserveRaw: true }).map((team) => ({
       ...team,
       nationality: defaultNationality,
-      members: team.members.map((m) => ({ ...m, nationality: defaultNationality })),
+      members: (team.members || []).map((m) => ({ ...m, nationality: defaultNationality })),
     }));
-    handleGroupsChange(nextTeams);
+    const nextGroups = teamRecordsToGroups(nextTeams, { preserveEmpty: true, preserveRaw: true });
+    setGroups(nextGroups);
+    setGroupsText(serializeGroupsText(nextGroups));
+    setImportMessage('');
   };
 
   const handleApply = () => {
@@ -131,6 +138,10 @@ export default function ProRaceEventModal({
       turnoverSec: parseInt(turnoverSec, 10) || 120,
       enduranceRules,
       advanceCount: parseInt(advanceCount, 10) || 2,
+      sprintFormat,
+      reverseGrid,
+      kartRotation,
+      enduranceFormat,
       defaultNationality,
       timingSystem,
       trackWeight,
@@ -358,6 +369,33 @@ export default function ProRaceEventModal({
                 </div>
               </div>
 
+              {/* ── Endurance format (SWS / custom) ── */}
+              <div className="pro-event-section">
+                <div className="endurance-field-label" style={{ marginBottom: '0.4rem' }}>{t('admin_endurance_format_label')}</div>
+                <div className="pro-event-format-tabs">
+                  {[
+                    { key: 'sws', label: 'SWS / CIK-FIA' },
+                    { key: 'custom', label: t('admin_sprint_format_custom') },
+                  ].map(({ key, label }) => (
+                    <button key={key} type="button"
+                      className={`pro-event-fmt-tab${enduranceFormat === key ? ' is-active' : ''}`}
+                      onClick={() => setEnduranceFormat(key)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {enduranceFormat === 'sws' && (
+                  <div className="pro-event-fia-info" style={{ marginTop: '0.5rem' }}>
+                    <ul className="pro-event-fia-rules-list">
+                      <li>{t('admin_endurance_sws_rule1')}</li>
+                      <li>{t('admin_endurance_sws_rule2')}</li>
+                      <li>{t('admin_endurance_sws_rule3')}</li>
+                      <li>{t('admin_endurance_sws_rule4')}</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
               <div className="pro-event-section pro-event-rules-section">
                 <label className="planner-field planner-field-compact">
                   <span>{t('admin_endurance_rules')}</span>
@@ -367,6 +405,35 @@ export default function ProRaceEventModal({
             </>
           ) : (
             <div className="pro-event-settings-grid pro-event-settings-compact">
+              {/* ── Sprint format selector ── */}
+              <div className="pro-event-format-row">
+                <span className="endurance-field-label">{t('admin_sprint_format_label')}</span>
+                <div className="pro-event-format-tabs">
+                  {[
+                    { key: 'fia', label: 'FIA Karting' },
+                    { key: 'custom', label: t('admin_sprint_format_custom') },
+                  ].map(({ key, label }) => (
+                    <button key={key} type="button"
+                      className={`pro-event-fmt-tab${sprintFormat === key ? ' is-active' : ''}`}
+                      onClick={() => setSprintFormat(key)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {sprintFormat === 'fia' && (
+                <div className="pro-event-fia-info">
+                  <p className="pro-event-fia-rule">🏁 <strong>{t('admin_sprint_fia_heats')}</strong></p>
+                  <ul className="pro-event-fia-rules-list">
+                    <li>{t('admin_sprint_fia_rule_grid')}</li>
+                    <li>{t('admin_sprint_fia_rule_reverse')}</li>
+                    <li>{t('admin_sprint_fia_rule_kart')}</li>
+                    <li>{t('admin_sprint_fia_rule_final')}</li>
+                  </ul>
+                </div>
+              )}
+
               <div className="pro-event-settings-row">
                 <label className="endurance-field">
                   <span className="endurance-field-label">{t('admin_laps_placeholder')}</span>
@@ -385,6 +452,37 @@ export default function ProRaceEventModal({
                   <input type="number" min="1" value={advanceCount} onChange={(e) => setAdvanceCount(e.target.value)} />
                 </label>
               </div>
+
+              {/* ── Kart rotation ── */}
+              <div className="pro-event-section">
+                <div className="endurance-field-label" style={{ marginBottom: '0.4rem' }}>🔄 {t('admin_sprint_kart_rotation_label')}</div>
+                <div className="pro-event-format-tabs">
+                  {[
+                    { key: 'plus1', label: t('admin_sprint_kart_plus1') },
+                    { key: 'draw', label: t('admin_sprint_kart_draw') },
+                    { key: 'fixed', label: t('admin_sprint_kart_fixed') },
+                  ].map(({ key, label }) => (
+                    <button key={key} type="button"
+                      className={`pro-event-fmt-tab${kartRotation === key ? ' is-active' : ''}`}
+                      onClick={() => setKartRotation(key)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="pro-event-groups-hint">
+                  {kartRotation === 'plus1' && t('admin_sprint_kart_plus1_hint')}
+                  {kartRotation === 'draw' && t('admin_sprint_kart_draw_hint')}
+                  {kartRotation === 'fixed' && t('admin_sprint_kart_fixed_hint')}
+                </p>
+              </div>
+
+              {/* ── Reverse grid ── */}
+              <label className="pro-event-toggle-row">
+                <input type="checkbox" checked={reverseGrid} onChange={(e) => setReverseGrid(e.target.checked)} />
+                <span>↩ {t('admin_sprint_reverse_grid')}</span>
+                <span className="pro-event-groups-hint">{t('admin_sprint_reverse_grid_hint')}</span>
+              </label>
+
               {normalizedGroups.length > 1 && (
                 <p className="pro-event-groups-hint">{t('admin_pro_event_advance_count_hint')}</p>
               )}
