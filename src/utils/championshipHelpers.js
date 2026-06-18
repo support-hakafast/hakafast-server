@@ -82,8 +82,31 @@ export function createDivision({ name, pointsTable = DEFAULT_POINTS_TABLES.karti
  *   notes: string,
  * }
  */
-export function createSession({ type = 'practice', label = '', sessionDate = null, startTime = '', durationMinutes = 15, kartTransporter = false, notes = '', gridFromStandings = null } = {}) {
-  return { id: generateId(), type, label, sessionDate, startTime, durationMinutes, kartTransporter, notes, gridFromStandings };
+export function createSession({
+  type = 'practice',
+  label = '',
+  sessionDate = null,
+  startTime = '',
+  durationMinutes = 15,
+  kartTransporter = false,
+  notes = '',
+  gridFromStandings = null,
+  // Practice window fields
+  openTime = '',
+  closeTime = '',
+  stintDurationMinutes = null,
+  restBetweenStintsMinutes = 5,
+  breaks = [], // [{ startTime, endTime, label }]
+  // Qualifying fields
+  qualifyingMode = 'time', // 'time' | 'laps'
+  qualifyingLaps = null,
+} = {}) {
+  return {
+    id: generateId(), type, label, sessionDate, startTime, durationMinutes,
+    kartTransporter, notes, gridFromStandings,
+    openTime, closeTime, stintDurationMinutes, restBetweenStintsMinutes, breaks,
+    qualifyingMode, qualifyingLaps,
+  };
 }
 
 export function createRound({
@@ -93,7 +116,7 @@ export function createRound({
   time = null,
   results = [],
   heatHistoryRef = null,
-  isOfficial = false,
+  isOfficial = true,
   trackSlug = null,
   eventPlan = null,
   raceType = 'sprint',
@@ -350,6 +373,13 @@ function normalizeSession(raw) {
     kartTransporter: Boolean(raw.kartTransporter),
     notes: raw.notes || '',
     gridFromStandings: raw.gridFromStandings || null,
+    openTime: raw.openTime || '',
+    closeTime: raw.closeTime || '',
+    stintDurationMinutes: raw.stintDurationMinutes ? Number(raw.stintDurationMinutes) : null,
+    restBetweenStintsMinutes: raw.restBetweenStintsMinutes != null ? Number(raw.restBetweenStintsMinutes) : 5,
+    breaks: Array.isArray(raw.breaks) ? raw.breaks : [],
+    qualifyingMode: raw.qualifyingMode === 'laps' ? 'laps' : 'time',
+    qualifyingLaps: raw.qualifyingLaps ? Number(raw.qualifyingLaps) : null,
   };
 }
 

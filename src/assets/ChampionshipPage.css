@@ -819,15 +819,107 @@ html:has(.cp-page) body {
 .cp-official-toggle input { cursor: pointer; width: 1rem; height: 1rem; accent-color: var(--navy); }
 .cp-official-hint { font-size: 0.68rem; color: #8090b8; }
 
-.cp-unofficial-note {
-  font-size: 0.75rem;
-  color: #92400e;
-  background: #fef3c7;
-  border: 1px solid #fde68a;
-  padding: 0.4rem 0.65rem;
-  border-radius: 8px;
-  margin: 0;
+/* Official / unofficial toggle row */
+.cp-official-toggle-row {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.5rem 0.7rem; border-radius: 9px; border: 1.5px solid;
+  transition: background 0.15s, border-color 0.15s;
 }
+.cp-official-toggle-row.is-official { background: #f0fff4; border-color: #bbf7d0; }
+.cp-official-toggle-row.is-unofficial { background: #fffbeb; border-color: #fde68a; }
+.cp-official-toggle-row .cp-official-toggle { padding: 0; }
+.cp-unofficial-inline { font-size: 0.74rem; color: #92400e; flex: 1; }
+
+/* Unofficial confirm modal */
+.cp-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.cp-confirm-modal {
+  background: #fff; border-radius: 16px; padding: 2rem 1.75rem;
+  max-width: 380px; width: 90%; text-align: center;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+}
+.cp-confirm-modal-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.cp-confirm-modal-title { font-size: 1.05rem; font-weight: 800; color: var(--navy); margin: 0 0 0.6rem; }
+.cp-confirm-modal-body { font-size: 0.85rem; color: #4a5580; margin: 0 0 1.2rem; line-height: 1.55; }
+.cp-confirm-modal-actions { display: flex; gap: 0.6rem; justify-content: center; }
+.cp-btn-danger {
+  padding: 0.5rem 1.1rem; border-radius: 8px; border: none; cursor: pointer;
+  background: #dc2626; color: #fff; font-weight: 700; font-size: 0.85rem;
+  transition: background 0.14s;
+}
+.cp-btn-danger:hover { background: #b91c1c; }
+
+/* Multi-day checkbox */
+.cp-multiday-check {
+  display: flex; align-items: center; gap: 0.45rem;
+  font-size: 0.83rem; font-weight: 600; color: #3a4a80; cursor: pointer; white-space: nowrap;
+}
+.cp-multiday-check input { cursor: pointer; accent-color: var(--navy); }
+.cp-field-multiday-toggle { align-items: flex-end !important; }
+
+/* ── Wizard ─────────────────────────────────────────────────────────────────── */
+.cp-wizard {
+  border: 1.5px solid var(--navy); border-radius: 14px; padding: 1.25rem;
+  background: #fff; max-width: 540px;
+  display: flex; flex-direction: column; gap: 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,128,0.1);
+}
+.cp-wizard-header { display: flex; align-items: center; justify-content: space-between; }
+.cp-wizard-steps { display: flex; gap: 0.35rem; }
+.cp-wizard-step {
+  width: 1.75rem; height: 1.75rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 700; border: 2px solid #d1d9f0; background: #f5f7ff; color: #8090b8;
+}
+.cp-wizard-step.is-active { border-color: var(--navy); background: var(--navy); color: #fff; }
+.cp-wizard-step.is-done { border-color: #22c55e; background: #f0fdf4; color: #16a34a; }
+.cp-wizard-skip { font-size: 0.78rem; color: #8090b8; background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0; }
+.cp-wizard-skip:hover { color: var(--navy); }
+.cp-wizard-body { display: flex; flex-direction: column; gap: 0.75rem; }
+.cp-wizard-q { font-size: 0.95rem; font-weight: 800; color: var(--navy); margin: 0; }
+.cp-wizard-summary { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; }
+.cp-wizard-summary li { padding: 0.3rem 0; border-bottom: 1px solid #f1f5f9; }
+.cp-wizard-footer { display: flex; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 0.75rem; }
+.cp-wizard-session-picks { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.cp-wizard-session-pick {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 0.85rem; border-radius: 10px; border: 2px solid #d1d9f0;
+  background: #f5f7ff; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #3a4a80;
+  transition: all 0.12s;
+}
+.cp-wizard-session-pick input { display: none; }
+.cp-wizard-session-pick.is-on { border-color: var(--navy); background: var(--navy); color: #fff; }
+
+/* ── Practice session detail ─────────────────────────────────────────────────── */
+.cp-session-practice-detail {
+  margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+  background: #f8f9ff; border-radius: 8px; border: 1px dashed #c7d4f0;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.cp-session-window-row { display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; align-items: flex-end; }
+.cp-session-mini-field { display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #4a5580; }
+.cp-session-mini-field span:first-child { white-space: nowrap; }
+.cp-session-breaks { display: flex; flex-direction: column; gap: 0.3rem; }
+.cp-session-break-row {
+  display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+  padding: 0.3rem 0.45rem; background: #fff; border: 1px solid #e1e6f5; border-radius: 6px;
+}
+.cp-break-label-icon { font-size: 0.85rem; flex-shrink: 0; }
+
+/* ── Qualifying detail ────────────────────────────────────────────────────────── */
+.cp-session-qual-detail {
+  margin-top: 0.3rem; padding: 0.4rem 0.6rem;
+  background: #fffdf0; border-radius: 8px; border: 1px dashed #fde68a;
+}
+.cp-qual-mode-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.cp-qual-mode-btn {
+  padding: 0.28rem 0.65rem; border-radius: 20px; border: 1.5px solid #d1d9f0;
+  background: #f5f7ff; color: #3a4a80; font-size: 0.77rem; font-weight: 600; cursor: pointer;
+  transition: all 0.12s;
+}
+.cp-qual-mode-btn.is-active { background: #854d0e; border-color: #854d0e; color: #fff; }
 
 .cp-heat-import { display: flex; flex-direction: column; gap: 0.4rem; }
 .cp-heat-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }

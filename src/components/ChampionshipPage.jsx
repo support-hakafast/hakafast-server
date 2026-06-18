@@ -202,7 +202,7 @@ const SESSION_TYPE_KEYS = [
 // Resolved with actual labels at render time (needs t)
 const SESSION_TYPES = SESSION_TYPE_KEYS; // kept for backward compat — use tKey
 
-function SessionsEditor({ sessions, onChange, roundDate, championship, t }) {
+function SessionsEditor({ sessions, onChange, roundDate, isMultiDay, championship, t }) {
   function addSession(type = 'practice') {
     const label = t(SESSION_TYPE_KEYS.find((x) => x.key === type)?.tKey || 'champ_session_type_practice');
     onChange([...sessions, createSession({ type, label, sessionDate: roundDate || null, durationMinutes: type === 'race' ? 60 : 15 })]);
@@ -239,6 +239,9 @@ function SessionsEditor({ sessions, onChange, roundDate, championship, t }) {
       )}
       {sessions.map((s, i) => {
         const typeInfo = SESSION_TYPE_KEYS.find((x) => x.key === s.type) || SESSION_TYPE_KEYS[0];
+        const isPractice = s.type === 'practice';
+        const isQual = s.type === 'qualifying';
+        const showDate = isMultiDay;
         return (
           <div key={s.id} className="cp-session-row">
             <div className="cp-session-row-top">
@@ -247,20 +250,105 @@ function SessionsEditor({ sessions, onChange, roundDate, championship, t }) {
               </select>
               <input type="text" dir="auto" value={s.label} onChange={(e) => updateSession(i, { label: e.target.value })}
                 placeholder={t(typeInfo.tKey)} className="cp-session-label-input" />
-              <input type="date" value={s.sessionDate || ''} onChange={(e) => updateSession(i, { sessionDate: e.target.value || null })}
-                className="cp-session-date-input" title={t('champ_session_day')} />
-              <input type="time" value={s.startTime} onChange={(e) => updateSession(i, { startTime: e.target.value })}
-                className="cp-session-time-input" />
-              <input type="number" min={1} max={1440} value={s.durationMinutes}
-                onChange={(e) => updateSession(i, { durationMinutes: parseInt(e.target.value, 10) || 15 })}
-                className="cp-session-dur-input" />
-              <span className="cp-session-dur-label">{t('champ_session_duration')}</span>
+              {showDate && (
+                <input type="date" value={s.sessionDate || ''} onChange={(e) => updateSession(i, { sessionDate: e.target.value || null })}
+                  className="cp-session-date-input" title={t('champ_session_day')} />
+              )}
+              {!isPractice && (
+                <>
+                  <input type="time" value={s.startTime} onChange={(e) => updateSession(i, { startTime: e.target.value })}
+                    className="cp-session-time-input" />
+                  <input type="number" min={1} max={1440} value={s.durationMinutes}
+                    onChange={(e) => updateSession(i, { durationMinutes: parseInt(e.target.value, 10) || 15 })}
+                    className="cp-session-dur-input" />
+                  <span className="cp-session-dur-label">{t('champ_session_duration')}</span>
+                </>
+              )}
               <div className="cp-session-btns">
                 <button type="button" className="cp-mv-btn" onClick={() => moveSession(i, -1)} disabled={i === 0}>↑</button>
                 <button type="button" className="cp-mv-btn" onClick={() => moveSession(i, 1)} disabled={i === sessions.length - 1}>↓</button>
                 <button type="button" className="cp-mv-btn cp-del-btn" onClick={() => removeSession(i)}>✕</button>
               </div>
             </div>
+
+            {isPractice && (
+              <div className="cp-session-practice-detail">
+                <div className="cp-session-window-row">
+                  <label className="cp-session-mini-field">
+                    <span>{t('champ_practice_open')}</span>
+                    <input type="time" value={s.openTime || ''} onChange={(e) => updateSession(i, { openTime: e.target.value })} className="cp-session-time-input" />
+                  </label>
+                  <label className="cp-session-mini-field">
+                    <span>{t('champ_practice_close')}</span>
+                    <input type="time" value={s.closeTime || ''} onChange={(e) => updateSession(i, { closeTime: e.target.value })} className="cp-session-time-input" />
+                  </label>
+                  <label className="cp-session-mini-field">
+                    <span>{t('champ_practice_stint')}</span>
+                    <input type="number" min={1} max={120} value={s.stintDurationMinutes || ''} placeholder="—"
+                      onChange={(e) => updateSession(i, { stintDurationMinutes: parseInt(e.target.value, 10) || null })}
+                      className="cp-session-dur-input" />
+                    <span className="cp-session-dur-label">{t('champ_session_duration')}</span>
+                  </label>
+                  <label className="cp-session-mini-field">
+                    <span>{t('champ_practice_rest')}</span>
+                    <input type="number" min={0} max={30} value={s.restBetweenStintsMinutes ?? 5}
+                      onChange={(e) => updateSession(i, { restBetweenStintsMinutes: parseInt(e.target.value, 10) || 0 })}
+                      className="cp-session-dur-input" />
+                    <span className="cp-session-dur-label">{t('champ_session_duration')}</span>
+                  </label>
+                </div>
+                <div className="cp-session-breaks">
+                  {(s.breaks || []).map((brk, bi) => (
+                    <div key={bi} className="cp-session-break-row">
+                      <span className="cp-break-label-icon">☕</span>
+                      <input type="text" dir="auto" value={brk.label || ''} placeholder={t('champ_break_label_ph')}
+                        onChange={(e) => { const nb = [...(s.breaks || [])]; nb[bi] = { ...nb[bi], label: e.target.value }; updateSession(i, { breaks: nb }); }}
+                        className="cp-session-label-input" />
+                      <input type="time" value={brk.startTime || ''}
+                        onChange={(e) => { const nb = [...(s.breaks || [])]; nb[bi] = { ...nb[bi], startTime: e.target.value }; updateSession(i, { breaks: nb }); }}
+                        className="cp-session-time-input" />
+                      <span className="cp-session-dur-label">→</span>
+                      <input type="time" value={brk.endTime || ''}
+                        onChange={(e) => { const nb = [...(s.breaks || [])]; nb[bi] = { ...nb[bi], endTime: e.target.value }; updateSession(i, { breaks: nb }); }}
+                        className="cp-session-time-input" />
+                      <button type="button" className="cp-mv-btn cp-del-btn"
+                        onClick={() => updateSession(i, { breaks: (s.breaks || []).filter((_, ii) => ii !== bi) })}>✕</button>
+                    </div>
+                  ))}
+                  <button type="button" className="cp-session-add-chip"
+                    onClick={() => updateSession(i, { breaks: [...(s.breaks || []), { label: '', startTime: '', endTime: '' }] })}>
+                    ☕ {t('champ_break_add')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isQual && (
+              <div className="cp-session-qual-detail">
+                <div className="cp-qual-mode-row">
+                  <span className="cp-session-dur-label">{t('champ_qual_mode_label')}</span>
+                  {[
+                    { key: 'time', label: t('champ_qual_mode_time') },
+                    { key: 'laps', label: t('champ_qual_mode_laps') },
+                  ].map(({ key, label: lbl }) => (
+                    <button key={key} type="button"
+                      className={`cp-qual-mode-btn${(s.qualifyingMode || 'time') === key ? ' is-active' : ''}`}
+                      onClick={() => updateSession(i, { qualifyingMode: key })}>
+                      {lbl}
+                    </button>
+                  ))}
+                  {(s.qualifyingMode === 'laps') && (
+                    <label className="cp-session-opt">
+                      <input type="number" min={1} max={30} value={s.qualifyingLaps || ''}
+                        onChange={(e) => updateSession(i, { qualifyingLaps: parseInt(e.target.value, 10) || null })}
+                        className="cp-session-dur-input" placeholder="—" />
+                      <span className="cp-session-dur-label">{t('champ_qual_laps_unit')}</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="cp-session-row-opts">
               <label className="cp-session-opt">
                 <input type="checkbox" checked={Boolean(s.kartTransporter)} onChange={(e) => updateSession(i, { kartTransporter: e.target.checked })} />
@@ -332,14 +420,169 @@ function TrackField({ venues, trackSlug, setTrackSlug, t }) {
   );
 }
 
+// ── Round setup wizard ────────────────────────────────────────────────────────
+function RoundWizard({ championship, onFinish, onSkip, t }) {
+  const steps = ['basic', 'type', 'sessions', 'confirm'];
+  const [step, setStep] = useState(0);
+  const [label, setLabel] = useState('');
+  const [date, setDate] = useState('');
+  const [isMultiDay, setIsMultiDay] = useState(false);
+  const [endDate, setEndDate] = useState('');
+  const [trackSlug, setTrackSlug] = useState('');
+  const [raceType, setRaceType] = useState('sprint');
+  const [maxKarts, setMaxKarts] = useState('');
+  const [aiFormatNotes, setAiFormatNotes] = useState('');
+  const [sessionTypes, setSessionTypes] = useState({ practice: false, qualifying: false, race: true });
+
+  const venues = championship.venues || [];
+
+  function toggleType(k) { setSessionTypes((p) => ({ ...p, [k]: !p[k] })); }
+
+  function buildSessions() {
+    const out = [];
+    if (sessionTypes.practice) out.push(createSession({ type: 'practice', label: t('champ_session_type_practice'), sessionDate: date || null, durationMinutes: 120 }));
+    if (sessionTypes.qualifying) out.push(createSession({ type: 'qualifying', label: t('champ_session_type_qualifying'), sessionDate: isMultiDay ? endDate || date : date, durationMinutes: 20, qualifyingMode: 'time' }));
+    if (sessionTypes.race) out.push(createSession({ type: 'race', label: t('champ_session_type_race'), sessionDate: isMultiDay ? endDate || date : date, durationMinutes: 60 }));
+    return out;
+  }
+
+  const stepKey = steps[step];
+
+  return (
+    <div className="cp-wizard">
+      <div className="cp-wizard-header">
+        <div className="cp-wizard-steps">
+          {steps.map((s, i) => (
+            <div key={s} className={`cp-wizard-step${i === step ? ' is-active' : i < step ? ' is-done' : ''}`}>{i + 1}</div>
+          ))}
+        </div>
+        <button type="button" className="cp-wizard-skip" onClick={onSkip}>{t('champ_wizard_skip')}</button>
+      </div>
+
+      {stepKey === 'basic' && (
+        <div className="cp-wizard-body">
+          <h3 className="cp-wizard-q">{t('champ_wizard_q_basic')}</h3>
+          <label className="cp-field">
+            <span>{t('champ_round_label')}</span>
+            <input type="text" dir="auto" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t('champ_round_label_ph')} autoFocus />
+          </label>
+          <label className="cp-field">
+            <span>{t('champ_round_date_start')}</span>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <label className="cp-multiday-check">
+            <input type="checkbox" checked={isMultiDay} onChange={(e) => { setIsMultiDay(e.target.checked); if (!e.target.checked) setEndDate(''); }} />
+            <span>📅 {t('champ_round_multiday')}</span>
+          </label>
+          {isMultiDay && (
+            <label className="cp-field">
+              <span>{t('champ_round_date_end')}</span>
+              <input type="date" value={endDate} min={date || undefined} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+          )}
+          {venues.length > 0 ? (
+            <label className="cp-field">
+              <span>{t('champ_round_track')}</span>
+              <select value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} className="cp-field-select">
+                <option value="">{t('champ_venue_select_ph')}</option>
+                {venues.map((v, i) => <option key={i} value={v.slug}>{v.name}</option>)}
+              </select>
+            </label>
+          ) : (
+            <label className="cp-field">
+              <span>{t('champ_round_track')}</span>
+              <input type="text" dir="ltr" value={trackSlug} onChange={(e) => setTrackSlug(e.target.value)} placeholder="track-slug" />
+            </label>
+          )}
+        </div>
+      )}
+
+      {stepKey === 'type' && (
+        <div className="cp-wizard-body">
+          <h3 className="cp-wizard-q">{t('champ_wizard_q_type')}</h3>
+          <div className="cp-racetype-tabs" style={{ marginBottom: '1rem' }}>
+            {[
+              { key: 'sprint', label: t('champ_racetype_sprint'), cls: 'rt-sprint' },
+              { key: 'endurance-team', label: t('champ_racetype_endurance_team'), cls: 'rt-endurance-team' },
+              { key: 'endurance-solo', label: t('champ_racetype_endurance_solo'), cls: 'rt-endurance-solo' },
+              { key: 'best-lap', label: t('champ_racetype_best_lap'), cls: 'rt-best-lap' },
+            ].map(({ key, label: lbl, cls }) => (
+              <button key={key} type="button" className={`cp-racetype-tab ${cls}${raceType === key ? ' is-active' : ''}`} onClick={() => setRaceType(key)}>{lbl}</button>
+            ))}
+          </div>
+          <label className="cp-field">
+            <span>{t('champ_round_max_karts')}</span>
+            <input type="number" min={1} max={50} value={maxKarts} onChange={(e) => setMaxKarts(e.target.value)} placeholder="—" className="cp-karts-input" />
+          </label>
+        </div>
+      )}
+
+      {stepKey === 'sessions' && (
+        <div className="cp-wizard-body">
+          <h3 className="cp-wizard-q">{t('champ_wizard_q_sessions')}</h3>
+          <div className="cp-wizard-session-picks">
+            {[
+              { key: 'practice', emoji: '🔄', tKey: 'champ_session_type_practice' },
+              { key: 'qualifying', emoji: '⏱', tKey: 'champ_session_type_qualifying' },
+              { key: 'race', emoji: '🏁', tKey: 'champ_session_type_race' },
+            ].map(({ key, emoji, tKey }) => (
+              <label key={key} className={`cp-wizard-session-pick${sessionTypes[key] ? ' is-on' : ''}`}>
+                <input type="checkbox" checked={Boolean(sessionTypes[key])} onChange={() => toggleType(key)} />
+                <span>{emoji} {t(tKey)}</span>
+              </label>
+            ))}
+          </div>
+          <div className="cp-ai-format-block" style={{ marginTop: '0.75rem' }}>
+            <label className="cp-ai-format-label">
+              <span className="cp-ai-format-icon">🤖</span>
+              <span>{t('champ_ai_format_label')}</span>
+            </label>
+            <textarea dir="auto" value={aiFormatNotes} onChange={(e) => setAiFormatNotes(e.target.value)}
+              placeholder={t('champ_ai_format_ph')} className="cp-ai-format-textarea" rows={2} />
+          </div>
+        </div>
+      )}
+
+      {stepKey === 'confirm' && (
+        <div className="cp-wizard-body">
+          <h3 className="cp-wizard-q">{t('champ_wizard_q_confirm')}</h3>
+          <ul className="cp-wizard-summary">
+            <li><strong>{t('champ_round_label')}:</strong> {label || '—'}</li>
+            <li><strong>{t('champ_round_date_start')}:</strong> {date || '—'}{isMultiDay && endDate ? ` → ${endDate}` : ''}</li>
+            <li><strong>{t('champ_round_track')}:</strong> {trackSlug || '—'}</li>
+            <li><strong>{t('champ_racetype_label')}:</strong> {raceType}</li>
+            {maxKarts && <li><strong>{t('champ_round_max_karts')}:</strong> {maxKarts}</li>}
+            <li><strong>{t('champ_session_label')}:</strong> {Object.entries(sessionTypes).filter(([, v]) => v).map(([k]) => k).join(', ') || '—'}</li>
+          </ul>
+        </div>
+      )}
+
+      <div className="cp-wizard-footer">
+        {step > 0 && <button type="button" className="cp-btn-ghost" onClick={() => setStep((s) => s - 1)}>{t('champ_wizard_back')}</button>}
+        {step < steps.length - 1 && (
+          <button type="button" className="cp-btn-primary" onClick={() => setStep((s) => s + 1)}>{t('champ_wizard_next')}</button>
+        )}
+        {step === steps.length - 1 && (
+          <button type="button" className="cp-btn-primary" onClick={() => onFinish({ label, date, endDate: isMultiDay ? endDate : '', trackSlug, raceType, maxKarts, aiFormatNotes, sessions: buildSessions() })}>
+            {t('champ_wizard_create')}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Round editor panel (editor-only) ─────────────────────────────────────────
 function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) {
   const [label, setLabel] = useState(round.label || '');
   const [date, setDate] = useState(round.date || '');
   const [endDate, setEndDate] = useState(round.endDate || '');
+  const [isMultiDay, setIsMultiDay] = useState(Boolean(round.endDate && round.endDate !== round.date));
   const [time, setTime] = useState(round.time || '');
   const [trackSlug, setTrackSlug] = useState(round.trackSlug || '');
-  const [isOfficial, setIsOfficial] = useState(round.isOfficial || false);
+  const [isOfficial, setIsOfficial] = useState(round.isOfficial !== false);
+  const [showUnofficialConfirm, setShowUnofficialConfirm] = useState(false);
+  const [showWizard, setShowWizard] = useState(!round.id);
   const [raceType, setRaceType] = useState(round.raceType || 'sprint');
   const [divisionId, setDivisionId] = useState(round.divisionId || null);
   const [sessions, setSessions] = useState(round.sessions || []);
@@ -399,6 +642,27 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
     setResults(res.map((r) => ({ ...r, nationality: '', kartNumber: '', ...(isEndurance ? { drivers: r.drivers || [] } : {}) })));
   }
 
+  if (showWizard) {
+    return (
+      <RoundWizard
+        championship={championship}
+        onFinish={(wizardData) => {
+          if (wizardData.label) setLabel(wizardData.label);
+          if (wizardData.date) setDate(wizardData.date);
+          if (wizardData.endDate) { setEndDate(wizardData.endDate); setIsMultiDay(true); }
+          if (wizardData.trackSlug) setTrackSlug(wizardData.trackSlug);
+          if (wizardData.raceType) setRaceType(wizardData.raceType);
+          if (wizardData.maxKarts) setMaxKarts(wizardData.maxKarts);
+          if (wizardData.sessions?.length) setSessions(wizardData.sessions);
+          if (wizardData.aiFormatNotes) setAiFormatNotes(wizardData.aiFormatNotes);
+          setShowWizard(false);
+        }}
+        onSkip={() => setShowWizard(false)}
+        t={t}
+      />
+    );
+  }
+
   return (
     <div className="cp-round-editor">
       <div className="cp-round-editor-top">
@@ -417,10 +681,19 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
           <span>{t('champ_round_date_start')}</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
-        <label className="cp-field">
-          <span>{t('champ_round_date_end')}</span>
-          <input type="date" value={endDate} min={date || undefined} onChange={(e) => setEndDate(e.target.value)} />
+        <label className="cp-field cp-field-multiday-toggle">
+          <span style={{ opacity: 0 }}>x</span>
+          <label className="cp-multiday-check">
+            <input type="checkbox" checked={isMultiDay} onChange={(e) => { setIsMultiDay(e.target.checked); if (!e.target.checked) setEndDate(''); }} />
+            <span>📅 {t('champ_round_multiday')}</span>
+          </label>
         </label>
+        {isMultiDay && (
+          <label className="cp-field">
+            <span>{t('champ_round_date_end')}</span>
+            <input type="date" value={endDate} min={date || undefined} onChange={(e) => setEndDate(e.target.value)} />
+          </label>
+        )}
         <label className="cp-field">
           <span>{t('champ_round_time')}</span>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
@@ -482,17 +755,40 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
         ))}
       </div>
 
-      <label className="cp-official-toggle">
-        <input type="checkbox" checked={isOfficial} onChange={(e) => setIsOfficial(e.target.checked)} />
-        <span>🏅 {t('champ_mark_official')}</span>
-        <span className="cp-official-hint">{t('champ_official_hint')}</span>
-      </label>
+      <div className={`cp-official-toggle-row${isOfficial ? ' is-official' : ' is-unofficial'}`}>
+        <label className="cp-official-toggle">
+          <input
+            type="checkbox"
+            checked={isOfficial}
+            onChange={(e) => {
+              if (!e.target.checked) setShowUnofficialConfirm(true);
+              else setIsOfficial(true);
+            }}
+          />
+          <span>{isOfficial ? '🏅' : '⚠'} {isOfficial ? t('champ_round_is_official') : t('champ_round_is_unofficial')}</span>
+        </label>
+        {!isOfficial && <span className="cp-unofficial-inline">{t('champ_unofficial_note')}</span>}
+      </div>
 
-      {!isOfficial && (
-        <p className="cp-unofficial-note">⚠ {t('champ_unofficial_note')}</p>
+      {showUnofficialConfirm && (
+        <div className="cp-modal-overlay">
+          <div className="cp-confirm-modal">
+            <div className="cp-confirm-modal-icon">⚠</div>
+            <h3 className="cp-confirm-modal-title">{t('champ_unofficial_confirm_title')}</h3>
+            <p className="cp-confirm-modal-body">{t('champ_unofficial_confirm_body')}</p>
+            <div className="cp-confirm-modal-actions">
+              <button type="button" className="cp-btn-ghost" onClick={() => setShowUnofficialConfirm(false)}>
+                {t('champ_unofficial_confirm_cancel')}
+              </button>
+              <button type="button" className="cp-btn-danger" onClick={() => { setIsOfficial(false); setShowUnofficialConfirm(false); }}>
+                {t('champ_unofficial_confirm_ok')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      <SessionsEditor sessions={sessions} onChange={setSessions} roundDate={date} championship={championship} t={t} />
+      <SessionsEditor sessions={sessions} onChange={setSessions} roundDate={date} isMultiDay={isMultiDay} championship={championship} t={t} />
 
       {/* Results section — locked until day after event */}
       <div className="cp-results-section">
@@ -580,7 +876,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
       <div className="cp-round-editor-footer">
         <button type="button" className="cp-btn-ghost" onClick={onCancel}>{t('champ_cancel')}</button>
         <button type="button" className="cp-btn-primary"
-          onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, endDate: (endDate && endDate !== date) ? endDate : null, time: time || null, trackSlug: trackSlug || null, isOfficial, results, raceType, sessions, divisionId: divisionId || null, maxKarts: maxKarts ? Number(maxKarts) : null, aiFormatNotes: aiFormatNotes || '' })}
+          onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, endDate: (isMultiDay && endDate && endDate !== date) ? endDate : null, time: time || null, trackSlug: trackSlug || null, isOfficial, results, raceType, sessions, divisionId: divisionId || null, maxKarts: maxKarts ? Number(maxKarts) : null, aiFormatNotes: aiFormatNotes || '' })}
         >{t('champ_save_round')}</button>
       </div>
     </div>
