@@ -2210,6 +2210,61 @@ html:has(.admin-no-scroll) body {
   margin: 0;
 }
 
+.queue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.queue-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.queue-chip-saved {
+  background: #faf5ff;
+  border-color: #a855f7;
+}
+
+.queue-chip-pos {
+  flex-shrink: 0;
+  color: #718096;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 14px;
+}
+
+.queue-chip-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-chip-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #e53e3e;
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.queue-chip-remove:hover {
+  color: #c53030;
+}
+
 .queue-item {
   display: flex;
   justify-content: space-between;
@@ -3933,6 +3988,7 @@ html:has(.admin-no-scroll) body {
 .admin-theme-dark .panel,
 .admin-theme-dark .on-track-strip,
 .admin-theme-dark .queue-item,
+.admin-theme-dark .queue-chip,
 .admin-theme-dark .kart-type-add,
 .admin-theme-dark .kart-type-add-compact,
 .admin-theme-dark .kart-color-custom-trigger {

@@ -1495,10 +1495,6 @@
     width: 100%;
   }
 
-  .live-timing-dense .live-col-optional.live-col-session {
-    display: none;
-  }
-
   .live-lap-stats-toggle {
     padding: 0.38rem 0.5rem;
     font-size: 0.75rem;
@@ -1515,10 +1511,6 @@
   .live-timing-table:not(.live-timing-dense) {
     font-size: 0.88rem;
     min-width: 460px;
-  }
-
-  .live-timing-dense .live-col-optional:not(.live-col-laps) {
-    display: none;
   }
 
   .live-display .live-assign-name {

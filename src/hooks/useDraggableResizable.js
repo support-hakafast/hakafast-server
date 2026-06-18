@@ -124,22 +124,24 @@ export function useDraggableResizable(storageKey, defaults) {
   useEffect(() => {
     const onMove = (e) => {
       const { minW, minH } = getViewportMinSize();
-      if (dragRef.current) {
-        const dx = e.clientX - dragRef.current.startX;
-        const dy = e.clientY - dragRef.current.startY;
+      const drag = dragRef.current;
+      const resize = resizeRef.current;
+      if (drag) {
+        const dx = e.clientX - drag.startX;
+        const dy = e.clientY - drag.startY;
         setRect((r) => clampPreviewRect({
           ...r,
-          left: dragRef.current.left + dx,
-          top: dragRef.current.top + dy,
+          left: drag.left + dx,
+          top: drag.top + dy,
         }, minW, minH));
       }
-      if (resizeRef.current) {
-        const dx = e.clientX - resizeRef.current.startX;
-        const dy = e.clientY - resizeRef.current.startY;
+      if (resize) {
+        const dx = e.clientX - resize.startX;
+        const dy = e.clientY - resize.startY;
         setRect((r) => clampPreviewRect({
           ...r,
-          width: resizeRef.current.width + dx,
-          height: resizeRef.current.height + dy,
+          width: resize.width + dx,
+          height: resize.height + dy,
         }, minW, minH));
       }
     };

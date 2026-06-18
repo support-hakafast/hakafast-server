@@ -2259,9 +2259,9 @@ const AdminPanel = () => {
             <h3 className="queue-heading">
               {heatType === 'endurance' ? t('admin_queue_title_endurance') : t('admin_queue_title')}
             </h3>
-            <ul className="queue-list queue-list-tall">
-              {heatType === 'endurance' ? (
-                enduranceQueueTeams.length === 0 ? (
+            {heatType === 'endurance' ? (
+              <ul className="queue-list queue-list-tall">
+                {enduranceQueueTeams.length === 0 ? (
                   <li className="queue-empty">{t('admin_queue_empty')}</li>
                 ) : enduranceQueueTeams.map((team, i) => {
                   const starterName = teamStarters[team.teamName] || team.drivers[0]?.name;
@@ -2302,20 +2302,24 @@ const AdminPanel = () => {
                       </button>
                     </li>
                   );
-                })
-              ) : driverQueue.length === 0 ? (
-                <li className="queue-empty">{t('admin_queue_empty')}</li>
-              ) : driverQueue.map((d, i) => (
-                <li key={`${d.name}-${i}`} className={`queue-item${d.saved ? ' queue-item-saved' : ''}`}>
-                  <span className="queue-pos">{i + 1}</span>
-                  <span className="queue-name">
-                    {d.saved && <span className="saved-badge">★</span>}
-                    {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}
-                  </span>
-                  <button type="button" className="btn-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>X</button>
-                </li>
-              ))}
-            </ul>
+                })}
+              </ul>
+            ) : driverQueue.length === 0 ? (
+              <p className="queue-empty">{t('admin_queue_empty')}</p>
+            ) : (
+              <div className="queue-grid">
+                {driverQueue.map((d, i) => (
+                  <div key={`${d.name}-${i}`} className={`queue-chip${d.saved ? ' queue-chip-saved' : ''}`}>
+                    <span className="queue-chip-pos">{i + 1}</span>
+                    <span className="queue-chip-name" title={d.name}>
+                      {d.saved && <span className="saved-badge">★</span>}
+                      {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}
+                    </span>
+                    <button type="button" className="queue-chip-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
             <button type="button" className="btn-execute" data-tour="execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>
           </div>
         </section>
