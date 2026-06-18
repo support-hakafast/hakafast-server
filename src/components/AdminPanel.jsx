@@ -2377,11 +2377,9 @@ const AdminPanel = () => {
               </button>
             )}
             {isLicensed && (
-              <Link
-                to="/championship"
-                className="btn-muted btn-sidebar-tool btn-sidebar-championship"
-              >
-                🏆 {t('admin_championship')}
+              <Link to="/championship" className="btn-sidebar-championship-card">
+                <span className="btn-sidebar-champ-icon">🏆</span>
+                <span className="btn-sidebar-champ-label">{t('admin_championship')}</span>
               </Link>
             )}
           </div>

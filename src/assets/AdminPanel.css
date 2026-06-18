@@ -6287,7 +6287,43 @@ html:has(.admin-no-scroll) body {
 .champ-settings-panel { display: flex; flex-direction: column; gap: 1rem; }
 .champ-settings-footer { display: flex; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
 
-.btn-sidebar-championship { margin-top: 0.5rem; border-top: 1px solid #e2e8f0; padding-top: 0.75rem; }
+/* Championship card button — replaces old btn-sidebar-championship */
+.btn-sidebar-championship-card {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  border: 1.5px solid rgba(251, 191, 36, 0.45);
+  background: linear-gradient(135deg, #1a1205 0%, #2d1f00 50%, #1a1205 100%);
+  color: #fbbf24;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, color 0.18s;
+  box-shadow: 0 1px 6px rgba(251, 191, 36, 0.10);
+  box-sizing: border-box;
+}
+.btn-sidebar-championship-card:hover {
+  background: linear-gradient(135deg, #2d1f00 0%, #3d2900 50%, #2d1f00 100%);
+  border-color: #fbbf24;
+  color: #fde68a;
+  box-shadow: 0 2px 12px rgba(251, 191, 36, 0.25);
+}
+.btn-sidebar-champ-icon { font-size: 1rem; flex-shrink: 0; }
+.btn-sidebar-champ-label { flex: 1; }
+.admin-theme-dark .btn-sidebar-championship-card {
+  background: linear-gradient(135deg, #0d0a02 0%, #1c1400 50%, #0d0a02 100%);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+.admin-theme-dark .btn-sidebar-championship-card:hover {
+  background: linear-gradient(135deg, #1c1400 0%, #2a1d00 50%, #1c1400 100%);
+  border-color: #fbbf24;
+}
 
 .admin-modal-dark .champ-list-card { background: #0f172a; border-color: #1e293b; }
 .admin-modal-dark .champ-list-card:hover { background: #0c1a25; border-color: #0d9488; }
@@ -6485,12 +6521,6 @@ html:has(.admin-no-scroll) body {
   font-family: monospace;
 }
 
-/* Sidebar championship link as button style */
-a.btn-sidebar-championship {
-  display: block;
-  text-align: center;
-  text-decoration: none;
-}
 
 /* ── License button in sidebar ─────────────────────────────────────────────── */
 .btn-sidebar-license {

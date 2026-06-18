@@ -1053,8 +1053,8 @@ export default function ChampionshipPage() {
             {activeTab === 'rounds' && (
               <div className="cp-rounds-panel">
 
-                {/* Division nav pills */}
-                {((selected.divisions || []).length > 0 || isEditor) && (
+                {/* Division nav pills — only shown for multi-league championships */}
+                {selected.scope === 'multi-league' && ((selected.divisions || []).length > 0 || isEditor) && (
                   <div className="cp-division-nav">
                     <button
                       type="button"
@@ -1226,8 +1226,8 @@ export default function ChampionshipPage() {
             {/* STANDINGS tab */}
             {activeTab === 'standings' && (
               <div className="cp-standings-panel">
-                {/* Division standings selector */}
-                {(selected.divisions || []).length > 0 && (
+                {/* Division standings selector — only for multi-league */}
+                {selected.scope === 'multi-league' && (selected.divisions || []).length > 0 && (
                   <div className="cp-division-nav" style={{ marginBottom: '1rem' }}>
                     <button
                       type="button"
