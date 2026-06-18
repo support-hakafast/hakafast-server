@@ -18,7 +18,7 @@ function getViewportMinSize() {
 }
 
 export function clampPreviewRect(rect, minW = DESKTOP_MIN_W, minH = DESKTOP_MIN_H) {
-  if (typeof window === 'undefined') return rect;
+  if (!rect || typeof window === 'undefined') return rect ?? { left: 20, top: 200, width: minW, height: minH };
   const maxW = Math.max(minW, window.innerWidth - VIEWPORT_MARGIN * 2);
   const maxH = Math.max(minH, window.innerHeight - VIEWPORT_MARGIN * 2);
   const width = Math.min(Math.max(rect.width, minW), maxW);

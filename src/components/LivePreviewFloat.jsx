@@ -92,7 +92,7 @@ export default function LivePreviewFloat({
         tourElevated ? 'live-preview-float--tour' : '',
       ].filter(Boolean).join(' ')}
       data-tour="preview"
-      style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
+      style={rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : undefined}
     >
       <div className="live-preview-header" onPointerDown={onDragStart}>
         <strong className="live-preview-title">{t('admin_preview_title')}</strong>

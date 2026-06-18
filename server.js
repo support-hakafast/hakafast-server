@@ -166,15 +166,14 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
 });
 
-// CSP — system fonts only (no external font CDNs)
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "font-src 'self' data: blob:",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' data: blob: https://fonts.gstatic.com",
       "img-src 'self' data: blob:",
       "media-src 'self' data: blob:",
       "connect-src 'self' ws: wss:",

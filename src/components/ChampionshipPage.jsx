@@ -1015,6 +1015,7 @@ export default function ChampionshipPage() {
   const [scope, setScope] = useState('singular'); // 'singular' | 'multi-league'
   const [pointsTable, setPointsTable] = useState([...DEFAULT_POINTS_TABLES.karting]);
   const [newChampPassword, setNewChampPassword] = useState('');
+  const [newVenues, setNewVenues] = useState([]);
 
   // Settings form
   const [settingsName, setSettingsName] = useState('');
@@ -1066,10 +1067,11 @@ export default function ChampionshipPage() {
   async function handleCreate() {
     if (!name.trim()) return;
     const c = createChampionship({ name: name.trim(), scope, pointsTable, adminPassword: newChampPassword });
+    c.venues = newVenues;
     await persist(c, '');
     await loadChampionships();
     openDetail({ ...c, hasPassword: Boolean(newChampPassword) }, true);
-    setName(''); setNewChampPassword(''); setScope('singular');
+    setName(''); setNewChampPassword(''); setScope('singular'); setNewVenues([]);
   }
 
   function openDetail(c, asEditor = false) {
@@ -1338,6 +1340,10 @@ export default function ChampionshipPage() {
 
               <div className="cp-field-label">{t('champ_points_label')}</div>
               <PointsTableEditor value={pointsTable} onChange={setPointsTable} t={t} />
+
+              <div className="cp-divider" />
+
+              <VenuesEditor venues={newVenues} onChange={setNewVenues} t={t} />
 
               <div className="cp-divider" />
 

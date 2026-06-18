@@ -48,6 +48,7 @@ export function markAdminTourDone(trackSlug) {
 }
 
 function TourCutout({ rect, clickTarget = false }) {
+  if (!rect) return null;
   const top = rect.top - SPOTLIGHT_PAD;
   const left = rect.left - SPOTLIGHT_PAD;
   const width = rect.width + SPOTLIGHT_PAD * 2;
