@@ -1716,6 +1716,7 @@ const AdminPanel = () => {
           onToggleTimingColumn={(colId) => setTimingColumns((prev) => ({ ...prev, [colId]: !prev[colId] }))}
           onClose={() => setShowLivePreview(false)}
           tourElevated={showWalkthrough}
+          darkMode={adminTheme === 'dark'}
         />
       )}
       {showWalkthrough && (

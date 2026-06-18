@@ -19,6 +19,7 @@ export default function LivePreviewFloat({
   timingColumns: timingColumnsProp,
   onToggleTimingColumn,
   tourElevated = false,
+  darkMode = false,
 }) {
   const { t } = useLanguage();
   const [mode, setMode] = React.useState('assignments');
@@ -88,6 +89,7 @@ export default function LivePreviewFloat({
     <div
       className={[
         'live-preview-float',
+        darkMode ? 'live-preview-float--dark' : 'live-preview-float--light',
         compact ? 'live-preview-float--compact' : '',
         tourElevated ? 'live-preview-float--tour' : '',
       ].filter(Boolean).join(' ')}
@@ -121,7 +123,7 @@ export default function LivePreviewFloat({
         </div>
         <button type="button" className="live-preview-close" onClick={onClose} onPointerDown={(e) => e.stopPropagation()}>×</button>
       </div>
-      <div className="live-preview-body live-display theme-dark">
+      <div className={`live-preview-body live-display${darkMode ? ' theme-dark' : ' theme-light'}`}>
         {canPickColumns && showColumnPicker && (
           <div className="live-preview-columns-picker">
             <TimingColumnsPicker

@@ -1,7 +1,5 @@
 .live-preview-float {
   position: fixed;
-  background: #0a0a12;
-  color: #fff;
   border-radius: 12px;
   border: 3px solid var(--hf-turquoise, #40e0d0);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
@@ -16,6 +14,20 @@
   box-sizing: border-box;
 }
 
+/* Dark admin theme */
+.live-preview-float--dark {
+  background: #0a0a12;
+  color: #fff;
+}
+
+/* Light admin theme */
+.live-preview-float--light {
+  background: #f8fafc;
+  color: #1a202c;
+  border-color: #000080;
+  box-shadow: 0 16px 40px rgba(0, 0, 80, 0.18);
+}
+
 .live-preview-float--tour {
   z-index: 13002;
   pointer-events: auto;
@@ -27,12 +39,18 @@
   gap: 0.5rem;
   padding: 0.6rem 0.75rem;
   background: #000080;
+  color: #fff;
   flex-wrap: wrap;
   cursor: grab;
   touch-action: none;
   user-select: none;
   min-width: 0;
   flex-shrink: 0;
+}
+
+.live-preview-float--light .live-preview-header {
+  background: #000080;
+  color: #fff;
 }
 
 .live-preview-title {
@@ -104,6 +122,42 @@
   overflow-y: auto;
 }
 
+/* dark mode chips */
+.live-preview-float--dark .live-preview-columns-picker {
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.live-preview-float--dark .live-preview-columns-picker .timing-chip {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.live-preview-float--dark .live-preview-columns-picker .timing-chip.active {
+  background: #40e0d0;
+  color: #000080;
+  border-color: #40e0d0;
+}
+
+/* light mode chips */
+.live-preview-float--light .live-preview-columns-picker {
+  background: #e8edf4;
+  border-bottom-color: #c8d0dc;
+}
+
+.live-preview-float--light .live-preview-columns-picker .timing-chip {
+  background: #fff;
+  color: #1a202c;
+  border-color: #cbd5e0;
+}
+
+.live-preview-float--light .live-preview-columns-picker .timing-chip.active {
+  background: #000080;
+  color: #fff;
+  border-color: #000080;
+}
+
 .live-preview-columns-picker .timing-chip {
   background: rgba(255, 255, 255, 0.1);
   color: #e2e8f0;
@@ -139,6 +193,14 @@
   overflow: hidden;
 }
 
+.live-preview-float--dark .live-preview-body.live-display {
+  background: #0a0a12;
+}
+
+.live-preview-float--light .live-preview-body.live-display {
+  background: #f0f4f8;
+}
+
 .live-preview-float .live-preview-body.live-display {
   background: #0a0a12;
 }
@@ -150,6 +212,32 @@
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.live-preview-float--dark .live-display .live-timing-driver-name,
+.live-preview-float--dark .live-display .live-assign-name {
+  color: #f8fafc;
+}
+
+.live-preview-float--dark .live-assign-driver-rows li {
+  color: #e2e8f0;
+}
+
+.live-preview-float--dark .live-assign-driver-rows li.is-starter {
+  color: #7dd3fc;
+}
+
+.live-preview-float--light .live-display .live-timing-driver-name,
+.live-preview-float--light .live-display .live-assign-name {
+  color: #1a202c;
+}
+
+.live-preview-float--light .live-assign-driver-rows li {
+  color: #2d3748;
+}
+
+.live-preview-float--light .live-assign-driver-rows li.is-starter {
+  color: #2b6cb0;
 }
 
 .live-preview-float .live-display .live-timing-driver-name,

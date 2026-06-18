@@ -277,16 +277,343 @@ function saveGlobalChampionships(list) {
 let globalChampionships = loadGlobalChampionships();
 
 // ── License validation ───────────────────────────────────────────────────────
-const VALID_LICENSE_KEYS = new Set(
-  (process.env.HF_LICENSE_KEYS || '').split(',').map((k) => k.trim()).filter(Boolean)
+const crypto = require('crypto');
+
+// Keys stored in memory + persisted to file alongside install.json
+const HQ_KEYS_FILE = path.join(
+  process.env.HF_DATA_DIR || require('os').homedir(),
+  'HAKAFAST', 'hq-keys.json',
 );
+
+function loadHqKeys() {
+  try {
+    if (fs.existsSync(HQ_KEYS_FILE)) return JSON.parse(fs.readFileSync(HQ_KEYS_FILE, 'utf8'));
+  } catch { /* ignore */ }
+  return [];
+}
+
+function saveHqKeys(keys) {
+  try {
+    fs.mkdirSync(path.dirname(HQ_KEYS_FILE), { recursive: true });
+    fs.writeFileSync(HQ_KEYS_FILE, JSON.stringify(keys, null, 2));
+  } catch { /* ignore */ }
+}
+
+let hqIssuedKeys = loadHqKeys(); // [{ key, trackName, trackSlug, issuedAt, note }]
+
+// Rebuild the valid-key set from env + HQ-issued keys
+function buildValidKeySet() {
+  const envKeys = (process.env.HF_LICENSE_KEYS || '').split(',').map((k) => k.trim()).filter(Boolean);
+  const hqKeys = hqIssuedKeys.filter((e) => !e.revoked).map((e) => e.key);
+  return new Set([...envKeys, ...hqKeys]);
+}
+
+let VALID_LICENSE_KEYS = buildValidKeySet();
 
 function isValidLicenseKey(key) {
   if (!key || typeof key !== 'string') return false;
-  if (VALID_LICENSE_KEYS.size > 0) return VALID_LICENSE_KEYS.has(key.trim());
-  // Dev fallback: any key starting with HF- and 12+ chars is valid
-  return /^HF-[A-Z0-9]{8,}$/i.test(key.trim());
+  const k = key.trim();
+  if (VALID_LICENSE_KEYS.size > 0 && VALID_LICENSE_KEYS.has(k)) return true;
+  // Dev fallback: any key starting with HF- and 12+ chars is valid when no keys configured
+  if (VALID_LICENSE_KEYS.size === 0) return /^HF-[A-Z0-9]{8,}$/i.test(k);
+  return false;
 }
+
+// ── HQ portal (license issuing) ─────────────────────────────────────────────
+const HQ_PASSWORD = process.env.HQ_PASSWORD || '';
+const HQ_SECRET   = process.env.HQ_SECRET   || '';
+const HQ_SESSIONS = new Map(); // token → expiry timestamp
+
+function hqTotpCode(secret, windowOffset = 0) {
+  const window = Math.floor(Date.now() / 1000 / 30) + windowOffset;
+  const buf = Buffer.alloc(8);
+  buf.writeBigInt64BE(BigInt(window));
+  const hmac = crypto.createHmac('sha1', Buffer.from(secret, 'utf8'));
+  hmac.update(buf);
+  const digest = hmac.digest();
+  const offset = digest[digest.length - 1] & 0x0f;
+  const code = ((digest.readUInt32BE(offset) & 0x7fffffff) % 1000000).toString().padStart(6, '0');
+  return code;
+}
+
+function isValidHqCode(code) {
+  if (!HQ_SECRET) return false;
+  // Accept current window ±1 (90s tolerance)
+  for (const offset of [-1, 0, 1]) {
+    if (hqTotpCode(HQ_SECRET, offset) === String(code).trim()) return true;
+  }
+  return false;
+}
+
+function hqToken() {
+  return crypto.randomBytes(24).toString('hex');
+}
+
+function isHqAuthenticated(req) {
+  const token = req.headers['x-hq-token'] || req.query.token;
+  if (!token) return false;
+  const exp = HQ_SESSIONS.get(token);
+  if (!exp) return false;
+  if (Date.now() > exp) { HQ_SESSIONS.delete(token); return false; }
+  return true;
+}
+
+function requireHq(req, res, next) {
+  if (!isHqAuthenticated(req)) return res.status(401).json({ error: 'unauthorized' });
+  next();
+}
+
+function generateLicenseKey(trackSlug) {
+  const slug = (trackSlug || 'track').replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 6);
+  const rand = crypto.randomBytes(5).toString('hex').toUpperCase();
+  return `HF-${slug}-${rand}`;
+}
+
+// HQ login page
+app.get('/hq', (req, res) => {
+  if (!HQ_PASSWORD || !HQ_SECRET) {
+    return res.status(503).send('<h2>HQ portal not configured. Set HQ_PASSWORD and HQ_SECRET environment variables.</h2>');
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HAKAFAST HQ</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
+  h1{color:#40e0d0;font-size:1.6rem;margin-bottom:0.25rem}
+  .sub{color:#94a3b8;font-size:0.85rem;margin-bottom:2rem}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:2rem;width:100%;max-width:420px;display:flex;flex-direction:column;gap:1rem}
+  label{font-size:0.8rem;color:#94a3b8;display:block;margin-bottom:4px}
+  input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:0.6rem 0.8rem;font-size:1rem}
+  input:focus{outline:none;border-color:#40e0d0}
+  button{background:#000080;color:#40e0d0;border:none;border-radius:8px;padding:0.7rem 1.2rem;font-size:1rem;font-weight:700;cursor:pointer;width:100%}
+  button:hover{background:#0000b0}
+  .err{color:#f87171;font-size:0.85rem;text-align:center;display:none}
+  #app{display:none;flex-direction:column;gap:1.5rem;width:100%;max-width:680px}
+  #app.visible{display:flex}
+  .section{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:1.5rem;display:flex;flex-direction:column;gap:0.8rem}
+  .section h2{color:#40e0d0;font-size:1rem;margin-bottom:0.25rem}
+  .row{display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap}
+  .row .f{flex:1;min-width:140px}
+  .row button{width:auto;flex-shrink:0}
+  table{width:100%;border-collapse:collapse;font-size:0.82rem}
+  th{text-align:right;color:#94a3b8;font-weight:600;padding:6px 8px;border-bottom:1px solid #334155}
+  td{padding:6px 8px;border-bottom:1px solid #1e293b;word-break:break-all}
+  .key-cell{font-family:monospace;color:#40e0d0;font-size:0.78rem}
+  .revoke-btn{background:#7f1d1d;color:#fca5a5;border:none;border-radius:6px;padding:3px 8px;font-size:0.75rem;cursor:pointer}
+  .revoke-btn:hover{background:#991b1b}
+  .badge-active{background:#064e3b;color:#6ee7b7;padding:2px 7px;border-radius:999px;font-size:0.72rem}
+  .badge-revoked{background:#374151;color:#9ca3af;padding:2px 7px;border-radius:999px;font-size:0.72rem}
+  .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#064e3b;color:#6ee7b7;padding:0.6rem 1.2rem;border-radius:8px;font-weight:700;display:none;z-index:9999}
+</style>
+</head>
+<body>
+<div id="login-wrap">
+  <h1>🏁 HAKAFAST HQ</h1>
+  <p class="sub">מרכז ניהול רישיונות</p>
+  <div class="card">
+    <div>
+      <label>סיסמת מנהל</label>
+      <input type="password" id="pw" autocomplete="current-password">
+    </div>
+    <div>
+      <label>קוד אימות (6 ספרות — מאפליקציית TOTP)</label>
+      <input type="text" id="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+    </div>
+    <button onclick="login()">כניסה</button>
+    <p class="err" id="login-err">סיסמה או קוד שגויים</p>
+  </div>
+</div>
+
+<div id="app">
+  <div style="display:flex;align-items:center;gap:1rem;justify-content:space-between">
+    <h1 style="font-size:1.3rem">🏁 HAKAFAST HQ</h1>
+    <button onclick="logout()" style="width:auto;background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:0.4rem 0.8rem;font-size:0.8rem">יציאה</button>
+  </div>
+
+  <div class="section">
+    <h2>➕ הנפקת רישיון חדש</h2>
+    <div class="row">
+      <div class="f">
+        <label>שם המסלול (לתצוגה)</label>
+        <input type="text" id="trackName" placeholder="SpeedPark Tel Aviv" dir="auto">
+      </div>
+      <div class="f">
+        <label>מזהה מסלול (slug)</label>
+        <input type="text" id="trackSlug" placeholder="speedpark-tlv" dir="ltr">
+      </div>
+    </div>
+    <div class="row">
+      <div class="f">
+        <label>הערה (אופציונלי)</label>
+        <input type="text" id="note" placeholder="ניסיון חינם עד 2026-09..." dir="auto">
+      </div>
+      <button onclick="issueKey()">הנפק מפתח</button>
+    </div>
+    <div id="new-key-result" style="display:none;background:#0f172a;border:1px solid #40e0d0;border-radius:8px;padding:1rem">
+      <p style="color:#94a3b8;font-size:0.78rem;margin-bottom:0.4rem">מפתח רישיון חדש:</p>
+      <p id="new-key-value" style="font-family:monospace;color:#40e0d0;font-size:1.1rem;word-break:break-all"></p>
+      <button onclick="copyNewKey()" style="margin-top:0.6rem;background:#064e3b;color:#6ee7b7;width:auto">העתק</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🗂 רישיונות שהונפקו</h2>
+    <button onclick="loadKeys()" style="width:auto;background:#1e293b;border:1px solid #334155;color:#94a3b8;font-size:0.82rem">רענן</button>
+    <div style="overflow-x:auto">
+      <table id="keys-table">
+        <thead><tr><th>מפתח</th><th>מסלול</th><th>Slug</th><th>הנפקה</th><th>הערה</th><th>סטטוס</th><th></th></tr></thead>
+        <tbody id="keys-body"><tr><td colspan="7" style="color:#94a3b8;text-align:center">טוען...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let TOKEN = '';
+
+async function login() {
+  const pw = document.getElementById('pw').value;
+  const code = document.getElementById('code').value;
+  const r = await fetch('/api/hq/auth', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ password: pw, code })
+  });
+  const d = await r.json();
+  if (d.token) {
+    TOKEN = d.token;
+    document.getElementById('login-wrap').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    loadKeys();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+}
+
+function logout() {
+  TOKEN = '';
+  document.getElementById('login-wrap').style.display = '';
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('pw').value = '';
+  document.getElementById('code').value = '';
+}
+
+async function issueKey() {
+  const trackName = document.getElementById('trackName').value.trim();
+  const trackSlug = document.getElementById('trackSlug').value.trim();
+  const note = document.getElementById('note').value.trim();
+  if (!trackName || !trackSlug) { showToast('יש למלא שם מסלול ו-slug', true); return; }
+  const r = await fetch('/api/hq/issue-key', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','x-hq-token':TOKEN},
+    body: JSON.stringify({ trackName, trackSlug, note })
+  });
+  const d = await r.json();
+  if (d.key) {
+    document.getElementById('new-key-value').textContent = d.key;
+    document.getElementById('new-key-result').style.display = '';
+    loadKeys();
+    showToast('מפתח הונפק בהצלחה!');
+  } else {
+    showToast('שגיאה בהנפקה', true);
+  }
+}
+
+function copyNewKey() {
+  const key = document.getElementById('new-key-value').textContent;
+  navigator.clipboard.writeText(key);
+  showToast('מפתח הועתק!');
+}
+
+async function revokeKey(key) {
+  if (!confirm('לבטל רישיון זה?')) return;
+  await fetch('/api/hq/revoke-key', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','x-hq-token':TOKEN},
+    body: JSON.stringify({ key })
+  });
+  loadKeys();
+  showToast('רישיון בוטל');
+}
+
+async function loadKeys() {
+  const r = await fetch('/api/hq/keys', { headers: {'x-hq-token':TOKEN} });
+  const d = await r.json();
+  const tbody = document.getElementById('keys-body');
+  if (!d.keys || !d.keys.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="color:#94a3b8;text-align:center">אין רישיונות עדיין</td></tr>';
+    return;
+  }
+  tbody.innerHTML = d.keys.slice().reverse().map((e) => \`
+    <tr>
+      <td class="key-cell">\${e.key}</td>
+      <td>\${e.trackName}</td>
+      <td style="font-family:monospace;font-size:0.75rem">\${e.trackSlug}</td>
+      <td style="white-space:nowrap">\${new Date(e.issuedAt).toLocaleDateString('he-IL')}</td>
+      <td style="color:#94a3b8">\${e.note || ''}</td>
+      <td>\${e.revoked ? '<span class="badge-revoked">בוטל</span>' : '<span class="badge-active">פעיל</span>'}</td>
+      <td>\${e.revoked ? '' : \`<button class="revoke-btn" onclick="revokeKey('\${e.key}')">בטל</button>\`}</td>
+    </tr>
+  \`).join('');
+}
+
+function showToast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = err ? '#7f1d1d' : '#064e3b';
+  t.style.color = err ? '#fca5a5' : '#6ee7b7';
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+document.getElementById('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('code').focus(); });
+document.getElementById('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>`);
+});
+
+app.post('/api/hq/auth', (req, res) => {
+  if (!HQ_PASSWORD || !HQ_SECRET) return res.status(503).json({ error: 'not_configured' });
+  const { password, code } = req.body || {};
+  if (password !== HQ_PASSWORD) return res.status(401).json({ error: 'bad_credentials' });
+  if (!isValidHqCode(code)) return res.status(401).json({ error: 'bad_credentials' });
+  const token = hqToken();
+  HQ_SESSIONS.set(token, Date.now() + 4 * 60 * 60 * 1000); // 4h session
+  return res.json({ token });
+});
+
+app.get('/api/hq/keys', requireHq, (req, res) => {
+  res.json({ keys: hqIssuedKeys });
+});
+
+app.post('/api/hq/issue-key', requireHq, (req, res) => {
+  const { trackName, trackSlug, note } = req.body || {};
+  if (!trackName || !trackSlug) return res.status(400).json({ error: 'missing_fields' });
+  const key = generateLicenseKey(trackSlug);
+  const entry = { key, trackName, trackSlug: trackSlug.trim(), issuedAt: new Date().toISOString(), note: note || '', revoked: false };
+  hqIssuedKeys.push(entry);
+  saveHqKeys(hqIssuedKeys);
+  VALID_LICENSE_KEYS = buildValidKeySet();
+  return res.json({ key, entry });
+});
+
+app.post('/api/hq/revoke-key', requireHq, (req, res) => {
+  const { key } = req.body || {};
+  const entry = hqIssuedKeys.find((e) => e.key === key);
+  if (!entry) return res.status(404).json({ error: 'not_found' });
+  entry.revoked = true;
+  saveHqKeys(hqIssuedKeys);
+  VALID_LICENSE_KEYS = buildValidKeySet();
+  return res.json({ ok: true });
+});
 
 let liveBroadcast = null;
 let ambDecoder = null;
