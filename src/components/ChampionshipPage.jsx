@@ -202,9 +202,10 @@ const SESSION_TYPE_KEYS = [
 // Resolved with actual labels at render time (needs t)
 const SESSION_TYPES = SESSION_TYPE_KEYS; // kept for backward compat — use tKey
 
-function SessionsEditor({ sessions, onChange, t }) {
-  function addSession() {
-    onChange([...sessions, createSession({ type: 'practice', label: t('champ_session_type_practice'), durationMinutes: 15 })]);
+function SessionsEditor({ sessions, onChange, roundDate, championship, t }) {
+  function addSession(type = 'practice') {
+    const label = t(SESSION_TYPE_KEYS.find((x) => x.key === type)?.tKey || 'champ_session_type_practice');
+    onChange([...sessions, createSession({ type, label, sessionDate: roundDate || null, durationMinutes: type === 'race' ? 60 : 15 })]);
   }
   function updateSession(i, patch) {
     onChange(sessions.map((s, idx) => idx === i ? { ...s, ...patch } : s));
@@ -220,13 +221,21 @@ function SessionsEditor({ sessions, onChange, t }) {
     onChange(next);
   }
 
+  const gridOptions = [];
+  if (championship.scope === 'multi-league' && (championship.divisions || []).length > 0) {
+    for (const div of championship.divisions) {
+      gridOptions.push({ value: `div:${div.id}`, label: `${t('champ_grid_from_league')}: ${div.name}` });
+    }
+    gridOptions.push({ value: 'overall', label: t('champ_grid_from_overall') });
+  } else {
+    gridOptions.push({ value: 'main', label: t('champ_grid_from_standings') });
+  }
+
   return (
     <div className="cp-sessions-editor">
-      <div className="cp-section-label" style={{ marginBottom: '0.5rem' }}>
-        📋 {t('champ_session_label')}
-      </div>
+      <div className="cp-section-label" style={{ marginBottom: '0.4rem' }}>📋 {t('champ_session_label')}</div>
       {sessions.length === 0 && (
-        <p className="cp-empty" style={{ marginBottom: '0.5rem' }}>{t('champ_session_empty')}</p>
+        <p className="cp-empty" style={{ marginBottom: '0.4rem' }}>{t('champ_session_empty')}</p>
       )}
       {sessions.map((s, i) => {
         const typeInfo = SESSION_TYPE_KEYS.find((x) => x.key === s.type) || SESSION_TYPE_KEYS[0];
@@ -238,12 +247,14 @@ function SessionsEditor({ sessions, onChange, t }) {
               </select>
               <input type="text" dir="auto" value={s.label} onChange={(e) => updateSession(i, { label: e.target.value })}
                 placeholder={t(typeInfo.tKey)} className="cp-session-label-input" />
+              <input type="date" value={s.sessionDate || ''} onChange={(e) => updateSession(i, { sessionDate: e.target.value || null })}
+                className="cp-session-date-input" title={t('champ_session_day')} />
               <input type="time" value={s.startTime} onChange={(e) => updateSession(i, { startTime: e.target.value })}
                 className="cp-session-time-input" />
-              <input type="number" min={1} max={360} value={s.durationMinutes}
+              <input type="number" min={1} max={1440} value={s.durationMinutes}
                 onChange={(e) => updateSession(i, { durationMinutes: parseInt(e.target.value, 10) || 15 })}
                 className="cp-session-dur-input" />
-              <span style={{ fontSize: '0.75em', opacity: 0.6 }}>{t('champ_session_duration')}</span>
+              <span className="cp-session-dur-label">{t('champ_session_duration')}</span>
               <div className="cp-session-btns">
                 <button type="button" className="cp-mv-btn" onClick={() => moveSession(i, -1)} disabled={i === 0}>↑</button>
                 <button type="button" className="cp-mv-btn" onClick={() => moveSession(i, 1)} disabled={i === sessions.length - 1}>↓</button>
@@ -252,19 +263,31 @@ function SessionsEditor({ sessions, onChange, t }) {
             </div>
             <div className="cp-session-row-opts">
               <label className="cp-session-opt">
-                <input type="checkbox" checked={s.kartTransporter} onChange={(e) => updateSession(i, { kartTransporter: e.target.checked })} />
+                <input type="checkbox" checked={Boolean(s.kartTransporter)} onChange={(e) => updateSession(i, { kartTransporter: e.target.checked })} />
                 <span>🔄 {t('champ_session_kart_transporter')}</span>
-                <span style={{ fontSize: '0.75em', opacity: 0.6 }}>{t('champ_session_kart_transporter_hint')}</span>
               </label>
-              <input type="text" dir="auto" value={s.notes} onChange={(e) => updateSession(i, { notes: e.target.value })}
+              {(s.type === 'race' || s.type === 'qualifying') && (
+                <label className="cp-session-opt">
+                  <span>{t('champ_session_grid_order')}</span>
+                  <select value={s.gridFromStandings || ''} onChange={(e) => updateSession(i, { gridFromStandings: e.target.value || null })} className="cp-session-grid-sel">
+                    <option value="">{t('champ_session_grid_manual')}</option>
+                    {gridOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </label>
+              )}
+              <input type="text" dir="auto" value={s.notes || ''} onChange={(e) => updateSession(i, { notes: e.target.value })}
                 placeholder={t('champ_session_notes_ph')} className="cp-session-notes" />
             </div>
           </div>
         );
       })}
-      <button type="button" className="cp-tool-btn" onClick={addSession} style={{ marginTop: '0.5rem' }}>
-        {t('champ_session_add')}
-      </button>
+      <div className="cp-sessions-add-row">
+        {SESSION_TYPE_KEYS.map((x) => (
+          <button key={x.key} type="button" className="cp-session-add-chip" onClick={() => addSession(x.key)}>
+            {x.emoji} {t(x.tKey)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -313,12 +336,15 @@ function TrackField({ venues, trackSlug, setTrackSlug, t }) {
 function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) {
   const [label, setLabel] = useState(round.label || '');
   const [date, setDate] = useState(round.date || '');
+  const [endDate, setEndDate] = useState(round.endDate || '');
   const [time, setTime] = useState(round.time || '');
   const [trackSlug, setTrackSlug] = useState(round.trackSlug || '');
   const [isOfficial, setIsOfficial] = useState(round.isOfficial || false);
   const [raceType, setRaceType] = useState(round.raceType || 'sprint');
   const [divisionId, setDivisionId] = useState(round.divisionId || null);
   const [sessions, setSessions] = useState(round.sessions || []);
+  const [maxKarts, setMaxKarts] = useState(round.maxKarts || '');
+  const [aiFormatNotes, setAiFormatNotes] = useState(round.aiFormatNotes || '');
   const isMultiLeague = championship.scope === 'multi-league' && (championship.divisions || []).length > 0;
   const [results, setResults] = useState(() =>
     (round.results || []).map((r) => ({ ...r, nationality: r.nationality || '', kartNumber: r.kartNumber || '' }))
@@ -383,17 +409,25 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
       </div>
 
       <div className="cp-round-fields">
-        <label className="cp-field">
+        <label className="cp-field cp-field-full">
           <span>{t('champ_round_label')}</span>
           <input type="text" dir="auto" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t('champ_round_label_ph')} autoFocus />
         </label>
         <label className="cp-field">
-          <span>{t('champ_round_date')}</span>
+          <span>{t('champ_round_date_start')}</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+        <label className="cp-field">
+          <span>{t('champ_round_date_end')}</span>
+          <input type="date" value={endDate} min={date || undefined} onChange={(e) => setEndDate(e.target.value)} />
         </label>
         <label className="cp-field">
           <span>{t('champ_round_time')}</span>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </label>
+        <label className="cp-field">
+          <span>{t('champ_round_max_karts')}</span>
+          <input type="number" min={1} max={50} value={maxKarts} onChange={(e) => setMaxKarts(e.target.value)} placeholder="—" className="cp-karts-input" />
         </label>
         <TrackField
           venues={championship.venues || []}
@@ -411,6 +445,26 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
               ))}
             </select>
           </label>
+        )}
+      </div>
+
+      <div className="cp-ai-format-block">
+        <label className="cp-ai-format-label">
+          <span className="cp-ai-format-icon">🤖</span>
+          <span>{t('champ_ai_format_label')}</span>
+        </label>
+        <textarea
+          dir="auto"
+          value={aiFormatNotes}
+          onChange={(e) => setAiFormatNotes(e.target.value)}
+          placeholder={t('champ_ai_format_ph')}
+          className="cp-ai-format-textarea"
+          rows={2}
+        />
+        {maxKarts && (
+          <p className="cp-ai-karts-hint">
+            {t('champ_ai_karts_hint', { karts: maxKarts })}
+          </p>
         )}
       </div>
 
@@ -438,7 +492,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
         <p className="cp-unofficial-note">⚠ {t('champ_unofficial_note')}</p>
       )}
 
-      <SessionsEditor sessions={sessions} onChange={setSessions} t={t} />
+      <SessionsEditor sessions={sessions} onChange={setSessions} roundDate={date} championship={championship} t={t} />
 
       {/* Results section — locked until day after event */}
       <div className="cp-results-section">
@@ -526,7 +580,7 @@ function RoundEditor({ round, championship, heatHistory, onSave, onCancel, t }) 
       <div className="cp-round-editor-footer">
         <button type="button" className="cp-btn-ghost" onClick={onCancel}>{t('champ_cancel')}</button>
         <button type="button" className="cp-btn-primary"
-          onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, time: time || null, trackSlug: trackSlug || null, isOfficial, results, raceType, sessions, divisionId: divisionId || null })}
+          onClick={() => onSave({ ...round, label: label || `Round ${Date.now()}`, date: date || null, endDate: (endDate && endDate !== date) ? endDate : null, time: time || null, trackSlug: trackSlug || null, isOfficial, results, raceType, sessions, divisionId: divisionId || null, maxKarts: maxKarts ? Number(maxKarts) : null, aiFormatNotes: aiFormatNotes || '' })}
         >{t('champ_save_round')}</button>
       </div>
     </div>
@@ -1159,7 +1213,7 @@ export default function ChampionshipPage() {
                               <div className="cp-round-num-badge">{r.isOfficial ? '🏅' : `R${i + 1}`}</div>
                               <div className="cp-round-info" style={{ flex: 1 }}>
                                 <span className="cp-round-label">{r.label || `Round ${i + 1}`}</span>
-                                {r.date && <span className="cp-round-meta" style={{ marginInlineStart: '0.5rem' }}>{r.date}{r.time ? ` · ${r.time}` : ''}</span>}
+                                {r.date && <span className="cp-round-meta" style={{ marginInlineStart: '0.5rem' }}>{r.date}{r.endDate && r.endDate !== r.date ? ` → ${r.endDate}` : ''}{r.time ? ` · ${r.time}` : ''}</span>}
                               </div>
                               <span className={`cp-rt-badge cp-rt-${rt}`}>{rtLabels[rt] || rt}</span>
                               <span className="cp-round-meta">{r.results?.length || 0}</span>

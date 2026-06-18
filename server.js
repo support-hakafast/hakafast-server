@@ -861,11 +861,18 @@ app.get('/api/track-calendar/:trackSlug', (req, res) => {
   const todayStr = today.toISOString().slice(0, 10);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
+  // A round is "in range" if its start date is within the window OR it's multi-day and ends within the window
+  function roundInRange(r) {
+    if (!r.date) return false;
+    const effective = r.endDate && r.endDate > r.date ? r.endDate : r.date;
+    return r.date <= cutoffStr && effective >= todayStr;
+  }
+
   const entries = [];
   for (const c of globalChampionships) {
     // Top-level rounds (may have divisionId if organizer assigned them to a league)
     for (const r of c.rounds || []) {
-      if (r.trackSlug === trackSlug && r.date && r.date >= todayStr && r.date <= cutoffStr) {
+      if (r.trackSlug === trackSlug && roundInRange(r)) {
         const assignedDiv = r.divisionId ? (c.divisions || []).find((d) => d.id === r.divisionId) : null;
         entries.push({
           championshipId: c.id,
@@ -873,21 +880,21 @@ app.get('/api/track-calendar/:trackSlug', (req, res) => {
           championshipScope: c.scope || 'singular',
           divisionId: assignedDiv?.id || null,
           divisionName: assignedDiv?.name || null,
-          round: { id: r.id, label: r.label, date: r.date, time: r.time || null, raceType: r.raceType || 'sprint', isOfficial: r.isOfficial || false },
+          round: { id: r.id, label: r.label, date: r.date, endDate: r.endDate || null, time: r.time || null, raceType: r.raceType || 'sprint', isOfficial: r.isOfficial || false },
         });
       }
     }
     // Division rounds
     for (const div of c.divisions || []) {
       for (const r of div.rounds || []) {
-        if (r.trackSlug === trackSlug && r.date && r.date >= todayStr && r.date <= cutoffStr) {
+        if (r.trackSlug === trackSlug && roundInRange(r)) {
           entries.push({
             championshipId: c.id,
             championshipName: c.name,
             championshipScope: c.scope || 'singular',
             divisionId: div.id,
             divisionName: div.name,
-            round: { id: r.id, label: r.label, date: r.date, time: r.time || null, raceType: r.raceType || 'sprint', isOfficial: r.isOfficial || false },
+            round: { id: r.id, label: r.label, date: r.date, endDate: r.endDate || null, time: r.time || null, raceType: r.raceType || 'sprint', isOfficial: r.isOfficial || false },
           });
         }
       }

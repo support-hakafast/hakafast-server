@@ -762,12 +762,13 @@ html:has(.cp-page) body {
 .cp-round-editor {
   border: 1.5px solid var(--navy);
   border-radius: 14px;
-  padding: 1.25rem;
+  padding: 1.1rem 1.15rem;
   background: #fff;
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 0.75rem;
   box-shadow: 0 4px 20px rgba(0, 0, 128, 0.1);
+  max-width: 680px;
 }
 
 .cp-round-editor-top {
@@ -799,9 +800,11 @@ html:has(.cp-page) body {
 .cp-round-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
+  gap: 0.5rem 0.65rem;
 }
-@media (max-width: 520px) { .cp-round-fields { grid-template-columns: 1fr; } }
+.cp-field-full { grid-column: 1 / -1; }
+.cp-karts-input { width: 5rem; }
+@media (max-width: 520px) { .cp-round-fields { grid-template-columns: 1fr; } .cp-field-full { grid-column: 1; } }
 
 .cp-official-toggle {
   display: flex;
@@ -1466,18 +1469,56 @@ html:has(.cp-page) body {
   font-size: 0.78rem; padding: 0.28rem 0.35rem;
   border: 1.5px solid #d1d9f0; border-radius: 6px; width: 4rem; flex-shrink: 0;
 }
+.cp-session-date-input {
+  font-size: 0.76rem; padding: 0.26rem 0.3rem;
+  border: 1.5px solid #d1d9f0; border-radius: 6px; width: 7.8rem; flex-shrink: 0;
+}
+.cp-session-dur-label { font-size: 0.72rem; opacity: 0.6; white-space: nowrap; flex-shrink: 0; }
 .cp-session-btns { display: flex; gap: 0.2rem; flex-shrink: 0; }
-.cp-session-row-opts { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.cp-session-row-opts { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
 .cp-session-opt {
   display: flex; align-items: center; gap: 0.35rem;
   font-size: 0.75rem; color: #4a5580; cursor: pointer;
 }
 .cp-session-opt input[type="checkbox"] { cursor: pointer; }
+.cp-session-grid-sel {
+  font-size: 0.74rem; padding: 0.22rem 0.35rem; border: 1.5px solid #d1d9f0; border-radius: 6px;
+  background: #fff; cursor: pointer; max-width: 14rem;
+}
 .cp-session-notes {
-  flex: 1; min-width: 140px; font-size: 0.74rem;
+  flex: 1; min-width: 120px; font-size: 0.74rem;
   padding: 0.2rem 0.4rem; border: 1.5px solid #e1e6f5; border-radius: 6px;
   background: #fff; color: #4a5580;
 }
+.cp-sessions-add-row {
+  display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem;
+}
+.cp-session-add-chip {
+  font-size: 0.76rem; padding: 0.3rem 0.65rem; border-radius: 20px;
+  border: 1.5px solid #c7d4f0; background: #f0f4ff; color: #3a4a80;
+  cursor: pointer; font-weight: 600; transition: all 0.12s;
+}
+.cp-session-add-chip:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* ── AI format block ─────────────────────────────────────────────────────────── */
+.cp-ai-format-block {
+  background: #f8f9ff;
+  border: 1.5px solid #d8e0f8;
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.cp-ai-format-label {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; font-weight: 700; color: #3a4a80;
+}
+.cp-ai-format-icon { font-size: 1rem; }
+.cp-ai-format-textarea {
+  font-size: 0.82rem; padding: 0.45rem 0.6rem; border: 1.5px solid #d1d9f0; border-radius: 8px;
+  background: #fff; resize: vertical; font-family: inherit; color: #222; line-height: 1.45;
+}
+.cp-ai-format-textarea:focus { outline: none; border-color: var(--navy); }
+.cp-ai-karts-hint { font-size: 0.75rem; color: #5060a0; margin: 0; }
 
 /* ── Sessions summary chips (round body) ────────────────────────────────────── */
 .cp-round-sessions-summary { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.15rem; }

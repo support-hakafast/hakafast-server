@@ -1871,7 +1871,7 @@ const AdminPanel = () => {
                 const rtMap = { sprint: 'Sprint', 'endurance-team': 'Endurance', 'endurance-solo': 'Iron Solo', 'best-lap': 'Best Lap' };
                 return (
                   <div key={i} className="admin-champ-cal-entry">
-                    <span className="admin-champ-cal-date">{entry.round.date}{entry.round.time ? ` · ${entry.round.time}` : ''}</span>
+                    <span className="admin-champ-cal-date">{entry.round.date}{entry.round.endDate && entry.round.endDate !== entry.round.date ? ` → ${entry.round.endDate}` : ''}{entry.round.time ? ` · ${entry.round.time}` : ''}</span>
                     <span className="admin-champ-cal-name">{entry.championshipName}</span>
                     {entry.divisionName && <span className="admin-champ-cal-div">({entry.divisionName})</span>}
                     <span className="admin-champ-cal-round">{entry.round.label}</span>

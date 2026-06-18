@@ -82,13 +82,14 @@ export function createDivision({ name, pointsTable = DEFAULT_POINTS_TABLES.karti
  *   notes: string,
  * }
  */
-export function createSession({ type = 'practice', label = '', startTime = '', durationMinutes = 15, kartTransporter = false, notes = '' } = {}) {
-  return { id: generateId(), type, label, startTime, durationMinutes, kartTransporter, notes };
+export function createSession({ type = 'practice', label = '', sessionDate = null, startTime = '', durationMinutes = 15, kartTransporter = false, notes = '', gridFromStandings = null } = {}) {
+  return { id: generateId(), type, label, sessionDate, startTime, durationMinutes, kartTransporter, notes, gridFromStandings };
 }
 
 export function createRound({
   label = '',
   date = null,
+  endDate = null,
   time = null,
   results = [],
   heatHistoryRef = null,
@@ -98,11 +99,14 @@ export function createRound({
   raceType = 'sprint',
   sessions = [],
   divisionId = null,
+  maxKarts = null,
+  aiFormatNotes = '',
 } = {}) {
   return {
     id: generateId(),
     label: label.trim(),
     date,
+    endDate,
     time,
     results,
     heatHistoryRef,
@@ -112,6 +116,8 @@ export function createRound({
     raceType,
     sessions, // SessionPlan[]
     divisionId,
+    maxKarts,
+    aiFormatNotes,
   };
 }
 
@@ -338,10 +344,12 @@ function normalizeSession(raw) {
     id: raw.id || generateId(),
     type: ['practice', 'qualifying', 'race', 'ironcut'].includes(raw.type) ? raw.type : 'practice',
     label: raw.label || '',
+    sessionDate: raw.sessionDate || null,
     startTime: raw.startTime || '',
     durationMinutes: Math.max(1, parseInt(raw.durationMinutes, 10) || 15),
     kartTransporter: Boolean(raw.kartTransporter),
     notes: raw.notes || '',
+    gridFromStandings: raw.gridFromStandings || null,
   };
 }
 
@@ -350,6 +358,7 @@ function normalizeRound(raw) {
     id: raw.id || generateId(),
     label: raw.label || '',
     date: raw.date || null,
+    endDate: raw.endDate || null,
     time: raw.time || null,
     results: Array.isArray(raw.results) ? raw.results : [],
     heatHistoryRef: raw.heatHistoryRef || null,
@@ -359,6 +368,8 @@ function normalizeRound(raw) {
     raceType: raw.raceType || 'sprint',
     sessions: Array.isArray(raw.sessions) ? raw.sessions.map(normalizeSession).filter(Boolean) : [],
     divisionId: raw.divisionId || null,
+    maxKarts: raw.maxKarts ? Number(raw.maxKarts) : null,
+    aiFormatNotes: raw.aiFormatNotes || '',
   };
 }
 
