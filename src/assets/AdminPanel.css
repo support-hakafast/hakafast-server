@@ -6831,6 +6831,27 @@ html:has(.admin-no-scroll) body {
 .license-active-msg { color: #166534; font-weight: 600; font-size: 0.85rem; padding: 0.4rem 0.6rem; background: #dcfce7; border-radius: 0.4rem; }
 .license-error-msg { color: #dc2626; font-size: 0.78rem; margin-top: 0.25rem; }
 
+/* ── Decoder settings ─────────────────────────────────────────────────────── */
+.decoder-status-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.decoder-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.decoder-dot-on  { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+.decoder-dot-off { background: #94a3b8; }
+.decoder-status-label { font-size: 0.82rem; font-weight: 600; color: #1e293b; }
+.decoder-last-passing { font-size: 0.75rem; color: #64748b; margin-inline-start: 0.25rem; }
+.btn-decoder-refresh { margin-inline-start: auto; background: none; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.15rem 0.45rem; font-size: 0.9rem; cursor: pointer; color: #475569; }
+.btn-decoder-refresh:hover { background: #f1f5f9; }
+.decoder-ip-row { display: flex; gap: 0.6rem; margin-bottom: 0.75rem; }
+.decoder-field { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
+.decoder-field-port { max-width: 100px; }
+.decoder-map-table { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
+.decoder-map-header { display: grid; grid-template-columns: 1fr 80px 28px; gap: 0.4rem; font-size: 0.72rem; font-weight: 600; color: #64748b; padding: 0 0.1rem; }
+.decoder-map-row { display: grid; grid-template-columns: 1fr 80px 28px; gap: 0.4rem; align-items: center; }
+.decoder-map-row input { font-size: 0.82rem; padding: 0.3rem 0.4rem; border: 1px solid #e2e8f0; border-radius: 6px; }
+.decoder-map-row input:focus { outline: none; border-color: var(--navy); }
+.btn-decoder-remove { background: none; border: none; color: #94a3b8; font-size: 1rem; cursor: pointer; padding: 0; line-height: 1; border-radius: 4px; }
+.btn-decoder-remove:hover:not(:disabled) { color: #dc2626; }
+.btn-decoder-remove:disabled { opacity: 0.3; cursor: default; }
+
 /* ── Championship login widget ────────────────────────────────────────────── */
 .champ-login-widget { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .champ-login-label { font-size: 0.75rem; color: #64748b; white-space: nowrap; }

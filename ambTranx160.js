@@ -309,9 +309,23 @@ function createAmbTranx160Decoder(deps) {
     };
   }
 
+  function reconfigure(newConfig = {}) {
+    const hostChanged = newConfig.host !== undefined && newConfig.host !== config.host;
+    const portChanged = newConfig.port !== undefined && Number(newConfig.port) !== config.port;
+    if (newConfig.host !== undefined) config.host = newConfig.host;
+    if (newConfig.port !== undefined) config.port = Number(newConfig.port) || DEFAULT_PORT;
+    if (newConfig.transponderMap !== undefined) config.globalTransponderMap = newConfig.transponderMap;
+    if (hostChanged || portChanged) {
+      stop();
+      started = true;
+      if (config.host) connectTcp();
+    }
+  }
+
   return {
     start,
     stop,
+    reconfigure,
     getStatus,
     ingestJsonPassing,
     handlePassing,

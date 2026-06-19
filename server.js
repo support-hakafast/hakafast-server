@@ -1409,6 +1409,34 @@ app.post('/api/install/rentix', (req, res) => {
   return res.json({ success: true, rentix: config.rentix || {} });
 });
 
+app.get('/api/install/decoder', (req, res) => {
+  const cfg = installConfig.loadInstallConfig();
+  const decoder = cfg?.decoder || {};
+  const status = ambDecoder ? ambDecoder.getStatus() : { connected: false };
+  return res.json({
+    success: true,
+    host: decoder.host || process.env.AMB_DECODER_HOST || '',
+    port: decoder.port || Number(process.env.AMB_DECODER_PORT) || 5403,
+    transponderMap: decoder.transponderMap || {},
+    status,
+  });
+});
+
+app.post('/api/install/decoder', (req, res) => {
+  const { host, port, transponderMap } = req.body || {};
+  const decoderCfg = {
+    host: host !== undefined ? String(host).trim() : undefined,
+    port: port !== undefined ? Number(port) || 5403 : undefined,
+    transponderMap: transponderMap !== undefined ? transponderMap : undefined,
+  };
+  const clean = Object.fromEntries(Object.entries(decoderCfg).filter(([, v]) => v !== undefined));
+  const existing = installConfig.loadInstallConfig()?.decoder || {};
+  installConfig.saveInstallConfig({ decoder: { ...existing, ...clean } });
+  if (ambDecoder) ambDecoder.reconfigure(clean);
+  const status = ambDecoder ? ambDecoder.getStatus() : { connected: false };
+  return res.json({ success: true, ...clean, status });
+});
+
 app.get('/api/kiosk/capabilities', (req, res) => {
   res.json({
     transponder: {
@@ -1929,12 +1957,17 @@ liveBroadcast = createLiveBroadcast(httpServer, {
   driverQueues,
 });
 
+const _savedDecoderCfg = installConfig.loadInstallConfig()?.decoder || {};
+if (_savedDecoderCfg.host && !process.env.AMB_DECODER_HOST) process.env.AMB_DECODER_HOST = _savedDecoderCfg.host;
+if (_savedDecoderCfg.port && !process.env.AMB_DECODER_PORT) process.env.AMB_DECODER_PORT = String(_savedDecoderCfg.port);
+
 ambDecoder = createAmbTranx160Decoder({
   demoStore,
   notifyWorkspace,
   getDefaultTrack: () => process.env.HF_TRACK_SLUG || 'kart-demo',
   getDefaultWorkspace: () => process.env.HF_WORKSPACE_ID || process.env.AMB_WORKSPACE_ID || null,
 });
+if (_savedDecoderCfg.transponderMap) ambDecoder.config.globalTransponderMap = _savedDecoderCfg.transponderMap;
 ambDecoder.start().catch((err) => console.error('[AMB TranX160] start failed:', err.message));
 
 httpServer.listen(port, () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import { useDialog } from '../i18n/DialogContext.jsx';
 import { isStrongPassword } from '../utils/password.js';
@@ -36,6 +36,60 @@ export default function AdvancedSettingsModal({
   const [editPassword, setEditPassword] = useState('');
   const [licenseKey, setLicenseKey] = useState('');
   const [licenseStatus, setLicenseStatus] = useState(isLicensed ? 'active' : null);
+
+  const [decoderHost, setDecoderHost] = useState('');
+  const [decoderPort, setDecoderPort] = useState('5403');
+  const [decoderStatus, setDecoderStatus] = useState(null);
+  const [decoderSaving, setDecoderSaving] = useState(false);
+  const [transponderRows, setTransponderRows] = useState([{ tid: '', kart: '' }]);
+
+  const loadDecoderConfig = useCallback(() => {
+    apiFetch('/api/install/decoder').then((r) => r.json()).then((d) => {
+      if (!d.success) return;
+      setDecoderHost(d.host || '');
+      setDecoderPort(String(d.port || 5403));
+      setDecoderStatus(d.status);
+      const map = d.transponderMap || {};
+      const rows = Object.entries(map).map(([tid, kart]) => ({ tid, kart: String(kart) }));
+      setTransponderRows(rows.length ? [...rows, { tid: '', kart: '' }] : [{ tid: '', kart: '' }]);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => { if (unlocked) loadDecoderConfig(); }, [unlocked, loadDecoderConfig]);
+
+  const saveDecoder = async () => {
+    setDecoderSaving(true);
+    try {
+      const map = {};
+      transponderRows.forEach(({ tid, kart }) => {
+        if (tid.trim() && kart.trim()) map[tid.trim()] = Number(kart.trim());
+      });
+      const res = await apiFetch('/api/install/decoder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host: decoderHost.trim(), port: Number(decoderPort) || 5403, transponderMap: map }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDecoderStatus(data.status);
+        showAlert(t('decoder_saved'));
+      }
+    } catch { showAlert(t('admin_alert_server_error')); }
+    setDecoderSaving(false);
+  };
+
+  const updateTransponderRow = (idx, field, val) => {
+    setTransponderRows((prev) => {
+      const next = prev.map((r, i) => i === idx ? { ...r, [field]: val } : r);
+      const last = next[next.length - 1];
+      if (last.tid.trim() || last.kart.trim()) next.push({ tid: '', kart: '' });
+      return next;
+    });
+  };
+
+  const removeTransponderRow = (idx) => {
+    setTransponderRows((prev) => prev.length > 1 ? prev.filter((_, i) => i !== idx) : [{ tid: '', kart: '' }]);
+  };
 
   const tryActivateLicense = async () => {
     if (!licenseKey.trim()) return;
@@ -159,6 +213,83 @@ export default function AdvancedSettingsModal({
                 {licenseStatus === 'error' && <p className="license-error-msg">{t('admin_license_error')}</p>}
               </>
             )}
+
+            <hr className="panel-divider" />
+            <h3>{t('decoder_settings_title')}</h3>
+            <p className="level-hint">{t('decoder_settings_hint')}</p>
+            <div className="decoder-status-row">
+              <span className={`decoder-dot ${decoderStatus?.connected ? 'decoder-dot-on' : 'decoder-dot-off'}`} />
+              <span className="decoder-status-label">
+                {decoderStatus?.connected
+                  ? t('decoder_status_connected')
+                  : decoderHost ? t('decoder_status_disconnected') : t('decoder_status_not_configured')}
+              </span>
+              {decoderStatus?.lastPassingAt && (
+                <span className="decoder-last-passing">
+                  {t('decoder_last_passing')}: {new Date(decoderStatus.lastPassingAt).toLocaleTimeString()}
+                </span>
+              )}
+              <button type="button" className="btn-decoder-refresh" onClick={loadDecoderConfig} title={t('decoder_refresh')}>↻</button>
+            </div>
+            <div className="decoder-ip-row">
+              <div className="decoder-field">
+                <label className="field-label">{t('decoder_host_label')}</label>
+                <input
+                  type="text"
+                  value={decoderHost}
+                  onChange={(e) => setDecoderHost(e.target.value)}
+                  placeholder="192.168.1.50"
+                  dir="ltr"
+                />
+              </div>
+              <div className="decoder-field decoder-field-port">
+                <label className="field-label">{t('decoder_port_label')}</label>
+                <input
+                  type="number"
+                  value={decoderPort}
+                  onChange={(e) => setDecoderPort(e.target.value)}
+                  placeholder="5403"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+
+            <label className="field-label">{t('decoder_transponder_map_label')}</label>
+            <p className="level-hint">{t('decoder_transponder_map_hint')}</p>
+            <div className="decoder-map-table">
+              <div className="decoder-map-header">
+                <span>{t('decoder_col_transponder')}</span>
+                <span>{t('decoder_col_kart')}</span>
+                <span />
+              </div>
+              {transponderRows.map((row, idx) => (
+                <div className="decoder-map-row" key={idx}>
+                  <input
+                    type="text"
+                    value={row.tid}
+                    onChange={(e) => updateTransponderRow(idx, 'tid', e.target.value)}
+                    placeholder={t('decoder_transponder_ph')}
+                    dir="ltr"
+                  />
+                  <input
+                    type="number"
+                    value={row.kart}
+                    onChange={(e) => updateTransponderRow(idx, 'kart', e.target.value)}
+                    placeholder={t('decoder_kart_ph')}
+                    dir="ltr"
+                  />
+                  <button
+                    type="button"
+                    className="btn-decoder-remove"
+                    onClick={() => removeTransponderRow(idx)}
+                    disabled={transponderRows.length === 1 && !row.tid && !row.kart}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+            <button type="button" className="btn-muted btn-full" onClick={saveDecoder} disabled={decoderSaving}>
+              {decoderSaving ? '...' : t('decoder_save')}
+            </button>
 
             <hr className="panel-divider" />
             <div className="finish-section finish-section-modal">
