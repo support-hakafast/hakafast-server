@@ -64,7 +64,8 @@
 }
 
 .live-timing.theme-dark .live-display .live-timing-table th,
-.live-preview-float .live-display .live-timing-table th,
+.live-preview-float--dark .live-display .live-timing-table th,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-timing-table th,
 .live-display.theme-dark .live-timing-table th {
   color: var(--hf-turquoise, #40e0d0);
   font-weight: 900;
@@ -72,21 +73,47 @@
 }
 
 .live-timing.theme-dark .live-display .live-timing-table td,
-.live-preview-float .live-display .live-timing-table td,
+.live-preview-float--dark .live-display .live-timing-table td,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-timing-table td,
 .live-display.theme-dark .live-timing-table td {
   color: #f1f5f9;
 }
 
 .live-timing.theme-dark .live-display .live-pos,
-.live-preview-float .live-display .live-pos,
+.live-preview-float--dark .live-display .live-pos,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-pos,
 .live-display.theme-dark .live-pos {
   color: var(--hf-turquoise, #40e0d0);
 }
 
 .live-timing.theme-dark .live-display .live-timing-driver-name,
-.live-preview-float .live-display .live-timing-driver-name,
+.live-preview-float--dark .live-display .live-timing-driver-name,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-timing-driver-name,
 .live-display.theme-dark .live-timing-driver-name {
   color: #f8fafc;
+}
+
+/* Light preview float — table colours */
+.live-preview-float--light .live-display .live-timing-table th {
+  color: #000080;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.live-preview-float--light .live-display .live-timing-table td {
+  color: #1a202c;
+}
+
+.live-preview-float--light .live-display .live-pos {
+  color: #000080;
+}
+
+.live-preview-float--light .live-display .live-timing-table tbody tr:nth-child(odd) {
+  background: #e8edf4;
+}
+
+.live-preview-float--light .live-display .live-timing-table tbody tr:nth-child(even) {
+  background: #f0f4f8;
 }
 
 .live-timing.theme-dark .live-display .live-assign-name,

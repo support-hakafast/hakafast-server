@@ -201,7 +201,8 @@
   background: #f0f4f8;
 }
 
-.live-preview-float .live-preview-body.live-display {
+.live-preview-float--dark .live-preview-body.live-display,
+.live-preview-float:not(.live-preview-float--light) .live-preview-body.live-display {
   background: #0a0a12;
 }
 
@@ -303,11 +304,18 @@
   font-size: 1.25rem;
 }
 
-.live-preview-float .live-display .live-timing-driver-name {
+.live-preview-float--dark .live-display .live-timing-driver-name,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-timing-driver-name {
   font-size: 1.25rem;
   font-weight: 900;
   line-height: 1;
   color: #fff;
+}
+
+.live-preview-float--light .live-display .live-timing-driver-name {
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .live-preview-empty {
