@@ -1409,6 +1409,63 @@ app.post('/api/install/rentix', (req, res) => {
   return res.json({ success: true, rentix: config.rentix || {} });
 });
 
+app.get('/api/install/decoder/scan', async (req, res) => {
+  const os = require('os');
+  const net = require('net');
+
+  const results = { tcp: [], serial: [] };
+
+  // --- TCP scan: probe port 5403 on all IPs in local /24 subnets ---
+  const nets = os.networkInterfaces();
+  const subnets = [];
+  Object.values(nets).forEach((ifaces) => {
+    (ifaces || []).forEach((iface) => {
+      if (iface.family !== 'IPv4' || iface.internal) return;
+      const parts = iface.address.split('.');
+      subnets.push(`${parts[0]}.${parts[1]}.${parts[2]}`);
+    });
+  });
+  const uniqueSubnets = [...new Set(subnets)];
+  const DECODER_PORT = 5403;
+  const TCP_TIMEOUT = 400;
+
+  const probeHost = (host) => new Promise((resolve) => {
+    const sock = new net.Socket();
+    let done = false;
+    const finish = (found) => { if (!done) { done = true; sock.destroy(); resolve(found ? host : null); } };
+    sock.setTimeout(TCP_TIMEOUT);
+    sock.on('connect', () => finish(true));
+    sock.on('timeout', () => finish(false));
+    sock.on('error', () => finish(false));
+    sock.connect(DECODER_PORT, host);
+  });
+
+  const tcpProbes = [];
+  uniqueSubnets.forEach((sub) => {
+    for (let i = 1; i <= 254; i++) tcpProbes.push(`${sub}.${i}`);
+  });
+
+  const BATCH = 50;
+  for (let i = 0; i < tcpProbes.length; i += BATCH) {
+    const batch = tcpProbes.slice(i, i + BATCH);
+    const found = (await Promise.all(batch.map(probeHost))).filter(Boolean);
+    results.tcp.push(...found);
+  }
+
+  // --- Serial scan: list COM ports ---
+  try {
+    const { SerialPort } = require('serialport');
+    const ports = await SerialPort.list();
+    results.serial = ports
+      .filter((p) => p.path && (p.manufacturer || p.vendorId || p.pnpId || p.path.includes('COM')))
+      .map((p) => ({ path: p.path, manufacturer: p.manufacturer || null, vendorId: p.vendorId || null }));
+  } catch {
+    results.serial = [];
+  }
+
+  return res.json({ success: true, ...results });
+});
+
 app.get('/api/install/decoder', (req, res) => {
   const cfg = installConfig.loadInstallConfig();
   const decoder = cfg?.decoder || {};
@@ -1417,15 +1474,17 @@ app.get('/api/install/decoder', (req, res) => {
     success: true,
     host: decoder.host || process.env.AMB_DECODER_HOST || '',
     port: decoder.port || Number(process.env.AMB_DECODER_PORT) || 5403,
+    serial: decoder.serial || process.env.AMB_DECODER_SERIAL || '',
     transponderMap: decoder.transponderMap || {},
     status,
   });
 });
 
 app.post('/api/install/decoder', (req, res) => {
-  const { host, port, transponderMap } = req.body || {};
+  const { host, serial, port, transponderMap } = req.body || {};
   const decoderCfg = {
     host: host !== undefined ? String(host).trim() : undefined,
+    serial: serial !== undefined ? String(serial).trim() : undefined,
     port: port !== undefined ? Number(port) || 5403 : undefined,
     transponderMap: transponderMap !== undefined ? transponderMap : undefined,
   };
@@ -1960,6 +2019,7 @@ liveBroadcast = createLiveBroadcast(httpServer, {
 const _savedDecoderCfg = installConfig.loadInstallConfig()?.decoder || {};
 if (_savedDecoderCfg.host && !process.env.AMB_DECODER_HOST) process.env.AMB_DECODER_HOST = _savedDecoderCfg.host;
 if (_savedDecoderCfg.port && !process.env.AMB_DECODER_PORT) process.env.AMB_DECODER_PORT = String(_savedDecoderCfg.port);
+if (_savedDecoderCfg.serial && !process.env.AMB_DECODER_SERIAL) process.env.AMB_DECODER_SERIAL = _savedDecoderCfg.serial;
 
 ambDecoder = createAmbTranx160Decoder({
   demoStore,

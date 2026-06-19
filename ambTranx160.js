@@ -312,13 +312,16 @@ function createAmbTranx160Decoder(deps) {
   function reconfigure(newConfig = {}) {
     const hostChanged = newConfig.host !== undefined && newConfig.host !== config.host;
     const portChanged = newConfig.port !== undefined && Number(newConfig.port) !== config.port;
+    const serialChanged = newConfig.serial !== undefined && newConfig.serial !== config.serial;
     if (newConfig.host !== undefined) config.host = newConfig.host;
+    if (newConfig.serial !== undefined) config.serial = newConfig.serial;
     if (newConfig.port !== undefined) config.port = Number(newConfig.port) || DEFAULT_PORT;
     if (newConfig.transponderMap !== undefined) config.globalTransponderMap = newConfig.transponderMap;
-    if (hostChanged || portChanged) {
+    if (hostChanged || portChanged || serialChanged) {
       stop();
       started = true;
-      if (config.host) connectTcp();
+      if (config.serial) connectSerial();
+      else if (config.host) connectTcp();
     }
   }
 

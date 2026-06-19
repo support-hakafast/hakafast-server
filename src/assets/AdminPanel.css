@@ -6851,6 +6851,17 @@ html:has(.admin-no-scroll) body {
 .btn-decoder-remove { background: none; border: none; color: #94a3b8; font-size: 1rem; cursor: pointer; padding: 0; line-height: 1; border-radius: 4px; }
 .btn-decoder-remove:hover:not(:disabled) { color: #dc2626; }
 .btn-decoder-remove:disabled { opacity: 0.3; cursor: default; }
+.btn-decoder-scan { width: 100%; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; background: #f8fafc; border: 1.5px dashed #94a3b8; border-radius: 8px; color: #334155; font-size: 0.84rem; font-weight: 600; cursor: pointer; }
+.btn-decoder-scan:hover:not(:disabled) { background: #f1f5f9; border-color: var(--navy); color: var(--navy); }
+.btn-decoder-scan:disabled { opacity: 0.6; cursor: default; }
+.decoder-scan-results { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem; margin-bottom: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.decoder-scan-none { font-size: 0.8rem; color: #64748b; text-align: center; margin: 0.2rem 0; }
+.decoder-scan-group { display: flex; flex-direction: column; gap: 0.25rem; }
+.decoder-scan-group-label { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.1rem; }
+.decoder-scan-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem; background: white; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; text-align: start; font-size: 0.82rem; color: #1e293b; }
+.decoder-scan-item:hover { border-color: #14b8a6; background: #f0fdfa; }
+.decoder-scan-icon { font-size: 1rem; flex-shrink: 0; }
+.decoder-scan-use { margin-inline-start: auto; font-size: 0.75rem; font-weight: 700; color: #14b8a6; }
 
 /* ── Championship login widget ────────────────────────────────────────────── */
 .champ-login-widget { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }

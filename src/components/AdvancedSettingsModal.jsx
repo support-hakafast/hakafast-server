@@ -39,8 +39,11 @@ export default function AdvancedSettingsModal({
 
   const [decoderHost, setDecoderHost] = useState('');
   const [decoderPort, setDecoderPort] = useState('5403');
+  const [decoderSerial, setDecoderSerial] = useState('');
   const [decoderStatus, setDecoderStatus] = useState(null);
   const [decoderSaving, setDecoderSaving] = useState(false);
+  const [decoderScanning, setDecoderScanning] = useState(false);
+  const [scanResults, setScanResults] = useState(null);
   const [transponderRows, setTransponderRows] = useState([{ tid: '', kart: '' }]);
 
   const loadDecoderConfig = useCallback(() => {
@@ -48,12 +51,27 @@ export default function AdvancedSettingsModal({
       if (!d.success) return;
       setDecoderHost(d.host || '');
       setDecoderPort(String(d.port || 5403));
+      setDecoderSerial(d.serial || '');
       setDecoderStatus(d.status);
       const map = d.transponderMap || {};
       const rows = Object.entries(map).map(([tid, kart]) => ({ tid, kart: String(kart) }));
       setTransponderRows(rows.length ? [...rows, { tid: '', kart: '' }] : [{ tid: '', kart: '' }]);
     }).catch(() => {});
   }, []);
+
+  const scanDecoder = async () => {
+    setDecoderScanning(true);
+    setScanResults(null);
+    try {
+      const res = await apiFetch('/api/install/decoder/scan');
+      const data = await res.json();
+      if (data.success) setScanResults(data);
+    } catch { /* ignore */ }
+    setDecoderScanning(false);
+  };
+
+  const pickTcp = (host) => { setDecoderHost(host); setDecoderSerial(''); setScanResults(null); };
+  const pickSerial = (path) => { setDecoderSerial(path); setDecoderHost(''); setScanResults(null); };
 
   useEffect(() => { if (unlocked) loadDecoderConfig(); }, [unlocked, loadDecoderConfig]);
 
@@ -67,7 +85,7 @@ export default function AdvancedSettingsModal({
       const res = await apiFetch('/api/install/decoder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host: decoderHost.trim(), port: Number(decoderPort) || 5403, transponderMap: map }),
+        body: JSON.stringify({ host: decoderHost.trim(), serial: decoderSerial.trim(), port: Number(decoderPort) || 5403, transponderMap: map }),
       });
       const data = await res.json();
       if (data.success) {
@@ -231,13 +249,49 @@ export default function AdvancedSettingsModal({
               )}
               <button type="button" className="btn-decoder-refresh" onClick={loadDecoderConfig} title={t('decoder_refresh')}>↻</button>
             </div>
+            <button type="button" className="btn-decoder-scan" onClick={scanDecoder} disabled={decoderScanning}>
+              {decoderScanning ? t('decoder_scanning') : t('decoder_scan')}
+            </button>
+
+            {scanResults && (
+              <div className="decoder-scan-results">
+                {scanResults.tcp.length === 0 && scanResults.serial.length === 0 && (
+                  <p className="decoder-scan-none">{t('decoder_scan_none')}</p>
+                )}
+                {scanResults.tcp.length > 0 && (
+                  <div className="decoder-scan-group">
+                    <div className="decoder-scan-group-label">{t('decoder_scan_tcp')}</div>
+                    {scanResults.tcp.map((host) => (
+                      <button key={host} type="button" className="decoder-scan-item" onClick={() => pickTcp(host)}>
+                        <span className="decoder-scan-icon">🌐</span>
+                        <span dir="ltr">{host}:5403</span>
+                        <span className="decoder-scan-use">{t('decoder_scan_use')}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {scanResults.serial.length > 0 && (
+                  <div className="decoder-scan-group">
+                    <div className="decoder-scan-group-label">{t('decoder_scan_serial')}</div>
+                    {scanResults.serial.map((p) => (
+                      <button key={p.path} type="button" className="decoder-scan-item" onClick={() => pickSerial(p.path)}>
+                        <span className="decoder-scan-icon">🔌</span>
+                        <span dir="ltr">{p.path}{p.manufacturer ? ` — ${p.manufacturer}` : ''}</span>
+                        <span className="decoder-scan-use">{t('decoder_scan_use')}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="decoder-ip-row">
               <div className="decoder-field">
                 <label className="field-label">{t('decoder_host_label')}</label>
                 <input
                   type="text"
                   value={decoderHost}
-                  onChange={(e) => setDecoderHost(e.target.value)}
+                  onChange={(e) => { setDecoderHost(e.target.value); if (e.target.value) setDecoderSerial(''); }}
                   placeholder="192.168.1.50"
                   dir="ltr"
                 />
@@ -252,6 +306,17 @@ export default function AdvancedSettingsModal({
                   dir="ltr"
                 />
               </div>
+            </div>
+            <div className="decoder-field" style={{ marginBottom: '0.75rem' }}>
+              <label className="field-label">{t('decoder_serial_label')}</label>
+              <input
+                type="text"
+                value={decoderSerial}
+                onChange={(e) => { setDecoderSerial(e.target.value); if (e.target.value) setDecoderHost(''); }}
+                placeholder="COM3"
+                dir="ltr"
+              />
+              <p className="level-hint" style={{ marginTop: '0.2rem' }}>{t('decoder_serial_hint')}</p>
             </div>
 
             <label className="field-label">{t('decoder_transponder_map_label')}</label>
