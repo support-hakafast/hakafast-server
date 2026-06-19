@@ -100,6 +100,8 @@ start-hakafast.bat admin
 | זמנים חיים | `http://127.0.0.1:5000/live-timing/{track-slug}` |
 | קבלה | `http://127.0.0.1:5000/reception/{track-slug}` |
 | תוצאות | `http://127.0.0.1:5000/results` |
+| הזמנות (קיוסק) | `http://127.0.0.1:5000/booking/{track-slug}` |
+| פורטל HQ (הנפקת רישיונות) | `http://YOUR-HQ-SERVER:5000/hq` |
 
 ## קבצים ונתונים
 
@@ -120,6 +122,12 @@ start-hakafast.bat admin
 | `HF_KIOSK_URL` | אוטומטי | URL ל-kiosk (override) |
 | `HF_KIOSK_MODE` | — | מצב kiosk |
 | `NODE_ENV` | `production` | מצב Node.js |
+| `HF_LICENSE_KEYS` | — | מפתחות רישיון (מופרדים בפסיק) |
+| `AMB_DECODER_HOST` | — | IP של דקודר AMB/MyLaps |
+| `AMB_DECODER_PORT` | `5403` | פורט TCP של הדקודר |
+| `AMB_TRANSPONDER_MAP` | — | JSON: מיפוי טרנספונדר→קארט |
+| `HQ_PASSWORD` | — | סיסמת פורטל HQ (בשרת HQ בלבד) |
+| `HQ_SECRET` | — | סוד TOTP לפורטל HQ (בשרת HQ בלבד) |
 
 ## ניהול שירות
 

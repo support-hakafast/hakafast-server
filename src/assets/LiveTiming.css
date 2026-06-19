@@ -44,7 +44,8 @@
 
 /* —— Dark display (default page theme + admin float) —— */
 .live-timing.theme-dark .live-display,
-.live-preview-float .live-display,
+.live-preview-float--dark .live-display,
+.live-preview-float:not(.live-preview-float--light) .live-display,
 .live-display.theme-dark {
   background: #0a0a12;
   color: #fff;
@@ -55,6 +56,19 @@
   --live-row-hover: rgba(64, 224, 208, 0.08);
   --live-th-bg: rgba(64, 224, 208, 0.15);
   --live-driver-color: #fff;
+}
+
+/* —— Light preview float display —— */
+.live-preview-float--light .live-display {
+  background: #f0f4f8;
+  color: #0f172a;
+  --live-surface: #ffffff;
+  --live-border: #e2e8f0;
+  --live-muted: #374151;
+  --live-row-alt: #e8edf4;
+  --live-row-hover: #dbeafe;
+  --live-th-bg: rgba(64, 224, 208, 0.2);
+  --live-driver-color: #000080;
 }
 
 .live-timing.theme-dark .live-display .live-timing-table,
@@ -131,31 +145,36 @@
 }
 
 .live-timing.theme-dark .live-display .live-assign-card,
-.live-preview-float .live-display .live-assign-card {
+.live-preview-float--dark .live-display .live-assign-card,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-assign-card {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: none;
 }
 
 .live-timing.theme-dark .live-display .live-assignments-banner,
-.live-preview-float .live-display .live-assignments-banner {
+.live-preview-float--dark .live-display .live-assignments-banner,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-assignments-banner {
   background: linear-gradient(135deg, rgba(64, 224, 208, 0.12), rgba(107, 33, 168, 0.2));
   border-color: rgba(64, 224, 208, 0.25);
 }
 
 .live-timing.theme-dark .live-display .live-assignments-next .live-assignments-banner,
-.live-preview-float .live-display .live-assignments-next .live-assignments-banner {
+.live-preview-float--dark .live-display .live-assignments-next .live-assignments-banner,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-assignments-next .live-assignments-banner {
   background: linear-gradient(135deg, rgba(107, 33, 168, 0.28), rgba(64, 224, 208, 0.1));
 }
 
 .live-timing.theme-dark .live-display .live-assign-card.is-on-track-wait,
-.live-preview-float .live-display .live-assign-card.is-on-track-wait {
+.live-preview-float--dark .live-display .live-assign-card.is-on-track-wait,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-assign-card.is-on-track-wait {
   border-color: rgba(251, 191, 36, 0.4);
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), transparent);
 }
 
 .live-timing.theme-dark .live-display .live-assign-status-track,
-.live-preview-float .live-display .live-assign-status-track {
+.live-preview-float--dark .live-display .live-assign-status-track,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-assign-status-track {
   color: #fbbf24;
 }
 

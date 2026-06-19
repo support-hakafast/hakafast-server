@@ -88,7 +88,8 @@ $Include = @(
   'server.js', 'demoStore.js', 'liveBroadcast.js', 'lapStats.js',
   'installConfig.js', 'persistentStore.js', 'fileExport.js', 'rentixWebhook.js', 'ambTranx160.js',
   'enduranceRules.js', 'trackProfile.js', 'ambP3Parser.js',
-  'package.json', 'package-lock.json', 'dist', 'public', 'kiosk'
+  'translations.json', 'CHANGELOG.md',
+  'package.json', 'package-lock.json', 'dist', 'public', 'kiosk', 'scripts'
 )
 $MissingFiles = @()
 foreach ($item in $Include) {
@@ -96,7 +97,7 @@ foreach ($item in $Include) {
   if (Test-Path $src) {
     Copy-Item $src (Join-Path $Stage $item) -Recurse -Force
   } else {
-    if ($item -in @('package-lock.json', 'kiosk', 'enduranceRules.js', 'trackProfile.js', 'ambP3Parser.js')) {
+    if ($item -in @('package-lock.json', 'kiosk', 'enduranceRules.js', 'trackProfile.js', 'ambP3Parser.js', 'CHANGELOG.md', 'scripts')) {
       Write-Host "  WARNING: Optional file $item not found — skipping." -ForegroundColor Yellow
     } else {
       $MissingFiles += $item
