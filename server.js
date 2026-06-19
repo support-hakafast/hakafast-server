@@ -1172,6 +1172,24 @@ app.get('/api/results/:heatNumber', (req, res) => {
   return res.json({ success: true, heat });
 });
 
+// Display a past heat result on the live timing screen for customers.
+// GET  → { success, displayedHeat: heat|null }
+// POST { heatNumber: N } to show heat N; POST { heatNumber: null } to clear.
+app.get('/api/display-results', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  return res.json({ success: true, displayedHeat: demo.displayedHeat || null });
+});
+
+app.post('/api/display-results', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const { heatNumber } = req.body || {};
+  demoStore.setDisplayedHeat(demo, heatNumber || null);
+  notifyWorkspace(req);
+  return res.json({ success: true });
+});
+
 // ── Championships ────────────────────────────────────────────────────────────
 
 // ── Championship API (global store) ─────────────────────────────────────────

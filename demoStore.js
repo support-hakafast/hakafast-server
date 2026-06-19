@@ -2520,6 +2520,15 @@ function listHeatResults(store, limit = 20) {
   }));
 }
 
+function setDisplayedHeat(store, heatNumber) {
+  if (!heatNumber) {
+    store.displayedHeat = null;
+  } else {
+    const heat = getResultsForHeatNumber(store, heatNumber);
+    store.displayedHeat = heat || null;
+  }
+}
+
 function getLivePayload(store, mode) {
   let rows;
   if (mode === 'assignments') {
@@ -2545,6 +2554,7 @@ function getLivePayload(store, mode) {
       week: getTopLaps(store, 'week', 10),
       month: getTopLaps(store, 'month', 10),
     },
+    displayedHeat: store.displayedHeat || null,
   };
 }
 
@@ -2604,6 +2614,7 @@ module.exports = {
   removeReceptionDriver,
   getResultsForHeatNumber,
   listHeatResults,
+  setDisplayedHeat,
   computeAvgLapFromTimes,
   // bookings & day planner
   getBookings,

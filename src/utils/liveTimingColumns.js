@@ -282,17 +282,22 @@ export function gapToLeaderBestLap(row, leader, lapToSecondsFn = lapToSeconds) {
 /** Gap to the car directly ahead in classification (sprint / endurance). P1 shows —. */
 export function gapToCarAhead(row, ahead, heatType, lapToSecondsFn = lapToSeconds) {
   if (!row) return '--.---';
+  // Last driver in the list has nobody ahead — always blank.
   if (!ahead) return '—';
 
   const aheadLaps = ahead.lap_count || 0;
   const rowLaps = row.lap_count || 0;
   const lapDiff = aheadLaps - rowLaps;
 
+  // Can't have crossed more laps than the car ahead — data anomaly.
+  if (lapDiff < 0) return '—';
+
+  // Neither car has completed a lap yet — race just started, no meaningful gap.
+  if (aheadLaps === 0) return '—';
+
   if (lapDiff >= 2) {
     return formatLapGap(lapDiff);
   }
-
-  if (lapDiff < 0) return '—';
 
   if (heatType === 'endurance') {
     const aheadPen = ahead.unserved_penalty_sec || 0;
@@ -305,16 +310,14 @@ export function gapToCarAhead(row, ahead, heatType, lapToSecondsFn = lapToSecond
   const crossingSec = crossingGapSeconds(row, ahead);
   if (crossingSec != null) return `+${crossingSec.toFixed(3)}`;
 
-  // lapDiff=1 mid-lap window: leader crossed lap N, follower hasn't yet.
-  // Use track position to estimate. trackGapSeconds handles the wrap-around
-  // (follower at ~0.9, leader at ~0.0) when lapDiff=1 is passed.
+  // lapDiff=1: ahead crossed lap N, this car hasn't yet — mid-lap estimate.
   if (lapDiff === 1) {
     const estSec = trackGapSeconds(row, ahead, lapToSecondsFn, 1);
     if (estSec != null) return `+${estSec.toFixed(3)}`;
     return formatLapGap(1);
   }
 
-  // Same lap, no crossing data yet (lap 1 in progress): estimate from position.
+  // Same lap, both have completed ≥1 lap but crossing timestamps unavailable.
   const estSec = trackGapSeconds(row, ahead, lapToSecondsFn, 0);
   if (estSec != null) return `+${estSec.toFixed(3)}`;
 

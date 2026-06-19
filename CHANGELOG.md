@@ -1,5 +1,19 @@
 # HAKAFAST Changelog
 
+## [1.2.0] — 2026-06-19
+
+### Added
+- **Results history viewer** — admin can push any past heat's results to the live timing screen customers are watching
+  - "🏁 הצג תוצאות" button in admin sidebar opens a picker showing all saved heats
+  - Selecting a heat broadcasts it to all connected clients via WebSocket
+  - Live timing shows a full-screen overlay with positions, kart numbers, driver names, best laps, and lap counts
+  - Sorted correctly for each heat type (sprint: most laps first, then best lap; time/endurance: best lap)
+  - "הסתר תוצאות" clears the display for all customers immediately
+  - Dark/light theme aware; server endpoint `POST /api/display-results`
+- **Gap calculation fix** — sprint/endurance gap column no longer shows values before first full lap is complete
+  - Guard: `aheadLaps === 0` → return `'—'` (prevents crossingGapSeconds from firing on the initial start-line crossing)
+  - Last driver in classification (no one ahead) consistently shows `'—'`
+
 ## [1.1.0] — 2026-06-19
 
 ### Added

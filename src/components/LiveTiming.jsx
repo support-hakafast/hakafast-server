@@ -76,6 +76,12 @@ const LiveTiming = () => {
       topLaps = s.topLaps ?? null;
       heatClock = s.heatClock ?? null;
     }
+    let displayedHeat = null;
+    const dr = await apiFetch('/api/display-results', {}, isolated ? trackSlug : null);
+    if (dr.ok) {
+      const d = await dr.json();
+      displayedHeat = d.displayedHeat || null;
+    }
     return {
       rows: Array.isArray(rows) ? rows : [],
       heatType: heat,
@@ -85,6 +91,7 @@ const LiveTiming = () => {
       heatNumber,
       topLaps,
       heatClock,
+      displayedHeat,
     };
   }, [trackId, mode, trackSlug, isolated]);
 
@@ -97,6 +104,7 @@ const LiveTiming = () => {
     heatNumber,
     topLaps,
     heatClock,
+    displayedHeat,
   } = useLiveTimingSocket({
     trackSlug: isolated ? trackSlug : (track || 'default'),
     trackId,
@@ -142,6 +150,18 @@ const LiveTiming = () => {
     const key = `${mode}-${row.kart_number || row.driver_name}`;
     return flashingKeys.has(key) ? 'live-row-flash' : '';
   };
+
+  const displayRows = displayedHeat
+    ? [...(displayedHeat.results || [])].sort((a, b) => {
+        const at = a.best_lap_time || '99:99.999';
+        const bt = b.best_lap_time || '99:99.999';
+        if (displayedHeat.heat_type === 'sprint') {
+          const ld = (b.lap_count || 0) - (a.lap_count || 0);
+          if (ld !== 0) return ld;
+        }
+        return at.localeCompare(bt);
+      })
+    : null;
 
   return (
     <div className={`live-timing theme-${theme}`}>
@@ -290,6 +310,41 @@ const LiveTiming = () => {
         </div>
       )}
       </div>
+
+      {displayedHeat && displayRows && (
+        <div className="live-results-overlay">
+          <div className="live-results-panel">
+            <div className="live-results-header">
+              <span className="live-results-title">
+                {t('live_results_heat', { n: displayedHeat.heat_number }) || `מקצה #${displayedHeat.heat_number}`}
+              </span>
+              <span className="live-results-type">{displayedHeat.heat_type}</span>
+            </div>
+            <table className="live-results-table">
+              <thead>
+                <tr>
+                  <th className="live-results-col-pos">{t('pos') || '#'}</th>
+                  <th className="live-results-col-kart">{t('kart') || 'קארט'}</th>
+                  <th className="live-results-col-driver">{t('driver') || 'נהג'}</th>
+                  <th className="live-results-col-best">{t('best_lap') || 'שיא'}</th>
+                  <th className="live-results-col-laps">{t('laps') || 'הקפות'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayRows.map((r, i) => (
+                  <tr key={r.kart_number || i} className={i === 0 ? 'live-results-row-first' : ''}>
+                    <td className="live-results-col-pos">{i + 1}</td>
+                    <td className="live-results-col-kart">{r.kart_number || '—'}</td>
+                    <td className="live-results-col-driver">{r.driver_name || t('anonymous') || '—'}</td>
+                    <td className="live-results-col-best">{r.best_lap_time || '—'}</td>
+                    <td className="live-results-col-laps">{r.lap_count || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

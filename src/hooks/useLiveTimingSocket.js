@@ -22,6 +22,7 @@ export function useLiveTimingSocket({
   const [heatNumber, setHeatNumber] = useState(null);
   const [topLaps, setTopLaps] = useState(null);
   const [heatClock, setHeatClock] = useState(null);
+  const [displayedHeat, setDisplayedHeat] = useState(null);
   const [connected, setConnected] = useState(false);
   const wsRef = useRef(null);
   const pollRef = useRef(null);
@@ -64,6 +65,7 @@ export function useLiveTimingSocket({
             if (data.heatNumber != null) setHeatNumber(data.heatNumber);
             if (data.topLaps) setTopLaps(data.topLaps);
             if (data.heatClock) setHeatClock(data.heatClock);
+            setDisplayedHeat(data.displayedHeat || null);
           }
         } catch {
           /* ignore */
@@ -105,6 +107,7 @@ export function useLiveTimingSocket({
             if (msg.heatNumber != null) setHeatNumber(msg.heatNumber);
             if (msg.topLaps) setTopLaps(msg.topLaps);
             if (msg.heatClock) setHeatClock(msg.heatClock);
+            setDisplayedHeat(msg.displayedHeat || null);
           }
         } catch {
           /* ignore */
@@ -149,6 +152,6 @@ export function useLiveTimingSocket({
   }, [mode, trackSlug, trackId]);
 
   return {
-    rows, heatType, timingColumns, timingColumnOrder, connected, hasPreparedHeat, heatNumber, topLaps, heatClock,
+    rows, heatType, timingColumns, timingColumnOrder, connected, hasPreparedHeat, heatNumber, topLaps, heatClock, displayedHeat,
   };
 }
