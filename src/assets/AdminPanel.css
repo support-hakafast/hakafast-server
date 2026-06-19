@@ -6784,4 +6784,24 @@ html:has(.admin-no-scroll) body {
 /* ── Standings mode toggle ────────────────────────────────────────────────── */
 .champ-standings-mode-toggle { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
 
+/* ── Day Planner panel ────────────────────────────────────────────────────── */
+.admin-day-planner-panel {
+  border-top: 2px solid #e2e8f0;
+  padding: 0;
+}
+
+.admin-theme-dark .admin-day-planner-panel {
+  border-color: #334155;
+}
+
+.btn-sidebar-planner.is-active {
+  background: #000080 !important;
+  color: #40e0d0 !important;
+}
+
+.admin-theme-dark .btn-sidebar-planner.is-active {
+  background: #000080 !important;
+  color: #40e0d0 !important;
+}
+
 

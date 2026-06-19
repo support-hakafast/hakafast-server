@@ -1079,6 +1079,84 @@ app.delete('/api/reception/drivers/:index', (req, res) => {
   return res.json(result);
 });
 
+// ── Bookings ──────────────────────────────────────────────────────────────────
+
+app.get('/api/bookings', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  return res.json({ success: true, bookings: demoStore.getBookings(demo) });
+});
+
+app.post('/api/bookings', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.addBooking(demo, req.body || {});
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
+});
+
+app.patch('/api/bookings/:id', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.updateBooking(demo, req.params.id, req.body || {});
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
+});
+
+app.delete('/api/bookings/:id', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.deleteBooking(demo, req.params.id);
+  if (result.success) notifyWorkspace(req);
+  return res.json(result);
+});
+
+// ── Scheduled Events (Day Planner) ────────────────────────────────────────────
+
+app.get('/api/scheduled-events', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const date = req.query.date || null;
+  let events = demoStore.getScheduledEvents(demo);
+  if (date) events = events.filter((e) => e.date === date);
+  return res.json({ success: true, events });
+});
+
+app.post('/api/scheduled-events', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.addScheduledEvent(demo, req.body || {});
+  return res.json(result);
+});
+
+app.patch('/api/scheduled-events/:id', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.updateScheduledEvent(demo, req.params.id, req.body || {});
+  return res.json(result);
+});
+
+app.delete('/api/scheduled-events/:id', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.deleteScheduledEvent(demo, req.params.id);
+  return res.json(result);
+});
+
+// ── Booking Settings ───────────────────────────────────────────────────────────
+
+app.get('/api/booking-settings', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  return res.json({ success: true, bookingSettings: demoStore.getBookingSettings(demo) });
+});
+
+app.post('/api/booking-settings', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  return res.json(demoStore.saveBookingSettings(demo, req.body || {}));
+});
+
 app.get('/api/results/list', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });

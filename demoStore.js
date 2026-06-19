@@ -213,6 +213,9 @@ function exportSnapshot(store) {
     championships: store.championships,
     dailyHeat: store.dailyHeat,
     lapRecords: store.lapRecords,
+    bookings: store.bookings || [],
+    scheduledEvents: store.scheduledEvents || [],
+    bookingSettings: store.bookingSettings || null,
     exportedAt: Date.now(),
   };
 }
@@ -248,6 +251,9 @@ function applySnapshot(store, snapshot) {
   if (snapshot.dailyHeat) store.dailyHeat = snapshot.dailyHeat;
   if (snapshot.lapRecords) store.lapRecords = snapshot.lapRecords;
   if (snapshot.workspaceId) store.workspaceId = snapshot.workspaceId;
+  if (Array.isArray(snapshot.bookings)) store.bookings = snapshot.bookings;
+  if (Array.isArray(snapshot.scheduledEvents)) store.scheduledEvents = snapshot.scheduledEvents;
+  if (snapshot.bookingSettings) store.bookingSettings = snapshot.bookingSettings;
   store.lastAccess = Date.now();
 }
 
@@ -2599,4 +2605,123 @@ module.exports = {
   getResultsForHeatNumber,
   listHeatResults,
   computeAvgLapFromTimes,
+  // bookings & day planner
+  getBookings,
+  addBooking,
+  updateBooking,
+  deleteBooking,
+  getScheduledEvents,
+  addScheduledEvent,
+  updateScheduledEvent,
+  deleteScheduledEvent,
+  getBookingSettings,
+  saveBookingSettings,
 };
+
+// ── Bookings ─────────────────────────────────────────────────────────────────
+
+function getBookings(store) {
+  return store.bookings || [];
+}
+
+function addBooking(store, data) {
+  if (!Array.isArray(store.bookings)) store.bookings = [];
+  const booking = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name: String(data.name || '').trim(),
+    phone: data.phone || null,
+    groupSize: Math.max(1, Number(data.groupSize) || 1),
+    heatsPerPerson: Math.max(1, Number(data.heatsPerPerson) || 1),
+    consecutive: Boolean(data.consecutive),
+    preferredSlot: data.preferredSlot || null, // 'morning'|'afternoon'|'evening'|null
+    note: data.note || '',
+    status: 'pending',        // 'pending'|'confirmed'|'queued'|'done'|'cancelled'
+    heatNumbers: data.heatNumbers || [], // assigned heat numbers
+    createdAt: new Date().toISOString(),
+    source: data.source || 'admin', // 'admin'|'kiosk'|'reception'
+  };
+  store.bookings.push(booking);
+  schedulePersist(store);
+  return { success: true, booking };
+}
+
+function updateBooking(store, id, patch) {
+  if (!Array.isArray(store.bookings)) return { success: false, error: 'not_found' };
+  const idx = store.bookings.findIndex((b) => b.id === id);
+  if (idx === -1) return { success: false, error: 'not_found' };
+  store.bookings[idx] = { ...store.bookings[idx], ...patch };
+  schedulePersist(store);
+  return { success: true, booking: store.bookings[idx] };
+}
+
+function deleteBooking(store, id) {
+  if (!Array.isArray(store.bookings)) return { success: false, error: 'not_found' };
+  const idx = store.bookings.findIndex((b) => b.id === id);
+  if (idx === -1) return { success: false, error: 'not_found' };
+  store.bookings.splice(idx, 1);
+  schedulePersist(store);
+  return { success: true };
+}
+
+// ── Scheduled Events (day planner) ───────────────────────────────────────────
+
+function getScheduledEvents(store) {
+  return store.scheduledEvents || [];
+}
+
+function addScheduledEvent(store, data) {
+  if (!Array.isArray(store.scheduledEvents)) store.scheduledEvents = [];
+  const ev = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    title: String(data.title || '').trim(),
+    type: data.type || 'booking',   // 'booking'|'birthday'|'corporate'|'private'|'maintenance'
+    date: data.date || new Date().toISOString().slice(0, 10),
+    startTime: data.startTime || '10:00',
+    endTime: data.endTime || '11:00',
+    kartsReserved: Number(data.kartsReserved) || 0,
+    color: data.color || null,
+    note: data.note || '',
+    bookingId: data.bookingId || null,
+    createdAt: new Date().toISOString(),
+  };
+  store.scheduledEvents.push(ev);
+  schedulePersist(store);
+  return { success: true, event: ev };
+}
+
+function updateScheduledEvent(store, id, patch) {
+  if (!Array.isArray(store.scheduledEvents)) return { success: false, error: 'not_found' };
+  const idx = store.scheduledEvents.findIndex((e) => e.id === id);
+  if (idx === -1) return { success: false, error: 'not_found' };
+  store.scheduledEvents[idx] = { ...store.scheduledEvents[idx], ...patch };
+  schedulePersist(store);
+  return { success: true, event: store.scheduledEvents[idx] };
+}
+
+function deleteScheduledEvent(store, id) {
+  if (!Array.isArray(store.scheduledEvents)) return { success: false, error: 'not_found' };
+  const idx = store.scheduledEvents.findIndex((e) => e.id === id);
+  if (idx === -1) return { success: false, error: 'not_found' };
+  store.scheduledEvents.splice(idx, 1);
+  schedulePersist(store);
+  return { success: true };
+}
+
+// ── Booking Settings ──────────────────────────────────────────────────────────
+
+function getBookingSettings(store) {
+  return store.bookingSettings || {
+    enabled: false,
+    maxHeatsPerPerson: 3,
+    allowConsecutive: true,
+    allowScattered: true,
+    requirePhone: false,
+    kioskBookingEnabled: false,
+  };
+}
+
+function saveBookingSettings(store, patch) {
+  store.bookingSettings = { ...getBookingSettings(store), ...patch };
+  schedulePersist(store);
+  return { success: true, bookingSettings: store.bookingSettings };
+}

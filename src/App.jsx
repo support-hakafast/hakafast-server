@@ -12,6 +12,7 @@ import SetupWizard from './components/SetupWizard.jsx';
 import Reception from './components/Reception.jsx';
 import ResultsPage from './components/ResultsPage.jsx';
 import ChampionshipPage from './components/ChampionshipPage.jsx';
+import BookingPage from './components/BookingPage.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import { fetchInstallConfig } from './utils/installMode.js';
 
@@ -70,6 +71,7 @@ function App() {
               <Route path="/install-guide" element={<InstallGuidePage />} />
               <Route path="/championship" element={<ChampionshipPage />} />
               <Route path="/championship/:trackName" element={<ChampionshipPage />} />
+              <Route path="/booking/:track" element={<BookingPage />} />
             </Routes>
           </LocalInstallGuard>
         </Router>

@@ -60,6 +60,7 @@ import {
   resolveKartModelId as lookupKartModelId,
 } from '../utils/kartTypes.js';
 import KartTypesEditor from './KartTypesEditor.jsx';
+import DayPlanner from './DayPlanner.jsx';
 import { apiFetch } from '../utils/apiClient.js';
 import {
   usesIsolatedWorkspace,
@@ -129,6 +130,7 @@ const AdminPanel = () => {
   const trackSlug = trackName || 'kart-demo';
 
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showDayPlanner, setShowDayPlanner] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
   const [isLicensed, setIsLicensed] = useState(false);
@@ -2387,6 +2389,15 @@ const AdminPanel = () => {
                 <span className="btn-sidebar-champ-label">{t('admin_championship')}</span>
               </Link>
             )}
+            {isLicensed && (
+              <button
+                type="button"
+                className={`btn-muted btn-sidebar-tool btn-sidebar-planner${showDayPlanner ? ' is-active' : ''}`}
+                onClick={() => setShowDayPlanner((v) => !v)}
+              >
+                📅 {t('admin_day_planner') || 'לוח יום'}
+              </button>
+            )}
           </div>
 
           {isLicensed && heatType === 'sprint' && plannedRaceEvent?.type === 'sprint' && (() => {
@@ -2458,6 +2469,23 @@ const AdminPanel = () => {
           <button type="button" className="btn-advanced-link" onClick={() => setShowAdvanced(true)}>{t('admin_advanced_settings')}</button>
         </aside>
       </div>
+
+      {showDayPlanner && isLicensed && (
+        <div className="admin-day-planner-panel">
+          <DayPlanner
+            trackSlug={trackSlug}
+            t={t}
+            isLicensed={isLicensed}
+            onAddToQueue={(drivers, consecutive) => {
+              setDriverQueue((prev) => {
+                const next = [...prev];
+                drivers.forEach((d) => next.push({ name: d.name, phone: d.phone, saved: false, source: 'booking' }));
+                return next;
+              });
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
