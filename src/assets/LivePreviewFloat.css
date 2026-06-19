@@ -241,16 +241,20 @@
   color: #2b6cb0;
 }
 
-.live-preview-float .live-display .live-timing-driver-name,
-.live-preview-float .live-display .live-assign-name {
+.live-preview-float--dark .live-display .live-timing-driver-name,
+.live-preview-float--dark .live-display .live-assign-name,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-timing-driver-name,
+.live-preview-float:not(.live-preview-float--light) .live-display .live-assign-name {
   color: #f8fafc;
 }
 
-.live-preview-float .live-assign-driver-rows li {
+.live-preview-float--dark .live-assign-driver-rows li,
+.live-preview-float:not(.live-preview-float--light) .live-assign-driver-rows li {
   color: #e2e8f0;
 }
 
-.live-preview-float .live-assign-driver-rows li.is-starter {
+.live-preview-float--dark .live-assign-driver-rows li.is-starter,
+.live-preview-float:not(.live-preview-float--light) .live-assign-driver-rows li.is-starter {
   color: #7dd3fc;
 }
 
