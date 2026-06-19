@@ -184,20 +184,17 @@ if ($Dotnet -and (Test-Path (Join-Path $KioskShell 'HakafastKiosk.csproj'))) {
 }
 
 # --- Install production dependencies ---
+# serialport is a native addon - must be built on the same platform as the target PC (Windows x64)
 Write-Host "==> Installing production dependencies in stage..." -ForegroundColor Cyan
 Push-Location $Stage
 try {
-  # Try npm ci first (clean install from lockfile)
-  $CiResult = npm ci --omit=dev 2>&1
+  # Use npm install (not ci) so native addons like serialport are rebuilt for this platform
+  $InstallResult = npm install --omit=dev --build-from-source 2>&1
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "  npm ci failed, falling back to npm install..." -ForegroundColor Yellow
-    $InstallResult = npm install --omit=dev 2>&1
-    if ($LASTEXITCODE -ne 0) {
-      Write-Host "  npm install also failed." -ForegroundColor Red
-      Write-Host "  Output: $InstallResult" -ForegroundColor Red
-      Pop-Location
-      exit 1
-    }
+    Write-Host "  npm install failed." -ForegroundColor Red
+    Write-Host "  Output: $InstallResult" -ForegroundColor Red
+    Pop-Location
+    exit 1
   }
 } catch {
   Write-Host "  WARNING: npm install encountered an issue: $($_.Exception.Message)" -ForegroundColor Yellow
