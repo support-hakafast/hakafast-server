@@ -126,6 +126,31 @@ Set-Content -Path $VersionFile -Value (ConvertTo-Json @{ version = $PackageVersi
 
 $NodeDir = Join-Path $PSScriptRoot 'node-portable'
 $NodeExe = Join-Path $NodeDir 'node.exe'
+
+# Auto-download portable Node.js if not present
+if (-not (Test-Path $NodeExe)) {
+  Write-Host "==> Downloading portable Node.js 20 LTS (x64)..." -ForegroundColor Cyan
+  $NodeZip = Join-Path $PSScriptRoot 'node-portable.zip'
+  $NodeUrl = 'https://nodejs.org/dist/v20.19.2/node-v20.19.2-win-x64.zip'
+  try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -Uri $NodeUrl -OutFile $NodeZip -UseBasicParsing
+    Write-Host "  Extracting..." -ForegroundColor Cyan
+    Expand-Archive -Path $NodeZip -DestinationPath $PSScriptRoot -Force
+    $ExtractedDir = Join-Path $PSScriptRoot 'node-v20.19.2-win-x64'
+    if (Test-Path $ExtractedDir) {
+      if (Test-Path $NodeDir) { Remove-Item $NodeDir -Recurse -Force }
+      Rename-Item $ExtractedDir $NodeDir
+    }
+    Remove-Item $NodeZip -Force -ErrorAction SilentlyContinue
+    Write-Host "  Portable Node.js downloaded." -ForegroundColor Green
+  } catch {
+    Write-Host "  WARNING: Could not download Node.js: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host "  Download manually: $NodeUrl" -ForegroundColor Yellow
+    Write-Host "  Extract and rename folder to: $NodeDir" -ForegroundColor Yellow
+  }
+}
+
 if (Test-Path $NodeExe) {
   $NodePortableVersion = (& $NodeExe --version 2>$null)
   $NodePortableMajor = 0
@@ -139,8 +164,7 @@ if (Test-Path $NodeExe) {
     Copy-Item $NodeDir (Join-Path $Stage 'node') -Recurse -Force
   }
 } else {
-  Write-Host "  Portable Node.js not found at $NodeExe - server will use system Node.js." -ForegroundColor Yellow
-  Write-Host "  To bundle: download Node.js Windows x64 zip and extract to installer/node-portable/" -ForegroundColor Yellow
+  Write-Host "  WARNING: No portable Node.js - installer will require Node.js on target PC." -ForegroundColor Yellow
 }
 
 $Dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
