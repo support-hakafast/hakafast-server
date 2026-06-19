@@ -90,6 +90,32 @@ const DEFAULT_LINES = {
 const HEAT_DURATIONS = [10, 15, 20, 30];
 const ADMIN_THEME_KEY = 'hf_admin_theme';
 
+// Returns display labels for the queue where duplicate first-names get disambiguated.
+// "Moshe Cohen" + "Moshe Levy" → "Moshe Co" + "Moshe Le" (growing suffix until unique).
+function disambiguateQueueNames(queue) {
+  const firstNames = queue.map((d) => d.name.trim().split(/\s+/)[0]);
+  return queue.map((d, i) => {
+    const first = firstNames[i];
+    const dupeIndices = firstNames.reduce((acc, n, j) => (n === first ? [...acc, j] : acc), []);
+    if (dupeIndices.length < 2) return d.name;
+    // Find shortest prefix of the rest of the name that makes each entry unique among dupes
+    const parts = d.name.trim().split(/\s+/);
+    const rest = parts.slice(1).join(' ');
+    if (!rest) return d.name;
+    const otherRests = dupeIndices.filter((j) => j !== i).map((j) => {
+      const p = queue[j].name.trim().split(/\s+/);
+      return p.slice(1).join(' ');
+    });
+    for (let len = 1; len <= rest.length; len++) {
+      const prefix = rest.slice(0, len);
+      if (otherRests.every((r) => r.slice(0, len) !== prefix)) {
+        return `${first} ${prefix}`;
+      }
+    }
+    return d.name;
+  });
+}
+
 function readAdminTheme() {
   try {
     return localStorage.getItem(ADMIN_THEME_KEY) === 'dark' ? 'dark' : 'light';
@@ -2311,16 +2337,19 @@ const AdminPanel = () => {
               <p className="queue-empty">{t('admin_queue_empty')}</p>
             ) : (
               <div className="queue-grid">
-                {driverQueue.map((d, i) => (
-                  <div key={`${d.name}-${i}`} className={`queue-chip${d.saved ? ' queue-chip-saved' : ''}`}>
-                    <span className="queue-chip-pos">{i + 1}</span>
-                    <span className="queue-chip-name" title={d.name}>
-                      {d.saved && <span className="saved-badge">★</span>}
-                      {d.name}{d.level ? ` (${levelLabel(d.level)})` : ''}
-                    </span>
-                    <button type="button" className="queue-chip-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>✕</button>
-                  </div>
-                ))}
+                {disambiguateQueueNames(driverQueue).map((displayName, i) => {
+                  const d = driverQueue[i];
+                  return (
+                    <div key={`${d.name}-${i}`} className={`queue-chip${d.saved ? ' queue-chip-saved' : ''}`}>
+                      <span className="queue-chip-pos">{i + 1}</span>
+                      <span className="queue-chip-name" title={d.name}>
+                        {d.saved && <span className="saved-badge">★</span>}
+                        {displayName}{d.level ? ` (${levelLabel(d.level)})` : ''}
+                      </span>
+                      <button type="button" className="queue-chip-remove" onClick={() => setDriverQueue((q) => q.filter((_, idx) => idx !== i))}>✕</button>
+                    </div>
+                  );
+                })}
               </div>
             )}
             <button type="button" className="btn-execute" data-tour="execute" onClick={executeAutoAssignment}>{t('admin_btn_execute')} 🚀</button>

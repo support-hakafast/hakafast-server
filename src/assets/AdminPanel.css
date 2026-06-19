@@ -2248,6 +2248,7 @@ html:has(.admin-no-scroll) body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 700;
 }
 
 .queue-chip-remove {
