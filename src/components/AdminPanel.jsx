@@ -2427,6 +2427,11 @@ const AdminPanel = () => {
                 📅 {t('admin_day_planner') || 'לוח יום'}
               </button>
             )}
+            {!isLicensed && (
+              <Link to="/quote" className="btn-sidebar-upgrade-link" target="_blank" rel="noopener">
+                💳 {t('admin_get_license') || 'רכוש רישיון'}
+              </Link>
+            )}
           </div>
 
           {isLicensed && heatType === 'sprint' && plannedRaceEvent?.type === 'sprint' && (() => {

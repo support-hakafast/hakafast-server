@@ -307,13 +307,82 @@ function StandingsView({ championship, t }) {
   );
 }
 
+function VenueManager({ venues = [], onChange, currentTrackSlug }) {
+  const [newName, setNewName] = useState('');
+  const [newSlug, setNewSlug] = useState('');
+  const suggested = currentTrackSlug && !venues.some((v) => v.slug === currentTrackSlug);
+
+  function add() {
+    const name = newName.trim();
+    const slug = newSlug.trim();
+    if (!name || !slug) return;
+    onChange([...venues, { name, slug }]);
+    setNewName('');
+    setNewSlug('');
+  }
+
+  function remove(slug) {
+    onChange(venues.filter((v) => v.slug !== slug));
+  }
+
+  function addSuggested() {
+    onChange([...venues, { name: currentTrackSlug, slug: currentTrackSlug }]);
+  }
+
+  return (
+    <div className="champ-venues">
+      <div className="champ-section-label">Linked tracks (venues)</div>
+      <p className="champ-venues-hint">Add each track's slug so heat history imports connect automatically.</p>
+
+      {suggested && (
+        <button type="button" className="champ-venue-suggest" onClick={addSuggested}>
+          + Add current track <span className="champ-venue-slug-chip">{currentTrackSlug}</span>
+        </button>
+      )}
+
+      {venues.length > 0 && (
+        <ul className="champ-venue-list">
+          {venues.map((v) => (
+            <li key={v.slug} className="champ-venue-row">
+              <span className="champ-venue-name">{v.name}</span>
+              <span className="champ-venue-slug-chip">{v.slug}</span>
+              <button type="button" className="champ-mv-btn champ-action-delete" onClick={() => remove(v.slug)}>✕</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="champ-venue-add">
+        <input
+          type="text"
+          placeholder="Track name"
+          value={newName}
+          dir="auto"
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+        />
+        <input
+          type="text"
+          placeholder="track-slug"
+          value={newSlug}
+          onChange={(e) => setNewSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+        />
+        <button type="button" className="btn-muted" onClick={add} disabled={!newName.trim() || !newSlug.trim()}>
+          + Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = false }) {
   const [championships, setChampionships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [view, setView] = useState('list'); // 'list' | 'create' | 'edit' | 'standings'
-  const [selected, setSelected] = useState(null); // championship object being edited
-  const [editingRound, setEditingRound] = useState(null); // round index being edited, or 'new'
+  const [view, setView] = useState('list'); // 'list' | 'create' | 'edit'
+  const [selected, setSelected] = useState(null);
+  const [editingRound, setEditingRound] = useState(null);
   const [heatHistory, setHeatHistory] = useState([]);
   const [activeTab, setActiveTab] = useState('rounds'); // 'rounds' | 'standings' | 'settings'
 
@@ -321,6 +390,7 @@ export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = fa
   const [name, setName] = useState('');
   const [type, setType] = useState('sprint');
   const [pointsTable, setPointsTable] = useState([...DEFAULT_POINTS_TABLES.karting]);
+  const [venues, setVenues] = useState([]);
 
   useEffect(() => {
     loadChampionships();
@@ -344,7 +414,9 @@ export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = fa
 
   async function loadHeatHistory() {
     try {
-      const res = await apiFetch('/api/results/list?limit=50');
+      // Prefer loading from the current trackSlug workspace if provided
+      const url = trackSlug ? `/api/results/list?limit=50` : '/api/results/list?limit=50';
+      const res = await apiFetch(url, {}, trackSlug || null);
       if (res.ok) {
         const data = await res.json();
         setHeatHistory(data.heats || []);
@@ -370,12 +442,14 @@ export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = fa
     setName('');
     setType('sprint');
     setPointsTable([...DEFAULT_POINTS_TABLES.karting]);
+    // Pre-populate venues with current track as suggestion
+    setVenues(trackSlug ? [{ name: trackSlug, slug: trackSlug }] : []);
     setView('create');
   }
 
   function handleCreate() {
     if (!name.trim()) return;
-    const c = createChampionship({ name, type, pointsTable });
+    const c = createChampionship({ name, type, pointsTable, venues });
     const next = [...championships, c];
     saveChampionships(next);
     setSelected(c);
@@ -388,6 +462,7 @@ export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = fa
     setName(c.name);
     setType(c.type);
     setPointsTable([...c.pointsTable]);
+    setVenues(Array.isArray(c.venues) ? [...c.venues] : []);
     setActiveTab('rounds');
     setView('edit');
     setEditingRound(null);
@@ -410,7 +485,7 @@ export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = fa
   }
 
   function saveSettings() {
-    updateSelected({ name, type, pointsTable });
+    updateSelected({ name, type, pointsTable, venues });
   }
 
   function addRound() {
@@ -479,13 +554,24 @@ export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = fa
               {championships.map((c) => {
                 const standings = computeStandings(c);
                 const leader = standings[0];
+                const myVenue = (c.venues || []).find((v) => v.slug === trackSlug);
                 return (
                   <div key={c.id} className="champ-list-card" onClick={() => openEdit(c)}>
                     <div className="champ-list-card-body">
-                      <span className="champ-list-name">{c.name}</span>
-                      <span className={`champ-type-badge champ-type-${c.type}`}>{c.type}</span>
-                      <span className="champ-list-meta">{c.rounds?.length || 0} rounds</span>
-                      {leader && <span className="champ-list-leader">P1: {leader.name} ({leader.points} pts)</span>}
+                      <div className="champ-list-card-top">
+                        <span className="champ-list-name">{c.name}</span>
+                        <span className={`champ-type-badge champ-type-${c.type}`}>{c.type}</span>
+                        {myVenue && <span className="champ-venue-connected-badge">📍 this track</span>}
+                      </div>
+                      <div className="champ-list-card-meta">
+                        <span className="champ-list-meta">{c.rounds?.length || 0} rounds</span>
+                        {leader && <span className="champ-list-leader">P1: {leader.name} · {leader.points} pts</span>}
+                        {(c.venues || []).length > 0 && (
+                          <span className="champ-list-venues">
+                            {(c.venues || []).map((v) => v.slug).join(' · ')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -504,35 +590,64 @@ export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = fa
           {/* CREATE VIEW */}
           {view === 'create' && (
             <div className="champ-create-view">
-              <label className="planner-field planner-field-compact">
-                <span>Championship name</span>
-                <input type="text" dir="auto" value={name} onChange={(e) => setName(e.target.value)} placeholder="2025 Sprint League" autoFocus />
-              </label>
-
-              <div className="champ-type-tabs">
-                <button
-                  type="button"
-                  className={`pro-event-type-tab${type === 'sprint' ? ' active' : ''}`}
-                  onClick={() => setType('sprint')}
-                >
-                  Sprint (individual)
-                </button>
-                <button
-                  type="button"
-                  className={`pro-event-type-tab${type === 'endurance' ? ' active' : ''}`}
-                  onClick={() => setType('endurance')}
-                >
-                  Endurance (teams)
-                </button>
+              <div className="champ-create-step">
+                <div className="champ-create-step-num">1</div>
+                <div className="champ-create-step-body">
+                  <div className="champ-section-label">Championship name</div>
+                  <input
+                    className="champ-create-name-input"
+                    type="text"
+                    dir="auto"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="2025 Sprint League"
+                    autoFocus
+                  />
+                </div>
               </div>
 
-              <div className="champ-section-label">Points table</div>
-              <PointsTableEditor value={pointsTable} onChange={setPointsTable} />
+              <div className="champ-create-step">
+                <div className="champ-create-step-num">2</div>
+                <div className="champ-create-step-body">
+                  <div className="champ-section-label">Type</div>
+                  <div className="champ-type-tabs">
+                    <button
+                      type="button"
+                      className={`pro-event-type-tab${type === 'sprint' ? ' active' : ''}`}
+                      onClick={() => setType('sprint')}
+                    >
+                      🏎 Sprint (individual)
+                    </button>
+                    <button
+                      type="button"
+                      className={`pro-event-type-tab${type === 'endurance' ? ' active' : ''}`}
+                      onClick={() => setType('endurance')}
+                    >
+                      ⏱ Endurance (teams)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="champ-create-step">
+                <div className="champ-create-step-num">3</div>
+                <div className="champ-create-step-body">
+                  <div className="champ-section-label">Points table</div>
+                  <PointsTableEditor value={pointsTable} onChange={setPointsTable} />
+                </div>
+              </div>
+
+              <div className="champ-create-step">
+                <div className="champ-create-step-num">4</div>
+                <div className="champ-create-step-body">
+                  <VenueManager venues={venues} onChange={setVenues} currentTrackSlug={trackSlug} />
+                </div>
+              </div>
 
               <div className="champ-create-footer">
                 <button type="button" className="btn-muted" onClick={() => setView('list')}>Cancel</button>
                 <button type="button" className="btn-primary" onClick={handleCreate} disabled={!name.trim()}>
-                  Create championship
+                  Create championship →
                 </button>
               </div>
             </div>
@@ -609,19 +724,21 @@ export default function ChampionshipModal({ onClose, t, trackSlug, darkMode = fa
                       className={`pro-event-type-tab${type === 'sprint' ? ' active' : ''}`}
                       onClick={() => setType('sprint')}
                     >
-                      Sprint (individual)
+                      🏎 Sprint (individual)
                     </button>
                     <button
                       type="button"
                       className={`pro-event-type-tab${type === 'endurance' ? ' active' : ''}`}
                       onClick={() => setType('endurance')}
                     >
-                      Endurance (teams)
+                      ⏱ Endurance (teams)
                     </button>
                   </div>
 
                   <div className="champ-section-label">Points table</div>
                   <PointsTableEditor value={pointsTable} onChange={setPointsTable} />
+
+                  <VenueManager venues={venues} onChange={setVenues} currentTrackSlug={trackSlug} />
 
                   <div className="champ-settings-footer">
                     <button type="button" className="btn-primary" onClick={saveSettings} disabled={saving}>

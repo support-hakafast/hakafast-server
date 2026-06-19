@@ -13,7 +13,10 @@ const CORE_STEPS = [
   { id: 'drivers', target: 'driver-register', interactive: true },
   { id: 'execute', target: 'execute', interactive: true, clickTarget: true },
   { id: 'preview', target: 'preview-trigger', interactive: true, clickTarget: true },
+  { id: 'history', target: null, interactive: false },
   { id: 'planner', target: 'planner-trigger', interactive: true, clickTarget: true },
+  { id: 'booking', target: null, interactive: false },
+  { id: 'championship', target: null, interactive: false },
 ];
 
 const TOUR_STORAGE_KEY = (slug) => `hf_admin_tour_v2_${slug}`;
@@ -259,6 +262,8 @@ export default function AdminWalkthrough({
       : isClickStep
         ? 'admin_tour_click_hint'
         : 'admin_tour_try_hint';
+
+  const NON_INTERACTIVE_STEPS = new Set(['welcome', 'history', 'booking', 'championship', 'security', 'done']);
 
   const showPasswordWeak = enforceSecurity && password.length > 0 && !isStrongPassword(password);
   const showPasswordMismatch = enforceSecurity

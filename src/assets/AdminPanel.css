@@ -6284,16 +6284,57 @@ html:has(.admin-no-scroll) body {
   cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
 }
 .champ-list-card:hover { border-color: var(--turquoise); box-shadow: 0 2px 8px rgba(0,0,128,0.08); }
-.champ-list-card-body { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+.champ-list-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.champ-list-card-top { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+.champ-list-card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
 .champ-list-name { font-weight: 700; font-size: 0.95rem; color: #0f172a; }
 .champ-type-badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.1rem 0.4rem; border-radius: 0.25rem; }
 .champ-type-sprint { background: #dbeafe; color: #1d4ed8; }
 .champ-type-endurance { background: #dcfce7; color: #166534; }
 .champ-list-meta { font-size: 0.75rem; color: #64748b; }
 .champ-list-leader { font-size: 0.75rem; color: var(--navy); font-weight: 600; }
+.champ-list-venues { font-size: 0.7rem; color: #94a3b8; font-family: monospace; }
+.champ-venue-connected-badge { font-size: 0.65rem; background: #dcfce7; color: #166534; padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-weight: 700; }
 .champ-create-btn { margin-top: 0.5rem; align-self: flex-start; }
 
-.champ-create-view { display: flex; flex-direction: column; gap: 1rem; }
+/* Create flow steps */
+.champ-create-view { display: flex; flex-direction: column; gap: 0; }
+.champ-create-step { display: flex; gap: 0.75rem; padding: 0.9rem 0; border-bottom: 1px solid #f1f5f9; }
+.champ-create-step:last-of-type { border-bottom: none; }
+.champ-create-step-num {
+  width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  background: var(--navy); color: #fff;
+  font-size: 0.75rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 0.1rem;
+}
+.champ-create-step-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.champ-create-name-input {
+  width: 100%; padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0; border-radius: 0.45rem;
+  font-size: 1rem; font-family: inherit;
+  box-sizing: border-box;
+}
+.champ-create-name-input:focus { outline: 2px solid var(--turquoise); border-color: transparent; }
+
+/* Venues */
+.champ-venues { display: flex; flex-direction: column; gap: 0.5rem; }
+.champ-venues-hint { font-size: 0.78rem; color: #64748b; margin: 0; }
+.champ-venue-suggest {
+  display: flex; align-items: center; gap: 0.4rem;
+  background: rgba(64, 224, 208, 0.1); border: 1px dashed rgba(64, 224, 208, 0.5);
+  border-radius: 0.4rem; padding: 0.4rem 0.65rem;
+  color: #0f766e; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  text-align: start;
+}
+.champ-venue-suggest:hover { background: rgba(64, 224, 208, 0.2); }
+.champ-venue-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.champ-venue-row { display: flex; align-items: center; gap: 0.5rem; }
+.champ-venue-name { font-size: 0.85rem; font-weight: 600; color: #0f172a; flex: 1; min-width: 0; }
+.champ-venue-slug-chip { font-size: 0.72rem; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-family: monospace; color: #475569; }
+.champ-venue-add { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.champ-venue-add input { flex: 1; min-width: 100px; padding: 0.35rem 0.6rem; border: 1px solid #e2e8f0; border-radius: 0.4rem; font-size: 0.82rem; font-family: inherit; }
+.champ-venue-add input:focus { outline: 1px solid var(--turquoise); }
 .champ-type-tabs { display: flex; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; }
 .champ-create-footer { display: flex; gap: 0.5rem; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
 
@@ -6418,6 +6459,28 @@ html:has(.admin-no-scroll) body {
   border-color: #fbbf24;
 }
 
+/* ── Get license link ───────────────────────────────────────────────────────── */
+.btn-sidebar-upgrade-link {
+  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  padding: 0.55rem 0.75rem; border-radius: 8px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1.5px solid rgba(64, 224, 208, 0.4);
+  color: #40e0d0; font-size: 0.82rem; font-weight: 700;
+  text-decoration: none; transition: all 0.15s;
+}
+.btn-sidebar-upgrade-link:hover {
+  background: linear-gradient(135deg, #000080 0%, #1a1a80 100%);
+  border-color: #40e0d0;
+  color: #fff;
+}
+.admin-theme-dark .btn-sidebar-upgrade-link {
+  background: rgba(64, 224, 208, 0.06);
+  border-color: rgba(64, 224, 208, 0.3);
+}
+.admin-theme-dark .btn-sidebar-upgrade-link:hover {
+  background: rgba(64, 224, 208, 0.15);
+}
+
 /* ── Sprint heats panel (sidebar) ────────────────────────────────────────────── */
 .sprint-heats-panel {
   margin-top: 0.6rem;
@@ -6525,6 +6588,15 @@ html:has(.admin-no-scroll) body {
 
 .admin-modal-dark .champ-list-card { background: #0f172a; border-color: #1e293b; }
 .admin-modal-dark .champ-list-card:hover { background: #0c1a25; border-color: #0d9488; }
+.admin-modal-dark .champ-list-name { color: #e0e8ff; }
+.admin-modal-dark .champ-list-venues { color: #64748b; }
+.admin-modal-dark .champ-venue-name { color: #e0e8ff; }
+.admin-modal-dark .champ-venue-slug-chip { background: #1e293b; border-color: #334155; color: #94a3b8; }
+.admin-modal-dark .champ-venue-suggest { background: rgba(64,224,208,0.07); border-color: rgba(64,224,208,0.3); color: #40e0d0; }
+.admin-modal-dark .champ-venue-add input { background: #0f172a; border-color: #334155; color: #e0e8ff; }
+.admin-modal-dark .champ-create-name-input { background: #0f172a; border-color: #334155; color: #e0e8ff; }
+.admin-modal-dark .champ-create-step { border-color: #1e293b; }
+.admin-modal-dark .champ-venues-hint { color: #94a3b8; }
 .admin-modal-dark .champ-round-row { background: #0f172a; border-color: #1e293b; }
 .admin-modal-dark .champ-round-editor { background: #0c1a25; border-color: #0d9488; }
 .admin-modal-dark .champ-result-row { background: #0f172a; border-color: #1e293b; color: #e2e8f0; }
