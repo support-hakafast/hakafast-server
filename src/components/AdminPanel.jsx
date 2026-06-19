@@ -157,9 +157,6 @@ const AdminPanel = () => {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDayPlanner, setShowDayPlanner] = useState(false);
-  const [showResultsPicker, setShowResultsPicker] = useState(false);
-  const [resultsList, setResultsList] = useState([]);
-  const [activeDisplayHeat, setActiveDisplayHeat] = useState(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
   const [isLicensed, setIsLicensed] = useState(false);
@@ -2430,23 +2427,6 @@ const AdminPanel = () => {
                 📅 {t('admin_day_planner') || 'לוח יום'}
               </button>
             )}
-            <button
-              type="button"
-              className={`btn-muted btn-sidebar-tool btn-sidebar-results${activeDisplayHeat ? ' is-active' : ''}`}
-              onClick={async () => {
-                if (activeDisplayHeat) {
-                  await apiFetch('/api/display-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ heatNumber: null }) }, trackSlug);
-                  setActiveDisplayHeat(null);
-                  setShowResultsPicker(false);
-                } else {
-                  const res = await apiFetch('/api/results/list?limit=30', {}, trackSlug);
-                  if (res.ok) { const d = await res.json(); setResultsList(d.heats || []); }
-                  setShowResultsPicker((v) => !v);
-                }
-              }}
-            >
-              🏁 {activeDisplayHeat ? (t('admin_results_hide') || 'הסתר תוצאות') : (t('admin_results_show') || 'הצג תוצאות')}
-            </button>
           </div>
 
           {isLicensed && heatType === 'sprint' && plannedRaceEvent?.type === 'sprint' && (() => {
@@ -2536,37 +2516,6 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {showResultsPicker && !activeDisplayHeat && (
-        <div className="admin-results-picker">
-          <div className="admin-results-picker-header">
-            <span>{t('admin_results_pick') || 'בחר מקצה להצגה'}</span>
-            <button type="button" className="admin-results-picker-close" onClick={() => setShowResultsPicker(false)}>✕</button>
-          </div>
-          {resultsList.length === 0 ? (
-            <p className="admin-results-picker-empty">{t('admin_results_none') || 'אין מקצים שמורים'}</p>
-          ) : (
-            <ul className="admin-results-picker-list">
-              {resultsList.map((h) => (
-                <li key={h.heat_number}>
-                  <button
-                    type="button"
-                    className="admin-results-picker-item"
-                    onClick={async () => {
-                      await apiFetch('/api/display-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ heatNumber: h.heat_number }) }, trackSlug);
-                      setActiveDisplayHeat(h.heat_number);
-                      setShowResultsPicker(false);
-                    }}
-                  >
-                    <span className="admin-results-picker-num">#{h.heat_number}</span>
-                    <span className="admin-results-picker-type">{h.heat_type}</span>
-                    <span className="admin-results-picker-drivers">{h.driver_count} נהגים</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
     </div>
   );
 };
