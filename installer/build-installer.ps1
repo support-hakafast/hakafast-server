@@ -9,8 +9,8 @@
     $env:HF_SIGN_PASSWORD = '***'
 
   Output:
-    installer/stage/          — files to copy to target PC or burn to USB
-    installer/output/*.exe    — setup wizard (if iscc available)
+    installer/stage/          - files to copy to target PC or burn to USB
+    installer/output/*.exe    - setup wizard (if iscc available)
 #>
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
@@ -98,7 +98,7 @@ foreach ($item in $Include) {
     Copy-Item $src (Join-Path $Stage $item) -Recurse -Force
   } else {
     if ($item -in @('package-lock.json', 'kiosk', 'enduranceRules.js', 'trackProfile.js', 'ambP3Parser.js', 'CHANGELOG.md', 'scripts')) {
-      Write-Host "  WARNING: Optional file $item not found — skipping." -ForegroundColor Yellow
+      Write-Host "  WARNING: Optional file $item not found - skipping." -ForegroundColor Yellow
     } else {
       $MissingFiles += $item
     }
@@ -116,7 +116,7 @@ foreach ($script in $Scripts) {
   if (Test-Path $src) {
     Copy-Item $src (Join-Path $Stage $script) -Force
   } else {
-    Write-Host "  WARNING: Script $script not found — skipping." -ForegroundColor Yellow
+    Write-Host "  WARNING: Script $script not found - skipping." -ForegroundColor Yellow
   }
 }
 
@@ -139,7 +139,7 @@ if (Test-Path $NodeExe) {
     Copy-Item $NodeDir (Join-Path $Stage 'node') -Recurse -Force
   }
 } else {
-  Write-Host "  Portable Node.js not found at $NodeExe — server will use system Node.js." -ForegroundColor Yellow
+  Write-Host "  Portable Node.js not found at $NodeExe - server will use system Node.js." -ForegroundColor Yellow
   Write-Host "  To bundle: download Node.js Windows x64 zip and extract to installer/node-portable/" -ForegroundColor Yellow
 }
 
@@ -156,7 +156,7 @@ if ($Dotnet -and (Test-Path (Join-Path $KioskShell 'HakafastKiosk.csproj'))) {
   }
   Pop-Location
 } else {
-  Write-Host '  dotnet SDK not found — kiosk will use Edge fallback via launch-kiosk.bat.' -ForegroundColor Yellow
+  Write-Host "  dotnet SDK not found - kiosk will use Edge fallback via launch-kiosk.bat." -ForegroundColor Yellow
 }
 
 # --- Install production dependencies ---
@@ -177,7 +177,7 @@ try {
   }
 } catch {
   Write-Host "  WARNING: npm install encountered an issue: $($_.Exception.Message)" -ForegroundColor Yellow
-  # Continue anyway — node_modules may still be usable
+  # Continue anyway - node_modules may still be usable
 }
 Pop-Location
 
@@ -200,14 +200,14 @@ if ($Iscc) {
   if (Test-Path $BuiltExe) {
     Write-Host "  Installer: $BuiltExe" -ForegroundColor Green
   } else {
-    Write-Host "  Installer not found at expected path — checking alternative..." -ForegroundColor Yellow
+    Write-Host "  Installer not found at expected path - checking alternative..." -ForegroundColor Yellow
     $BuiltExe = Get-ChildItem (Join-Path $Output 'HAKAFAST-Setup-*.exe') -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($BuiltExe) {
       Write-Host "  Installer: $($BuiltExe.FullName)" -ForegroundColor Green
     }
   }
 } else {
-  Write-Host "  Inno Setup (iscc) not found — stage folder ready for manual USB copy." -ForegroundColor Yellow
+  Write-Host "  Inno Setup (iscc) not found - stage folder ready for manual USB copy." -ForegroundColor Yellow
   Write-Host "  Stage: $Stage" -ForegroundColor Green
 }
 
@@ -223,7 +223,7 @@ if (Test-Path $SignScript) {
     & $SignScript @toSign
   }
 } else {
-  Write-Host "  Sign script not found — skipping code signing." -ForegroundColor Yellow
+  Write-Host "  Sign script not found - skipping code signing." -ForegroundColor Yellow
 }
 
 # --- Summary ---

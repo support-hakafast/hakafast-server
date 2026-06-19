@@ -1,5 +1,13 @@
 # HAKAFAST Changelog
 
+## [1.3.0] — 2026-06-19
+
+### Added
+- **Admin walkthrough updated** — 3 new tour steps: Results History, Advance Bookings, Championship; preview step now mentions the 🏁 tab
+- **Championship venue management** — link track slugs to championships; current track is auto-suggested when creating or editing; linked venues shown on list cards with "📍 this track" badge; heat history now loaded from the correct workspace
+- **Championship create flow** — numbered step-by-step wizard (name → type → points → venues) instead of flat form
+- **Get license button** — unlicensed tracks see a "💳 רכוש רישיון" link in the sidebar pointing to `/quote` (the pricing page)
+
 ## [1.2.0] — 2026-06-19
 
 ### Added
