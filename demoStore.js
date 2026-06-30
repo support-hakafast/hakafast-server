@@ -1844,6 +1844,47 @@ function deployAllGridKarts(store) {
   };
 }
 
+// Explicit admin/computer-controlled session start: used at tracks where the
+// decoder has no separate pit-exit loop, so transponder passings alone can't
+// tell us when karts leave the pits. The admin presses "Start Session" once
+// the grid is staged; this places every currently-queued kart from the heat
+// onto track and starts the timing clock immediately, bypassing the usual
+// transponder-driven launch. Unlike maybeStartSessionHeatClock/launchKart,
+// this never fires on its own — it only runs on a deliberate button press.
+function startSessionManually(store) {
+  if (!store.currentHeat.length) return { success: false, error: 'no_heat' };
+  if (store.heatRuntime.startedAt) return { success: false, error: 'session_already_started' };
+
+  if (isLeMansStart(store)) {
+    deployAllGridKarts(store);
+    beginRacingPhase(store);
+    return { success: true, deployed: store.onTrack.map((k) => Number(k.kart_number)), heatClock: getHeatClock(store) };
+  }
+
+  const heatKarts = new Set(store.currentHeat.map((r) => Number(r.kart_number)));
+  const onTrackSet = new Set(store.onTrack.map((k) => Number(k.kart_number)));
+  const deployed = [];
+
+  Object.entries(store.pitLines).forEach(([laneId, lane]) => {
+    while (lane?.karts?.length) {
+      const kartNumber = Number(lane.karts[0]);
+      if (!heatKarts.has(kartNumber) || onTrackSet.has(kartNumber)) break;
+      const result = launchKart(store, kartNumber, laneId);
+      if (!result.success) break;
+      deployed.push(kartNumber);
+      onTrackSet.add(kartNumber);
+    }
+  });
+
+  beginRacingPhase(store);
+
+  return {
+    success: true,
+    deployed,
+    heatClock: getHeatClock(store),
+  };
+}
+
 function returnKart(store, kartNumber, laneId, options = {}) {
   const n = Number(kartNumber);
   const otEntry = store.onTrack.find((k) => Number(k.kart_number) === n);
@@ -2579,6 +2620,7 @@ module.exports = {
   deployGridKart,
   deployAllGridKarts,
   beginRacingPhase,
+  startSessionManually,
   returnKart,
   returnKartsNotInNextHeat,
   returnAllDrainingKartsToPits,

@@ -527,6 +527,51 @@ function testFormationLapsBeforeRaceClock() {
   assert(store.heatRacingStarted, 'racing phase should be active');
 }
 
+function testStartSessionManually() {
+  const wsId = 'verify016';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.heatSettings.type = 'time';
+  store.currentHeat = [
+    { kart_number: 1, driver_name: 'A', lap_count: 0, lap_times: [] },
+    { kart_number: 2, driver_name: 'B', lap_count: 0, lap_times: [] },
+  ];
+  store.pitLines[1].karts = [1];
+  store.pitLines[2].karts = [2];
+
+  assert(!store.heatRuntime.startedAt, 'clock should not be running before manual start');
+  const result = demoStore.startSessionManually(store);
+  assert(result.success, 'manual session start should succeed');
+  assert(store.heatRuntime.startedAt, 'clock should start immediately on manual start');
+  assert(store.onTrack.length === 2, 'all queued heat karts should be placed on track');
+  assert(store.pitLines[1].karts.length === 0 && store.pitLines[2].karts.length === 0, 'pit lanes drained');
+
+  const again = demoStore.startSessionManually(store);
+  assert(!again.success && again.error === 'session_already_started', 'cannot start twice');
+}
+
+function testSingleLoopFirstPassingLaunches() {
+  const { createAmbTranx160Decoder } = require('../ambTranx160');
+  const wsId = 'verify017';
+  demoStore.resetStore('kart-demo', wsId);
+  const store = demoStore.resolveFromParts('kart-demo', wsId);
+  store.heatSettings.type = 'time';
+  store.currentHeat = [{ kart_number: 7, driver_name: 'A', lap_count: 0, lap_times: [] }];
+  store.pitLines[1].karts = [7];
+
+  const decoder = createAmbTranx160Decoder({
+    demoStore,
+    getDefaultTrack: () => 'kart-demo',
+    getDefaultWorkspace: () => wsId,
+  });
+
+  assert(!store.heatRuntime.startedAt, 'clock should not be running before first passing');
+  const result = decoder.handlePassing({ typeName: 'PASSING', TRANSPONDER: 7, RTC_TIME: Date.now() * 1000 });
+  assert(result.success, 'first passing on single-loop track should succeed as launch');
+  assert(store.onTrack.some((k) => Number(k.kart_number) === 7), 'kart should be placed on track from first passing');
+  assert(store.heatRuntime.startedAt, 'clock should start from first single-loop passing');
+}
+
 function testLeMansGridDeploy() {
   const wsId = 'verify015';
   demoStore.resetStore('kart-demo', wsId);
@@ -1411,6 +1456,8 @@ async function main() {
   await run('pending slots filled on pit return', () => testPendingFilledOnPitReturn());
   await run('formation laps before race clock', () => testFormationLapsBeforeRaceClock());
   await run('le mans grid deploy', () => testLeMansGridDeploy());
+  await run('manual session start drains pits and starts clock', () => testStartSessionManually());
+  await run('single-loop first passing treated as launch', () => testSingleLoopFirstPassingLaunches());
   await run('auto finish export metadata', () => testAutoFinishExportMetadata());
   await run('heat number increments on promote', () => testHeatNumberIncrementsOnPromote());
   await run('avg lap from lap splits', () => testAvgLapFromLapTimes());

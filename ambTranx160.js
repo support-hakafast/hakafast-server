@@ -13,6 +13,8 @@
  *   AMB_WORKSPACE_ID     — workspace id (8+ chars)
  *   AMB_PIT_LOOP_ID      — optional loop id for pit exit passings (launch)
  *   AMB_PIT_IN_LOOP_ID   — optional loop id for pit entry passings (return to queue)
+ *   If neither is set (single S/F loop track), a transponder's first passing
+ *   with no prior RTC reading is treated as its pit-exit/launch event instead.
  *   AMB_TRANSPONDER_MAP  — JSON map { "transponderId": kartNumber }
  */
 
@@ -141,6 +143,7 @@ function createAmbTranx160Decoder(deps) {
     let result;
     const isPitInLoop = config.pitInLoopId && loopId === config.pitInLoopId;
     const isPitOutLoop = config.pitLoopId && loopId === config.pitLoopId;
+    const singleLoopTrack = !config.pitLoopId && !config.pitInLoopId;
     if (isPitInLoop) {
       result = demoStore.processTransponderPitEntry(store, String(transponderId));
     } else if (isPitOutLoop) {
@@ -148,6 +151,17 @@ function createAmbTranx160Decoder(deps) {
     } else if (lapTimeSec != null) {
       result = demoStore.processTransponderLap(store, String(transponderId), lapTimeSec);
       if (result.success) stats.laps += 1;
+    } else if (singleLoopTrack) {
+      // No separate pit-out beam to tell us a kart left the pits: a track with
+      // only one S/F loop sees every kart's very first passing (no prior RTC
+      // reading, so lapTimeSec is null) at the moment it crosses the line
+      // leaving the pit lane. Treat that as the pit-exit/launch event instead
+      // of silently dropping it — otherwise the timer would never start from
+      // real transponder data on single-loop installs.
+      result = demoStore.processTransponderPitExit(store, String(transponderId));
+      if (!result.success) {
+        result = { success: true, skipped: 'first_passing_not_launchable', transponder: transponderId, reason: result.error };
+      }
     } else {
       result = { success: true, skipped: 'first_passing_or_no_rtc_delta', transponder: transponderId };
     }

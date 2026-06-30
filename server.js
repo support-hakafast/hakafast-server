@@ -847,6 +847,19 @@ app.post('/api/admin/kart-launch', (req, res) => {
   });
 });
 
+app.post('/api/admin/session-start', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  const result = demoStore.startSessionManually(demo);
+  if (result.success) notifyWorkspace(req);
+  return res.json({
+    ...result,
+    pitLines: demo.pitLines,
+    onTrack: demo.onTrack,
+    heatClock: demoStore.getHeatClock(demo),
+  });
+});
+
 app.post('/api/admin/kart-grid-deploy', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });

@@ -1505,6 +1505,25 @@ const AdminPanel = () => {
     }
   };
 
+  const startSessionManually = async () => {
+    try {
+      const res = await apiFetch('/api/admin/session-start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }, trackSlug);
+      const data = await res.json();
+      if (!data.success) {
+        if (data.error === 'no_heat') showAlert(t('admin_session_start_no_heat'));
+        else if (data.error === 'session_already_started') showAlert(t('admin_session_start_already_started'));
+        else showAlert(t('admin_alert_server_error'));
+        return;
+      }
+      applySessionPayload(data);
+    } catch {
+      showAlert(t('admin_alert_server_error'));
+    }
+  };
+
   const returnKartFromTrack = async (kartNum, laneId) => {
     try {
       const res = await apiFetch('/api/admin/kart-return', {
@@ -2477,6 +2496,16 @@ const AdminPanel = () => {
             {heatNumber ? (
               <span className="admin-heat-number">{t('live_heat_number', { n: heatNumber })}</span>
             ) : null}
+            {!heatClock.startedAt && heatClock.hasDrivers && (
+              <button
+                type="button"
+                className="btn-muted btn-session-start"
+                onClick={startSessionManually}
+                title={t('admin_session_start_hint')}
+              >
+                {t('admin_session_start')}
+              </button>
+            )}
           </div>
 
           <div className="timing-columns-bar">

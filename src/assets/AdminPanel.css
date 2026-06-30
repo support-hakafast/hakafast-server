@@ -579,6 +579,14 @@ html:has(.admin-no-scroll) body {
   margin-bottom: 10px;
 }
 
+.btn-session-start {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-weight: 700;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
 .heat-clock-value {
   font-size: 1.4rem;
   font-weight: 800;
