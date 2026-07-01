@@ -1,5 +1,7 @@
 # HAKAFAST — התקנה מדיסק-און-קי (Phase 1 + 2)
 
+> **מדריך שלבים מלא בעברית למסלול בישראל:** [`MADRICH-HAKAFAT-ISRAEL.md`](MADRICH-HAKAFAT-ISRAEL.md)
+
 ## מה מקבלים
 
 - **Phase 1:** שרת מקומי, שמירת נתונים ב-`%ProgramData%\HAKAFAST`, אשף התקנה (`/setup`), כתובות LAN לזמנים חיים, באנר offline

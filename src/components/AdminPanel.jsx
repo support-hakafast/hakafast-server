@@ -12,6 +12,7 @@ import ProRaceEventModal from './ProRaceEventModal.jsx';
 import TrackPlannerModal from './TrackPlannerModal.jsx';
 import TimingColumnsPicker from './TimingColumnsPicker.jsx';
 import AdminWalkthrough, { isAdminTourDone } from './AdminWalkthrough.jsx';
+import AdminUnlockGate from './AdminUnlockGate.jsx';
 import LivePreviewFloat from './LivePreviewFloat.jsx';
 import TimingColumnOrderList from './TimingColumnOrderList.jsx';
 import '../assets/SalesPages.css';
@@ -159,6 +160,8 @@ const AdminPanel = () => {
   const [showDayPlanner, setShowDayPlanner] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
+  const [adminUnlocked, setAdminUnlocked] = useState(true);
+  const [adminAuthChecked, setAdminAuthChecked] = useState(false);
   const [isLicensed, setIsLicensed] = useState(false);
   const [todayChampRounds, setTodayChampRounds] = useState([]);
   const [upcomingChampRounds, setUpcomingChampRounds] = useState([]);
@@ -254,6 +257,19 @@ const AdminPanel = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ queue }),
     }, trackSlug).catch(() => {});
+  }, [trackSlug]);
+
+  useEffect(() => {
+    apiFetch('/api/admin/auth-status', {}, trackSlug)
+      .then((r) => r.json())
+      .then((s) => {
+        setAdminUnlocked(Boolean(s?.unlocked));
+        setAdminAuthChecked(true);
+      })
+      .catch(() => {
+        setAdminUnlocked(true);
+        setAdminAuthChecked(true);
+      });
   }, [trackSlug]);
 
   useEffect(() => {
@@ -1731,11 +1747,19 @@ const AdminPanel = () => {
 
   return (
     <div className={`admin-dashboard admin-no-scroll${adminTheme === 'dark' ? ' admin-theme-dark' : ''}`}>
+      {adminAuthChecked && !adminUnlocked && (
+        <AdminUnlockGate
+          t={t}
+          trackSlug={trackSlug}
+          onUnlocked={() => setAdminUnlocked(true)}
+        />
+      )}
       {showAdvanced && (
         <AdvancedSettingsModal
           trackSlug={trackSlug}
           hasPassword={hasPassword}
           isLicensed={isLicensed}
+          darkMode={adminTheme === 'dark'}
           onClose={() => setShowAdvanced(false)}
           masterLapThreshold={masterLapThreshold}
           setMasterLapThreshold={setMasterLapThreshold}
@@ -1807,6 +1831,7 @@ const AdminPanel = () => {
       {showEnduranceModal && (
         <EnduranceToolsModal
           onClose={() => setShowEnduranceModal(false)}
+          darkMode={adminTheme === 'dark'}
           t={t}
           enduranceTeams={enduranceTeams}
           penaltyKart={penaltyKart}

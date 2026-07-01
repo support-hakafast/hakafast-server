@@ -249,7 +249,7 @@ const LiveTiming = () => {
         )}
       </header>
 
-      <div className="live-display">
+      <div className={`live-display theme-${theme}`}>
       {rowsData.length === 0 ? (
         <p className="live-empty">{t('live_waiting')}</p>
       ) : (

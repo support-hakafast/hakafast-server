@@ -79,6 +79,14 @@ export default function SetupWizard() {
       }
       await fetchInstallConfig(true);
       if (data.config?.workspaceId) setInstallWorkspaceId(data.config.workspaceId);
+      if (adminPassword.trim()) {
+        await fetch('/api/admin/unlock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ password: adminPassword.trim() }),
+        });
+      }
       setDoneUrls(data);
       setStep(3);
     } catch {

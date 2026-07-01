@@ -13,6 +13,7 @@
     "build:serve": "npm run build && node server.js",
     "verify:timing": "node scripts/verify-timing.js",
     "verify:amb": "node scripts/verify-amb-p3.js",
+    "docx:install-guide": "python scripts/md_to_docx.py",
     "build:installer": "powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1"
   },
   "engines": {

@@ -6,6 +6,7 @@ import '../assets/SalesPages.css';
 
 export default function EnduranceToolsModal({
   onClose,
+  darkMode = false,
   t,
   enduranceTeams,
   penaltyKart,
@@ -22,10 +23,13 @@ export default function EnduranceToolsModal({
   enduranceRules,
   setEnduranceRules,
 }) {
+  const modalThemeClass = darkMode ? 'admin-modal-dark' : 'admin-modal-light';
+  const headerThemeClass = darkMode ? 'admin-modal-header-dark' : 'admin-modal-header-light';
+
   return (
     <div className="admin-modal-overlay" role="dialog" aria-modal="true">
-      <div className="admin-modal endurance-tools-modal">
-        <header className="admin-modal-header">
+      <div className={`admin-modal endurance-tools-modal ${modalThemeClass}`}>
+        <header className={`admin-modal-header ${headerThemeClass}`}>
           <h2>{t('admin_endurance_tools')}</h2>
           <button type="button" className="admin-modal-close" onClick={onClose}>×</button>
         </header>

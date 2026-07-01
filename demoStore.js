@@ -8,6 +8,7 @@ const {
   lapToSeconds: statsLapToSeconds,
   formatLap: statsFormatLap,
 } = require('./lapStats');
+const security = require('./security');
 const persistentStore = require('./persistentStore');
 const installConfig = require('./installConfig');
 const enduranceRules = require('./enduranceRules');
@@ -2303,7 +2304,7 @@ function exportData(store) {
 }
 
 function updateDriverLevel(store, lookup, level, password) {
-  if (store.levelSettings.editPassword && password !== store.levelSettings.editPassword) {
+  if (store.levelSettings.editPassword && !security.verifyPassword(password, store.levelSettings.editPassword)) {
     return { success: false, error: 'bad_password' };
   }
   const driver = store.drivers.find((d) => d.phone === lookup || d.email === lookup);

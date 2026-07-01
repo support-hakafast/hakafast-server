@@ -12,6 +12,7 @@ const fileExport = require('./fileExport');
 const rentixWebhook = require('./rentixWebhook');
 const { createLiveBroadcast } = require('./liveBroadcast');
 const { createAmbTranx160Decoder } = require('./ambTranx160');
+const security = require('./security');
 
 installConfig.ensureDataDirs();
 
@@ -155,10 +156,15 @@ if (!hasBuild) {
 app.use(express.json());
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'hakafast_secret_key_2026',
+  secret: security.getSessionSecret(),
   resave: false,
-  saveUninitialized: true,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 },
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.HF_COOKIE_SECURE === '1',
+  },
 }));
 
 const pool = new Pool({
@@ -314,7 +320,7 @@ function isValidLicenseKey(key) {
   if (!key || typeof key !== 'string') return false;
   const k = key.trim();
   if (VALID_LICENSE_KEYS.size > 0 && VALID_LICENSE_KEYS.has(k)) return true;
-  // Dev fallback: any key starting with HF- and 12+ chars is valid when no keys configured
+  if (process.env.NODE_ENV === 'production' || installConfig.isLocalInstall()) return false;
   if (VALID_LICENSE_KEYS.size === 0) return /^HF-[A-Z0-9]{8,}$/i.test(k);
   return false;
 }
@@ -662,6 +668,67 @@ function isStrongPassword(password) {
   return true;
 }
 
+const authRateLimit = security.createRateLimiter({ windowMs: 60_000, max: 15 });
+
+function getWorkspaceEditPassword(req) {
+  const demo = demoStore.resolveWorkspace(req);
+  if (demo?.levelSettings?.editPassword) return demo.levelSettings.editPassword;
+  if (levelSettings.editPassword) return levelSettings.editPassword;
+  return '';
+}
+
+function adminWritePasswordRequired(req) {
+  if (!installConfig.isLocalInstall() || !installConfig.isSetupComplete()) return false;
+  return Boolean(getWorkspaceEditPassword(req));
+}
+
+function isAdminSessionUnlocked(req) {
+  const install = installConfig.loadInstallConfig();
+  const workspaceId = install?.workspaceId;
+  if (!workspaceId) return false;
+  return req.session?.adminUnlocked === workspaceId;
+}
+
+function requireAdminWrite(req, res, next) {
+  if (!adminWritePasswordRequired(req)) return next();
+  if (isAdminSessionUnlocked(req)) return next();
+  return res.status(401).json({ success: false, error: 'admin_auth_required' });
+}
+
+function requireLocalTransponder(req, res, next) {
+  if (process.env.HF_ALLOW_REMOTE_TRANSPONDER === '1') return next();
+  if (security.isLocalRequest(req)) return next();
+  return res.status(403).json({ success: false, error: 'local_only' });
+}
+
+function requireInstallOpen(req, res, next) {
+  if (!installConfig.isSetupComplete()) return next();
+  if (req.path === '/api/install/config' && req.method === 'GET') return next();
+  if (isAdminSessionUnlocked(req)) return next();
+  if (!adminWritePasswordRequired(req)) return next();
+  return res.status(403).json({ success: false, error: 'setup_closed' });
+}
+
+app.use((req, res, next) => {
+  const p = req.path;
+  if (p.startsWith('/api/transponder/') || p === '/api/decoder/passing') {
+    return requireLocalTransponder(req, res, next);
+  }
+  if (p.startsWith('/api/install/') && p !== '/api/install/config') {
+    return requireInstallOpen(req, res, next);
+  }
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  const adminPublicWrite = [
+    '/api/admin/unlock',
+    '/api/admin/verify-settings-password',
+  ];
+  if (adminPublicWrite.includes(p) || /^\/api\/admin\/login\/?/.test(p)) return next();
+  if (p.startsWith('/api/admin/') || p === '/api/workspace/reset') {
+    return requireAdminWrite(req, res, next);
+  }
+  return next();
+});
+
 function lapToSeconds(lap) {
   if (!lap || typeof lap !== 'string') return Infinity;
   const trimmed = lap.trim();
@@ -693,14 +760,15 @@ async function applyAutoLevelUpgrades(trackId = 1) {
 }
 
 function adminLoginRequired(trackName) {
-  if (demoStore.isIsolatedTrack(trackName)) return false;
-  return Boolean(levelSettings.editPassword || trackCredentials[trackName]);
+  if (installConfig.isLocalInstall()) {
+    const install = installConfig.loadInstallConfig();
+    if (install?.workspaceId) {
+      const store = demoStore.resolveFromParts(install.trackSlug, install.workspaceId);
+      return Boolean(store?.levelSettings?.editPassword);
+    }
+  }
+  return Boolean(levelSettings.editPassword);
 }
-
-const trackCredentials = {
-  'holyland-racing': 'fast123',
-  'go-karting': 'track2026',
-};
 
 function sendSpaIndex(res) {
   if (!hasBuild) {
@@ -1054,7 +1122,7 @@ app.post('/api/install/setup', (req, res) => {
     store.trackProfile = trackProfile.normalizeTrackProfile({
       trackDisplayName: trackName || trackSlug,
     }, trackSlug);
-    if (adminPassword) store.levelSettings.editPassword = adminPassword;
+    if (adminPassword) store.levelSettings.editPassword = security.normalizeStoredPassword(adminPassword);
     demoStore.persistStore(store);
     if (!demoStore.isIsolatedTrack(trackSlug)) {
       saveTrackProfileToDb(trackSlug, store.trackProfile);
@@ -1644,7 +1712,7 @@ app.post('/api/admin/track-setup', (req, res) => {
     if (typeof multipleKartTypes === 'boolean') profilePatch.multipleKartTypes = multipleKartTypes;
     if (Array.isArray(kartTypes)) profilePatch.kartTypes = kartTypes;
     demoStore.updateTrackProfile(demo, profilePatch);
-    if (editPassword) demo.levelSettings.editPassword = editPassword;
+    if (editPassword) demo.levelSettings.editPassword = security.normalizeStoredPassword(editPassword);
     demoStore.persistStore(demo);
     return res.json({
       success: true,
@@ -1656,7 +1724,7 @@ app.post('/api/admin/track-setup', (req, res) => {
     return res.json({ success: false, error: 'no_workspace' });
   }
   trackSetups[trackSlug] = { onboarded: true, kartNumbers: String(kartNumbers || '').trim() };
-  if (editPassword) levelSettings.editPassword = editPassword;
+  if (editPassword) levelSettings.editPassword = security.normalizeStoredPassword(editPassword);
   return res.json({ success: true, kartNumbers });
 });
 
@@ -1665,7 +1733,35 @@ app.post('/api/admin/verify-settings-password', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   const settings = demo ? demo.levelSettings : levelSettings;
   if (!settings.editPassword) return res.json({ success: true });
-  return res.json({ success: req.body.password === settings.editPassword });
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (!authRateLimit(ip)) return res.status(429).json({ success: false, error: 'rate_limited' });
+  return res.json({ success: security.verifyPassword(req.body.password, settings.editPassword) });
+});
+
+app.post('/api/admin/unlock', (req, res) => {
+  if (missingIsolatedWorkspace(req)) return res.json({ success: false, error: 'no_workspace' });
+  const stored = getWorkspaceEditPassword(req);
+  if (!stored) {
+    const install = installConfig.loadInstallConfig();
+    if (install?.workspaceId) req.session.adminUnlocked = install.workspaceId;
+    return res.json({ success: true });
+  }
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (!authRateLimit(ip)) return res.status(429).json({ success: false, error: 'rate_limited' });
+  if (!security.verifyPassword(req.body?.password, stored)) {
+    return res.status(401).json({ success: false, error: 'bad_password' });
+  }
+  const install = installConfig.loadInstallConfig();
+  if (install?.workspaceId) req.session.adminUnlocked = install.workspaceId;
+  return res.json({ success: true });
+});
+
+app.get('/api/admin/auth-status', (req, res) => {
+  const required = adminWritePasswordRequired(req);
+  return res.json({
+    requiresPassword: required,
+    unlocked: !required || isAdminSessionUnlocked(req),
+  });
 });
 
 app.post('/api/admin/sync-queue/:trackSlug', (req, res) => {
@@ -1720,7 +1816,7 @@ app.post('/api/admin/level-settings', (req, res) => {
     if (!isStrongPassword(editPassword)) {
       return res.json({ success: false, error: 'weak_password' });
     }
-    settings.editPassword = editPassword;
+    settings.editPassword = security.normalizeStoredPassword(editPassword);
   }
   return res.json({ success: true });
 });
@@ -1737,9 +1833,11 @@ app.post('/api/admin/login/:trackName', (req, res) => {
     req.session.authenticatedTrack = trackName;
     return res.json({ success: true });
   }
-  const expected = levelSettings.editPassword || trackCredentials[trackName];
-  if (expected && expected === password) {
+  const expected = levelSettings.editPassword;
+  if (expected && security.verifyPassword(password, expected)) {
     req.session.authenticatedTrack = trackName;
+    const install = installConfig.loadInstallConfig();
+    if (install?.workspaceId) req.session.adminUnlocked = install.workspaceId;
     return res.json({ success: true });
   }
   res.status(401).json({ success: false, error: 'Password incorrect' });
@@ -1861,7 +1959,7 @@ app.post('/api/admin/update-driver-level', async (req, res) => {
   if (demo) {
     return res.json(demoStore.updateDriverLevel(demo, lookup, level, password));
   }
-  if (levelSettings.editPassword && password !== levelSettings.editPassword) {
+  if (levelSettings.editPassword && !security.verifyPassword(password, levelSettings.editPassword)) {
     return res.json({ success: false, error: 'bad_password' });
   }
   try {

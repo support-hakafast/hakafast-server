@@ -8,6 +8,7 @@ export default function AdvancedSettingsModal({
   trackSlug,
   hasPassword,
   isLicensed,
+  darkMode = false,
   onClose,
   masterLapThreshold,
   setMasterLapThreshold,
@@ -148,10 +149,12 @@ export default function AdvancedSettingsModal({
     onSaveSettings(settingsPassword);
   };
 
+  const modalThemeClass = darkMode ? 'admin-modal-dark' : 'admin-modal-light';
+
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
-      <div className="admin-modal admin-modal-wide admin-modal-light admin-advanced-modal" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="modal-close" onClick={onClose}>×</button>
+      <div className={`admin-modal admin-modal-wide admin-advanced-modal ${modalThemeClass}`} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="admin-modal-close" onClick={onClose}>×</button>
         <h2>{t('admin_advanced_settings')}</h2>
 
         {!unlocked ? (

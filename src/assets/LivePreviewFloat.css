@@ -542,6 +542,47 @@
   border-color: rgba(64, 224, 208, 0.5);
 }
 
+.live-preview-float--dark .live-preview-history-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.live-preview-float--dark .live-preview-history-item:hover {
+  background: rgba(64, 224, 208, 0.1);
+  border-color: rgba(64, 224, 208, 0.35);
+}
+
+.live-preview-float--dark .live-preview-history-num {
+  color: #40e0d0;
+}
+
+.live-preview-float--dark .live-preview-history-count {
+  color: #94a3b8;
+}
+
+.live-preview-float--light .live-preview-history-item {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #1a202c;
+}
+
+.live-preview-float--light .live-preview-history-item:hover {
+  background: #e0f7f4;
+  border-color: rgba(64, 224, 208, 0.4);
+}
+
+.live-preview-float--light .live-preview-history-active {
+  background: rgba(0, 0, 128, 0.08);
+  border-color: rgba(0, 0, 128, 0.25);
+  color: #000080;
+}
+
+.live-preview-float--light .live-preview-empty,
+.live-preview-float--light .live-preview-heat {
+  color: #64748b;
+}
+
 .live-preview-history-item {
   display: flex;
   align-items: center;

@@ -73,6 +73,19 @@ try {
 }
 Pop-Location
 
+# --- Generate install guide DOCX ---
+Write-Host "==> Generating install guide DOCX..." -ForegroundColor Cyan
+$DocxScript = Join-Path $Root 'scripts\md_to_docx.py'
+if (Test-Path $DocxScript) {
+  try {
+    python $DocxScript
+  } catch {
+    Write-Host "  WARNING: Could not generate DOCX: $($_.Exception.Message)" -ForegroundColor Yellow
+  }
+} else {
+  Write-Host "  WARNING: md_to_docx.py not found - skipping DOCX." -ForegroundColor Yellow
+}
+
 # --- Stage installer files ---
 Write-Host "==> Staging installer files..." -ForegroundColor Cyan
 if (Test-Path $Stage) {
@@ -86,7 +99,7 @@ New-Item -ItemType Directory -Path $Stage -Force | Out-Null
 
 $Include = @(
   'server.js', 'demoStore.js', 'liveBroadcast.js', 'lapStats.js',
-  'installConfig.js', 'persistentStore.js', 'fileExport.js', 'rentixWebhook.js', 'ambTranx160.js',
+  'installConfig.js', 'persistentStore.js', 'fileExport.js', 'rentixWebhook.js', 'ambTranx160.js', 'security.js',
   'enduranceRules.js', 'trackProfile.js', 'ambP3Parser.js',
   'translations.json', 'CHANGELOG.md',
   'package.json', 'package-lock.json', 'dist', 'public', 'kiosk', 'scripts'
@@ -110,7 +123,7 @@ if ($MissingFiles.Count -gt 0) {
   exit 1
 }
 
-$Scripts = @('start-hakafast.bat', 'launch-kiosk.bat', 'install-service.ps1', 'sign-installer.ps1', 'README-INSTALL.md')
+$Scripts = @('start-hakafast.bat', 'launch-kiosk.bat', 'install-service.ps1', 'sign-installer.ps1', 'README-INSTALL.md', 'MADRICH-HAKAFAT-ISRAEL.md', 'MADRICH-HAKAFAT-ISRAEL.docx')
 foreach ($script in $Scripts) {
   $src = Join-Path $PSScriptRoot $script
   if (Test-Path $src) {
