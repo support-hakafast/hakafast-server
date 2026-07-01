@@ -2455,6 +2455,12 @@ html:has(.admin-no-scroll) body {
   justify-content: flex-end;
 }
 
+.hf-toggle.is-locked,
+.hf-toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .hf-toggle-knob {
   display: block;
   width: 20px;

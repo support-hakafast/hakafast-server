@@ -1437,6 +1437,16 @@ const AdminPanel = () => {
     if (stepId !== 'planner') setShowTrackPlannerModal(false);
   }, []);
 
+  const handleTourKartMode = useCallback((multi) => {
+    setMultipleKartTypes(multi);
+    if (multi && kartTypes.length < 2) {
+      const seeded = DEFAULT_KART_TYPE_PRESETS.map((row) => ({ ...row }));
+      setKartTypes(seeded);
+      setSelectedKartTypeId(seeded[0]?.id || '');
+    }
+    if (!multi) setKartNumbersByType({});
+  }, [kartTypes.length]);
+
   const toggleAdminTheme = useCallback(() => {
     setAdminTheme((prev) => {
       const next = prev === 'dark' ? 'light' : 'dark';
@@ -1797,6 +1807,9 @@ const AdminPanel = () => {
           trackSlug={trackSlug}
           isFirstRun={needsOnboarding}
           activePanels={{ preview: showLivePreview, planner: showTrackPlannerModal }}
+          multipleKartTypes={multipleKartTypes}
+          onSetMultipleKartTypes={handleTourKartMode}
+          kartModePreconfigured={poolKarts.length > 0}
           onStepChange={handleWalkthroughStep}
           onComplete={handleWalkthroughComplete}
         />
@@ -1973,8 +1986,12 @@ const AdminPanel = () => {
                   type="button"
                   role="switch"
                   aria-checked={multipleKartTypes}
-                  className={`hf-toggle${multipleKartTypes ? ' is-on' : ''}`}
+                  aria-disabled={showWalkthrough}
+                  disabled={showWalkthrough}
+                  title={showWalkthrough ? t('admin_kart_types_locked_tour') : undefined}
+                  className={`hf-toggle${multipleKartTypes ? ' is-on' : ''}${showWalkthrough ? ' is-locked' : ''}`}
                   onClick={() => {
+                    if (showWalkthrough) return;
                     setMultipleKartTypes((on) => {
                       const next = !on;
                       if (next && kartTypes.length < 2) {
