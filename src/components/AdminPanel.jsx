@@ -62,6 +62,7 @@ import {
 } from '../utils/kartTypes.js';
 import KartTypesEditor from './KartTypesEditor.jsx';
 import DayPlanner from './DayPlanner.jsx';
+import BusyDayWizard from './BusyDayWizard.jsx';
 import { apiFetch } from '../utils/apiClient.js';
 import {
   usesIsolatedWorkspace,
@@ -158,6 +159,7 @@ const AdminPanel = () => {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDayPlanner, setShowDayPlanner] = useState(false);
+  const [showBusyDayWizard, setShowBusyDayWizard] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(true);
@@ -2471,6 +2473,16 @@ const AdminPanel = () => {
                 📅 {t('admin_day_planner') || 'לוח יום'}
               </button>
             )}
+            {isLicensed && (
+              <button
+                type="button"
+                className={`btn-muted btn-sidebar-tool${showBusyDayWizard ? ' is-active' : ''}`}
+                onClick={() => setShowBusyDayWizard(true)}
+                data-tour="busy-day"
+              >
+                ☀️ {t('busy_day_title')}
+              </button>
+            )}
             {!isLicensed && (
               <Link to="/quote" className="btn-sidebar-upgrade-link" target="_blank" rel="noopener">
                 💳 {t('admin_get_license') || 'רכוש רישיון'}
@@ -2573,6 +2585,24 @@ const AdminPanel = () => {
             }}
           />
         </div>
+      )}
+
+      {showBusyDayWizard && isLicensed && (
+        <BusyDayWizard
+          trackSlug={trackSlug}
+          heatNumber={heatNumber}
+          t={t}
+          darkMode={adminTheme === 'dark'}
+          onClose={() => setShowBusyDayWizard(false)}
+          onOpenPreview={() => {
+            setShowBusyDayWizard(false);
+            setShowLivePreview(true);
+          }}
+          onOpenDayPlanner={() => {
+            setShowBusyDayWizard(false);
+            setShowDayPlanner(true);
+          }}
+        />
       )}
 
     </div>

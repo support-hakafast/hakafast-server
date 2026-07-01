@@ -1,6 +1,7 @@
 # HAKAFAST — התקנה מדיסק-און-קי (Phase 1 + 2)
 
-> **מדריך שלבים מלא בעברית למסלול בישראל:** [`MADRICH-HAKAFAT-ISRAEL.md`](MADRICH-HAKAFAT-ISRAEL.md)
+> **מדריך שלבים מלא בעברית למסלול בישראל:** [`MADRICH-HAKAFAT-ISRAEL.md`](MADRICH-HAKAFAT-ISRAEL.md)  
+> **יום ראשון תפעולי + GTM (partner/pilot):** [`../docs/gtm/README.md`](../docs/gtm/README.md)
 
 ## מה מקבלים
 

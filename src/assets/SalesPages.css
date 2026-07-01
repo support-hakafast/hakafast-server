@@ -236,3 +236,30 @@
 .endurance-starter-option { display: flex; align-items: center; gap: 0.4rem; margin: 0.2rem 0; font-size: 0.9rem; }
 
 @media (max-width: 700px) { .sales-form-grid { grid-template-columns: 1fr; } }
+
+.sales-main-wide { max-width: 1100px; }
+.mod-category-section { margin-bottom: 2rem; }
+.mod-category-section h2 { color: #0d47a1; font-size: 1.1rem; margin-bottom: 0.75rem; }
+.mod-table-wrap { overflow-x: auto; }
+.mod-matrix-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dbeafe; border-radius: 8px; font-size: 0.88rem; }
+.mod-matrix-table th, .mod-matrix-table td { padding: 0.65rem 0.5rem; border-bottom: 1px solid #eee; vertical-align: top; text-align: center; }
+.mod-matrix-table th:first-child, .mod-matrix-table td:first-child { text-align: right; min-width: 200px; }
+.mod-matrix-table th { background: #f0f7ff; color: #0d47a1; }
+.mod-desc { margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b; font-weight: normal; line-height: 1.35; }
+.mod-note { margin: 0.35rem 0 0; font-size: 0.75rem; color: #92400e; font-weight: normal; }
+.mod-cell--yes { color: #15803d; font-weight: 700; }
+.mod-cell--addon { color: #0d47a1; font-size: 0.78rem; }
+.mod-cell--partner { color: #7c3aed; font-size: 0.78rem; }
+.mod-cell--no { color: #94a3b8; }
+.mod-guide-links { font-size: 0.82rem; text-align: right !important; white-space: nowrap; }
+.mod-guide-links a { color: #0d47a1; }
+.mod-breadcrumb { font-size: 0.85rem; margin-bottom: 0.5rem; }
+.mod-breadcrumb a { color: #1565c0; }
+.mod-guide-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
+.mod-guide-try { display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; border: 1px solid #ccc; color: #333; }
+.mod-guide-steps .install-step { margin-bottom: 1rem; }
+.quote-mod-matrix { font-size: 0.82rem; }
+.quote-mod-matrix td:first-child { text-align: right; }
+.quote-mod-included { color: #15803d; }
+.quote-mod-upgrade { color: #64748b; }
+.quote-mod-addon-row { background: #f8fafc; }

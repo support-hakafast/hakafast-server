@@ -1,11 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../assets/ResultsPage.css';
+import '../assets/HeatResultsQr.css';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 import HakafastLogo from './HakafastLogo.jsx';
+import HeatResultsQr from './HeatResultsQr.jsx';
 import { apiFetch } from '../utils/apiClient.js';
 import { fetchInstallConfig, getInstallTrackSlug } from '../utils/installMode.js';
+import { buildHeatResultsUrl } from '../utils/resultsUrl.js';
 
 function sortResults(results) {
   return (results || []).slice().sort((a, b) => {
@@ -22,10 +25,12 @@ export default function ResultsPage() {
   const [list, setList] = useState([]);
   const [heat, setHeat] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [networkUrls, setNetworkUrls] = useState([]);
 
   useEffect(() => {
     fetchInstallConfig().then((cfg) => {
       if (!track && cfg?.config?.trackSlug) setTrackSlug(cfg.config.trackSlug);
+      setNetworkUrls(cfg?.networkUrls || []);
     });
   }, [track]);
 
@@ -59,6 +64,11 @@ export default function ResultsPage() {
   }, [heatId, loadHeat, loadList]);
 
   const rows = sortResults(heat?.results);
+
+  const heatResultsUrl = useMemo(() => {
+    if (!heatId) return '';
+    return buildHeatResultsUrl(heatId, networkUrls);
+  }, [heatId, networkUrls]);
 
   return (
     <div className="results-page">
@@ -115,6 +125,15 @@ export default function ResultsPage() {
                 ))}
               </tbody>
             </table>
+            {heatResultsUrl && (
+              <section className="results-qr-section">
+                <HeatResultsQr
+                  url={heatResultsUrl}
+                  size={200}
+                  label={t('results_qr_label', { n: heatId })}
+                />
+              </section>
+            )}
             <Link to="/results" className="results-back">{t('results_back')}</Link>
           </>
         )}

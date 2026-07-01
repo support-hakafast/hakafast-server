@@ -1,9 +1,13 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext.jsx';
 import '../assets/LiveTiming.css';
 import '../assets/LivePreviewFloat.css';
+import '../assets/HeatResultsQr.css';
 import { apiFetch } from '../utils/apiClient.js';
 import { resolveTrackId } from '../utils/workspace.js';
+import { fetchInstallConfig } from '../utils/installMode.js';
+import { buildHeatResultsUrl } from '../utils/resultsUrl.js';
+import HeatResultsQr from './HeatResultsQr.jsx';
 import { useLiveTimingSocket } from '../hooks/useLiveTimingSocket.js';
 import { useRowFlash } from '../hooks/useRowFlash.js';
 import { useDraggableResizable, getPreviewWindowDefaults } from '../hooks/useDraggableResizable.js';
@@ -26,7 +30,20 @@ export default function LivePreviewFloat({
   const [showColumnPicker, setShowColumnPicker] = React.useState(false);
   const [historyList, setHistoryList] = React.useState(null);
   const [activeDisplayHeat, setActiveDisplayHeat] = React.useState(null);
+  const [qrHeat, setQrHeat] = React.useState(null);
+  const [networkUrls, setNetworkUrls] = React.useState([]);
   const trackId = resolveTrackId(trackSlug);
+
+  useEffect(() => {
+    fetchInstallConfig().then((cfg) => {
+      setNetworkUrls(cfg?.networkUrls || []);
+    });
+  }, []);
+
+  const qrUrl = useMemo(
+    () => (qrHeat ? buildHeatResultsUrl(qrHeat, networkUrls) : ''),
+    [qrHeat, networkUrls],
+  );
 
   const loadHistory = React.useCallback(async () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -186,18 +203,33 @@ export default function LivePreviewFloat({
               <ul className="live-preview-history-list">
                 {historyList.map((h) => (
                   <li key={h.heat_number} className={activeDisplayHeat === h.heat_number ? 'is-active' : ''}>
-                    <button
-                      type="button"
-                      className="live-preview-history-item"
-                      onClick={() => broadcastHeat(h.heat_number)}
-                    >
-                      <span className="live-preview-history-num">#{h.heat_number}</span>
-                      <span className="live-preview-history-type">{h.heat_type}</span>
-                      <span className="live-preview-history-count">{h.driver_count} נהגים</span>
-                    </button>
+                    <div className="live-preview-history-row">
+                      <button
+                        type="button"
+                        className="live-preview-history-item"
+                        onClick={() => broadcastHeat(h.heat_number)}
+                      >
+                        <span className="live-preview-history-num">#{h.heat_number}</span>
+                        <span className="live-preview-history-type">{h.heat_type}</span>
+                        <span className="live-preview-history-count">{h.driver_count} נהגים</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="live-preview-history-qr-btn"
+                        title={t('results_qr_btn')}
+                        onClick={() => setQrHeat((prev) => (prev === h.heat_number ? null : h.heat_number))}
+                      >
+                        QR
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
+            )}
+            {qrUrl && (
+              <div className="live-preview-history-qr">
+                <HeatResultsQr url={qrUrl} size={140} label={t('results_qr_label', { n: qrHeat })} />
+              </div>
             )}
             <button type="button" className="live-preview-history-refresh" onClick={loadHistory}>
               ↻ {t('admin_results_refresh') || 'רענן'}

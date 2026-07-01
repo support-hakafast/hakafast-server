@@ -13,6 +13,7 @@ const persistentStore = require('./persistentStore');
 const installConfig = require('./installConfig');
 const enduranceRules = require('./enduranceRules');
 const trackProfile = require('./trackProfile');
+const publicAvailability = require('./publicAvailability');
 
 const stores = new Map();
 const persistTimers = new Map();
@@ -170,6 +171,22 @@ function resolveFromParts(trackSlug, workspaceId) {
   const store = getStore(trackSlug || 'kart-demo', workspaceId);
   if (store) store.workspaceId = workspaceId;
   return store;
+}
+
+/** Public embed API — local install workspace, or demo track with HF_DEMO_WORKSPACE_ID. */
+function resolvePublicStore(trackSlug) {
+  const slug = trackSlug || 'kart-demo';
+  const install = installConfig.loadInstallConfig();
+  if (installConfig.isLocalInstall() && install?.workspaceId) {
+    const track = install.trackSlug || slug;
+    if (slug !== track) return null;
+    return resolveFromParts(track, install.workspaceId);
+  }
+  const demoWs = process.env.HF_DEMO_WORKSPACE_ID;
+  if (demoWs && isIsolatedTrack(slug)) {
+    return resolveFromParts(slug, demoWs);
+  }
+  return null;
 }
 
 function resetStore(trackSlug, workspaceId) {
@@ -2670,6 +2687,10 @@ module.exports = {
   deleteScheduledEvent,
   getBookingSettings,
   saveBookingSettings,
+  resolvePublicStore,
+  getPublicAvailability,
+  getPublicEmbedConfig,
+  addPublicBooking,
 };
 
 // ── Bookings ─────────────────────────────────────────────────────────────────
@@ -2688,6 +2709,7 @@ function addBooking(store, data) {
     heatsPerPerson: Math.max(1, Number(data.heatsPerPerson) || 1),
     consecutive: Boolean(data.consecutive),
     preferredSlot: data.preferredSlot || null, // 'morning'|'afternoon'|'evening'|null
+    preferredDate: data.preferredDate || null, // YYYY-MM-DD
     note: data.note || '',
     status: 'pending',        // 'pending'|'confirmed'|'queued'|'done'|'cancelled'
     heatNumbers: data.heatNumbers || [], // assigned heat numbers
@@ -2771,6 +2793,10 @@ function getBookingSettings(store) {
     allowScattered: true,
     requirePhone: false,
     kioskBookingEnabled: false,
+    websiteEmbedEnabled: false,
+    liveTimingEmbedEnabled: true,
+    fleetSize: 12,
+    calendarMarkers: [],
   };
 }
 
@@ -2778,4 +2804,69 @@ function saveBookingSettings(store, patch) {
   store.bookingSettings = { ...getBookingSettings(store), ...patch };
   schedulePersist(store);
   return { success: true, bookingSettings: store.bookingSettings };
+}
+
+function getPublicAvailability(store, fromDate, toDate) {
+  const settings = getBookingSettings(store);
+  const events = getScheduledEvents(store);
+  const bookings = getBookings(store);
+  const today = new Date().toISOString().slice(0, 10);
+  const from = fromDate || today;
+  const to = toDate || publicAvailability.addDays(from, 13);
+  if (to < from) return { success: false, error: 'invalid_range' };
+  const days = publicAvailability.computeAvailabilityRange({
+    fromDate: from,
+    toDate: to,
+    settings,
+    events,
+    bookings,
+  });
+  return {
+    success: true,
+    from,
+    to,
+    bookingEnabled: Boolean(settings.enabled),
+    websiteEmbedEnabled: Boolean(settings.websiteEmbedEnabled),
+    days,
+  };
+}
+
+function getPublicEmbedConfig(store, trackSlug) {
+  const settings = getBookingSettings(store);
+  return {
+    success: true,
+    trackSlug,
+    bookingEnabled: Boolean(settings.enabled),
+    websiteEmbedEnabled: Boolean(settings.websiteEmbedEnabled),
+    liveTimingEmbedEnabled: settings.liveTimingEmbedEnabled !== false,
+    maxHeatsPerPerson: settings.maxHeatsPerPerson || 3,
+    requirePhone: Boolean(settings.requirePhone),
+    fleetSize: settings.fleetSize || 12,
+  };
+}
+
+function addPublicBooking(store, data) {
+  const settings = getBookingSettings(store);
+  const events = getScheduledEvents(store);
+  const bookings = getBookings(store);
+  const validation = publicAvailability.validatePublicBooking({
+    settings,
+    events,
+    bookings,
+    data,
+  });
+  if (!validation.ok) {
+    return { success: false, error: validation.error, day: validation.day || null };
+  }
+  if (!String(data.name || '').trim()) {
+    return { success: false, error: 'name_required' };
+  }
+  if (settings.requirePhone && !String(data.phone || '').trim()) {
+    return { success: false, error: 'phone_required' };
+  }
+  return addBooking(store, {
+    ...data,
+    name: String(data.name).trim(),
+    source: data.source || 'website',
+  });
 }

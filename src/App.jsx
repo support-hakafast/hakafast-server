@@ -7,12 +7,18 @@ import AdminPanel from './components/AdminPanel.jsx';
 import LiveTiming from './components/LiveTiming.jsx';
 import LiveDeskPage from './components/LiveDeskPage.jsx';
 import TrackQuotePage from './components/TrackQuotePage.jsx';
+import ModulesCatalogPage from './components/ModulesCatalogPage.jsx';
+import ModuleGuidePage from './components/ModuleGuidePage.jsx';
+import PaymentDemoPage from './components/PaymentDemoPage.jsx';
 import InstallGuidePage from './components/InstallGuidePage.jsx';
 import SetupWizard from './components/SetupWizard.jsx';
 import Reception from './components/Reception.jsx';
 import ResultsPage from './components/ResultsPage.jsx';
 import ChampionshipPage from './components/ChampionshipPage.jsx';
 import BookingPage from './components/BookingPage.jsx';
+import EmbedBookingPage from './components/EmbedBookingPage.jsx';
+import EmbedLivePage from './components/EmbedLivePage.jsx';
+import TrackEmbedGuide from './components/TrackEmbedGuide.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 import { fetchInstallConfig } from './utils/installMode.js';
 
@@ -68,10 +74,16 @@ function App() {
               <Route path="/live-timing/:track" element={<LiveTiming />} />
               <Route path="/live-desk/:track" element={<LiveDeskPage />} />
               <Route path="/quote" element={<TrackQuotePage />} />
+              <Route path="/modules" element={<ModulesCatalogPage />} />
+              <Route path="/modules/:moduleId" element={<ModuleGuidePage />} />
+              <Route path="/demo/payment" element={<PaymentDemoPage />} />
               <Route path="/install-guide" element={<InstallGuidePage />} />
               <Route path="/championship" element={<ChampionshipPage />} />
               <Route path="/championship/:trackName" element={<ChampionshipPage />} />
               <Route path="/booking/:track" element={<BookingPage />} />
+              <Route path="/embed/booking/:track" element={<EmbedBookingPage />} />
+              <Route path="/embed/live/:track" element={<EmbedLivePage />} />
+              <Route path="/embed/guide/:track" element={<TrackEmbedGuide />} />
             </Routes>
           </LocalInstallGuard>
         </Router>

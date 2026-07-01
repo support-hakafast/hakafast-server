@@ -1,5 +1,15 @@
 # HAKAFAST Changelog
 
+## [1.4.0] — 2026-07-01
+
+### Added
+- **Track day mode (יום מסלול)** — 4-step wizard in admin: open → heat → results → close; LAN URL checklist
+- **QR heat results** — scan LAN URL after heat; shown in track day wizard, results page, and preview history
+- **Care Plan pricing** — explicit annual tiers (Standard ₪6k / Pro ₪9k / Enterprise ₪12k) on quote page
+- **Quote add-ons** — Rentix, extra live screen, reception module line items
+- **GTM kit** — `docs/gtm/` — JTBD validation, pilot weekend, Rentix partnership, partner installer program
+- **Partner USB bundle** — installer stage includes GTM docs for certified installers
+
 ## [1.3.0] — 2026-06-19
 
 ### Added

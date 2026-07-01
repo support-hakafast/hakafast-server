@@ -1,0 +1,171 @@
+.busy-day-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.busy-day-overlay--dark {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.busy-day-modal {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.busy-day-overlay--dark .busy-day-modal {
+  background: #1e1e1e;
+  color: #eee;
+}
+
+.busy-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.busy-day-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.busy-day-close {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.busy-day-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.busy-day-step-tab {
+  flex: 1 1 45%;
+  min-width: 120px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.busy-day-step-tab.is-active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.busy-day-step-tab.is-done:not(.is-active) {
+  opacity: 0.7;
+}
+
+.busy-day-body {
+  padding: 1rem 1.25rem;
+  flex: 1;
+}
+
+.busy-day-lead {
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.busy-day-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.busy-day-checklist li {
+  margin-bottom: 0.5rem;
+}
+
+.busy-day-checklist label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.busy-day-urls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.busy-day-urls a {
+  word-break: break-all;
+  direction: ltr;
+  text-align: left;
+}
+
+.busy-day-urls-title {
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.busy-day-flow {
+  margin: 0 0 1rem;
+  padding-inline-start: 1.25rem;
+  line-height: 1.6;
+}
+
+.busy-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.busy-day-link-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+.busy-day-status {
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+.busy-day-muted {
+  opacity: 0.7;
+  margin: 0.5rem 0;
+}
+
+.busy-day-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 480px) {
+  .busy-day-step-tab {
+    flex: 1 1 100%;
+  }
+}

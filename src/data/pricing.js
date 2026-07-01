@@ -9,11 +9,20 @@ export const PRICING = {
     install: 8500,
     trainingDay: 4500,
   },
-  supportPct: 0.18,
+  /** HAKAFAST Care Plan — annual support (ILS, before VAT). Replaces %-of-license support. */
+  carePlan: {
+    Standard: 6000,
+    Pro: 9000,
+    Enterprise: 12000,
+  },
+  /** One-day event license (championship / corporate day). */
+  eventDayRental: 2500,
+  partnerMarginPct: 0.18,
   addons: {
     liveScreen: 3500,
     reception: 2000,
     rentix: 4500,
+    paymentKiosk: 5500,
     travel: 2500,
   },
   upgrade: {
@@ -54,18 +63,40 @@ export function upgradeCostToNext(tier) {
   return target ? upgradeCost(tier, target) : null;
 }
 
-export function supportYearly(tier) {
-  const price = PRICING.license[tier]?.price || 0;
-  return Math.round(price * PRICING.supportPct);
+export function carePlanYearly(tier) {
+  return PRICING.carePlan[tier] || 0;
 }
 
-export function quoteTotal(tier, includeSupport = false) {
+/** @deprecated use carePlanYearly — kept for backward compatibility */
+export function supportYearly(tier) {
+  return carePlanYearly(tier);
+}
+
+export function partnerInstallMargin() {
+  return Math.round(PRICING.services.install * PRICING.partnerMarginPct);
+}
+
+export function quoteTotal(tier, options = {}) {
+  const includeCarePlan = typeof options === 'boolean' ? options : Boolean(options.includeCarePlan);
+  const addons = typeof options === 'object' && options.addons ? options.addons : {};
   const lic = PRICING.license[tier]?.price || 0;
   const sub = lic + PRICING.services.install + PRICING.services.trainingDay;
-  const support = includeSupport ? supportYearly(tier) : 0;
-  const beforeVat = sub + support;
+  const addonTotal = Object.entries(addons).reduce((sum, [key, on]) => {
+    if (!on) return sum;
+    return sum + (PRICING.addons[key] || 0);
+  }, 0);
+  const carePlan = includeCarePlan ? carePlanYearly(tier) : 0;
+  const beforeVat = sub + addonTotal + carePlan;
   const vat = Math.round(beforeVat * PRICING.vat);
-  return { sub, support, beforeVat, vat, total: beforeVat + vat };
+  return {
+    sub,
+    addons: addonTotal,
+    carePlan,
+    support: carePlan,
+    beforeVat,
+    vat,
+    total: beforeVat + vat,
+  };
 }
 
 export const INSTALL_STEPS = [

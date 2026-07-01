@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../utils/apiClient.js';
+import TrackEmbedGuide from './TrackEmbedGuide.jsx';
 import '../assets/DayPlanner.css';
 
 const EVENT_TYPES = [
@@ -505,15 +506,61 @@ function BookingSettingsPanel({ settings, onSave, trackSlug, he }) {
   const [allowConsecutive, setAllowConsecutive] = useState(settings.allowConsecutive !== false);
   const [requirePhone, setRequirePhone] = useState(settings.requirePhone || false);
   const [kioskEnabled, setKioskEnabled] = useState(settings.kioskBookingEnabled || false);
+  const [websiteEmbed, setWebsiteEmbed] = useState(settings.websiteEmbedEnabled || false);
+  const [liveEmbed, setLiveEmbed] = useState(settings.liveTimingEmbedEnabled !== false);
+  const [fleetSize, setFleetSize] = useState(settings.fleetSize || 12);
+  const [markers, setMarkers] = useState(settings.calendarMarkers || []);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setEnabled(settings.enabled || false);
+    setMaxHeats(settings.maxHeatsPerPerson || 3);
+    setAllowConsecutive(settings.allowConsecutive !== false);
+    setRequirePhone(settings.requirePhone || false);
+    setKioskEnabled(settings.kioskBookingEnabled || false);
+    setWebsiteEmbed(settings.websiteEmbedEnabled || false);
+    setLiveEmbed(settings.liveTimingEmbedEnabled !== false);
+    setFleetSize(settings.fleetSize || 12);
+    setMarkers(settings.calendarMarkers || []);
+  }, [settings]);
+
+  function addMarker() {
+    setMarkers((list) => [...list, {
+      date: new Date().toISOString().slice(0, 10),
+      labelHe: '',
+      labelEn: '',
+      level: 'busy',
+      messageHe: '',
+      messageEn: '',
+    }]);
+  }
+
+  function updateMarker(index, patch) {
+    setMarkers((list) => list.map((m, i) => (i === index ? { ...m, ...patch } : m)));
+  }
+
+  function removeMarker(index) {
+    setMarkers((list) => list.filter((_, i) => i !== index));
+  }
 
   async function save() {
     setSaving(true);
-    await onSave({ enabled, maxHeatsPerPerson: maxHeats, allowConsecutive, requirePhone, kioskBookingEnabled: kioskEnabled });
+    await onSave({
+      enabled,
+      maxHeatsPerPerson: maxHeats,
+      allowConsecutive,
+      requirePhone,
+      kioskBookingEnabled: kioskEnabled,
+      websiteEmbedEnabled: websiteEmbed,
+      liveTimingEmbedEnabled: liveEmbed,
+      fleetSize: Math.max(1, Number(fleetSize) || 12),
+      calendarMarkers: markers.filter((m) => m.date && (m.labelHe || m.labelEn)),
+    });
     setSaving(false);
   }
 
   const kioskUrl = `${window.location.origin}/booking/${trackSlug}`;
+  const embedBookingUrl = `${window.location.origin}/embed/booking/${trackSlug}`;
 
   return (
     <div className="dp-settings">
@@ -535,6 +582,28 @@ function BookingSettingsPanel({ settings, onSave, trackSlug, he }) {
         </div>
       </label>
 
+      <label className="dp-check-label dp-setting-row">
+        <input type="checkbox" checked={websiteEmbed} onChange={(e) => setWebsiteEmbed(e.target.checked)} />
+        <div>
+          <strong>{he ? 'הטמעה באתר המסלול' : 'Embed on track website'}</strong>
+          <small className="dp-kiosk-url">{embedBookingUrl}</small>
+        </div>
+      </label>
+
+      <label className="dp-check-label dp-setting-row">
+        <input type="checkbox" checked={liveEmbed} onChange={(e) => setLiveEmbed(e.target.checked)} />
+        <div>
+          <strong>{he ? 'Live Timing — iframe לאתר' : 'Live timing website iframe'}</strong>
+          <small>{he ? 'מסך תוצאות בזמן אמת בדף הבית של המסלול' : 'Real-time results on track homepage'}</small>
+        </div>
+      </label>
+
+      <div className="dp-setting-row">
+        <label>{he ? 'גודל צי (קיבולת יומית)' : 'Fleet size (daily capacity)'}</label>
+        <input type="number" value={fleetSize} onChange={(e) => setFleetSize(Math.max(1, Number(e.target.value)))} className="dp-input dp-input-sm" min="1" max="80" />
+        <small>{he ? 'משמש לחישוב "מה פנוי" בלוח האינטרנט' : 'Powers the public availability calendar'}</small>
+      </div>
+
       <div className="dp-setting-row">
         <label>{he ? 'מקס׳ מקצים לאדם' : 'Max heats per person'}</label>
         <input type="number" value={maxHeats} onChange={(e) => setMaxHeats(Math.max(1, Number(e.target.value)))} className="dp-input dp-input-sm" min="1" max="20" />
@@ -555,9 +624,32 @@ function BookingSettingsPanel({ settings, onSave, trackSlug, he }) {
         </div>
       </label>
 
+      <div className="dp-setting-row">
+        <div className="dp-settings-subhead">
+          <strong>{he ? 'ימים מיוחדים (חג / עומס)' : 'Special days (holiday / busy)'}</strong>
+          <button type="button" className="dp-btn-ghost dp-btn-sm" onClick={addMarker}>+ {he ? 'יום' : 'Day'}</button>
+        </div>
+        <div className="emb-markers-list">
+          {markers.map((m, i) => (
+            <div key={`${m.date}-${i}`} className="emb-marker-row">
+              <input type="date" value={m.date} onChange={(e) => updateMarker(i, { date: e.target.value })} className="dp-input dp-input-sm" />
+              <input type="text" placeholder={he ? 'תווית (עברית)' : 'Label'} value={m.labelHe} onChange={(e) => updateMarker(i, { labelHe: e.target.value })} className="dp-input dp-input-sm" dir="auto" />
+              <select value={m.level || 'busy'} onChange={(e) => updateMarker(i, { level: e.target.value })} className="dp-input dp-input-sm">
+                <option value="busy">{he ? 'עמוס' : 'Busy'}</option>
+                <option value="closed">{he ? 'סגור' : 'Closed'}</option>
+              </select>
+              <button type="button" className="dp-btn-delete dp-btn-sm" onClick={() => removeMarker(i)}>✕</button>
+            </div>
+          ))}
+        </div>
+        <small>{he ? 'מוצג באזהרה בלוח ההזמנות באתר — מונע מבוכה מול לקוחות' : 'Shown on web booking calendar — avoids overbooking surprises'}</small>
+      </div>
+
       <button className="dp-btn-primary dp-save-btn" onClick={save} disabled={saving}>
         {saving ? (he ? 'שומר...' : 'Saving...') : (he ? 'שמור הגדרות' : 'Save Settings')}
       </button>
+
+      {(websiteEmbed || liveEmbed) && <TrackEmbedGuide trackSlug={trackSlug} compact />}
     </div>
   );
 }

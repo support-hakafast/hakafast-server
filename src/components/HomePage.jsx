@@ -92,6 +92,7 @@ const HomePage = () => {
           <nav className="home-nav-links">
             <a href="#features">{t('nav_features')}</a>
             <a href="#live-tracks">{t('nav_live')}</a>
+            <Link to="/modules">{t('nav_modules')}</Link>
             <Link to="/quote">{t('nav_quote')}</Link>
             <Link to="/admin/kart-demo">{t('nav_demo')}</Link>
             <a href="#about">{t('nav_about')}</a>
@@ -124,6 +125,7 @@ const HomePage = () => {
         >
           <a href="#features" onClick={closeMobileMenu}>{t('nav_features')}</a>
           <a href="#live-tracks" onClick={closeMobileMenu}>{t('nav_live')}</a>
+          <Link to="/modules" onClick={closeMobileMenu}>{t('nav_modules')}</Link>
           <Link to="/quote" onClick={closeMobileMenu}>{t('nav_quote')}</Link>
           <Link to="/admin/kart-demo" onClick={closeMobileMenu}>{t('nav_demo')}</Link>
           <a href="#about" onClick={closeMobileMenu}>{t('nav_about')}</a>

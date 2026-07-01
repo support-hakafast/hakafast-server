@@ -133,6 +133,21 @@ foreach ($script in $Scripts) {
   }
 }
 
+$GtmDir = Join-Path $Root 'docs\gtm'
+if (Test-Path $GtmDir) {
+  $StageGtm = Join-Path $Stage 'docs\gtm'
+  New-Item -ItemType Directory -Path (Split-Path $StageGtm) -Force | Out-Null
+  Copy-Item $GtmDir $StageGtm -Recurse -Force
+  Write-Host "  Bundled GTM kit (docs/gtm) + internal docs" -ForegroundColor Green
+}
+
+$InternalDir = Join-Path $Root 'docs\internal'
+if (Test-Path $InternalDir) {
+  $StageInternal = Join-Path $Stage 'docs\internal'
+  New-Item -ItemType Directory -Path (Split-Path $StageInternal) -Force | Out-Null
+  Copy-Item $InternalDir $StageInternal -Recurse -Force
+}
+
 # Write version file for the installer to reference
 $VersionFile = Join-Path $Stage 'version.json'
 Set-Content -Path $VersionFile -Value (ConvertTo-Json @{ version = $PackageVersion; buildDate = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ') }) -Force

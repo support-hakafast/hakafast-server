@@ -23,8 +23,9 @@ import { useTickingHeatClock } from '../hooks/useTickingHeatClock.js';
 
 const HEAT_LABEL_KEYS = { time: 'heat_time', endurance: 'heat_endurance', sprint: 'heat_sprint' };
 
-const LiveTiming = () => {
-  const { track } = useParams();
+const LiveTiming = ({ embedMode = false, trackOverride = null, embedTheme = null }) => {
+  const { track: routeTrack } = useParams();
+  const track = trackOverride || routeTrack;
   const { t } = useLanguage();
   const [mode, setMode] = useState('timing');
   const prevModeRef = useRef('timing');
@@ -164,7 +165,8 @@ const LiveTiming = () => {
     : null;
 
   return (
-    <div className={`live-timing theme-${theme}`}>
+    <div className={`live-timing theme-${embedTheme || theme}${embedMode ? ' live-timing-embed' : ''}`}>
+      {!embedMode && (
       <header className={`live-timing-header${layoutClass}`}>
         {isCompact ? (
           <>
@@ -248,8 +250,9 @@ const LiveTiming = () => {
           </>
         )}
       </header>
+      )}
 
-      <div className={`live-display theme-${theme}`}>
+      <div className={`live-display theme-${embedTheme || theme}`}>
       {rowsData.length === 0 ? (
         <p className="live-empty">{t('live_waiting')}</p>
       ) : (

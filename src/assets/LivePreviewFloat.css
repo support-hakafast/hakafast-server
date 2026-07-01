@@ -537,6 +537,27 @@
   gap: 0.25rem;
 }
 
+.live-preview-history-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.live-preview-history-qr-btn {
+  flex-shrink: 0;
+  padding: 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(64, 224, 208, 0.45);
+  background: rgba(64, 224, 208, 0.12);
+  cursor: pointer;
+}
+
+.live-preview-history-qr {
+  margin-top: 0.5rem;
+}
+
 .live-preview-history-list li.is-active .live-preview-history-item {
   background: rgba(64, 224, 208, 0.18);
   border-color: rgba(64, 224, 208, 0.5);
@@ -584,10 +605,11 @@
 }
 
 .live-preview-history-item {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  width: 100%;
+  min-width: 0;
   padding: 0.5rem 0.65rem;
   background: var(--live-surface, #fff);
   border: 1px solid var(--live-border, #e2e8f0);

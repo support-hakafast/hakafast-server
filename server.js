@@ -1171,7 +1171,13 @@ app.get('/api/bookings', (req, res) => {
 app.post('/api/bookings', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });
-  const result = demoStore.addBooking(demo, req.body || {});
+  const body = req.body || {};
+  if (body.preferredDate) {
+    const result = demoStore.addPublicBooking(demo, body);
+    if (result.success) notifyWorkspace(req);
+    return res.json(result);
+  }
+  const result = demoStore.addBooking(demo, body);
   if (result.success) notifyWorkspace(req);
   return res.json(result);
 });
@@ -1236,6 +1242,70 @@ app.post('/api/booking-settings', (req, res) => {
   const demo = demoStore.resolveWorkspace(req);
   if (!demo) return res.json({ success: false, error: 'no_workspace' });
   return res.json(demoStore.saveBookingSettings(demo, req.body || {}));
+});
+
+// ── Public track website embed (availability + booking + live timing config) ───
+
+function setPublicEmbedCors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+app.options('/api/public/track/:track/*', (req, res) => {
+  setPublicEmbedCors(res);
+  res.sendStatus(204);
+});
+
+app.get('/api/public/track/:track/embed-config', (req, res) => {
+  setPublicEmbedCors(res);
+  const store = demoStore.resolvePublicStore(req.params.track);
+  if (!store) return res.status(404).json({ success: false, error: 'track_not_found' });
+  return res.json(demoStore.getPublicEmbedConfig(store, req.params.track));
+});
+
+app.get('/api/public/track/:track/availability', (req, res) => {
+  setPublicEmbedCors(res);
+  const store = demoStore.resolvePublicStore(req.params.track);
+  if (!store) return res.status(404).json({ success: false, error: 'track_not_found' });
+  const settings = demoStore.getBookingSettings(store);
+  if (!settings.enabled && !settings.websiteEmbedEnabled) {
+    return res.json({
+      success: true,
+      bookingEnabled: false,
+      websiteEmbedEnabled: false,
+      days: [],
+    });
+  }
+  return res.json(demoStore.getPublicAvailability(
+    store,
+    req.query.from || null,
+    req.query.to || null,
+  ));
+});
+
+app.post('/api/public/track/:track/bookings', (req, res) => {
+  setPublicEmbedCors(res);
+  const store = demoStore.resolvePublicStore(req.params.track);
+  if (!store) return res.status(404).json({ success: false, error: 'track_not_found' });
+  const settings = demoStore.getBookingSettings(store);
+  if (!settings.enabled) {
+    return res.status(403).json({ success: false, error: 'bookings_disabled' });
+  }
+  const result = demoStore.addPublicBooking(store, req.body || {});
+  if (result.success) notifyWorkspace(req);
+  const status = result.success ? 200 : 400;
+  return res.status(status).json(result);
+});
+
+app.get('/api/availability', (req, res) => {
+  const demo = demoStore.resolveWorkspace(req);
+  if (!demo) return res.json({ success: false, error: 'no_workspace' });
+  return res.json(demoStore.getPublicAvailability(
+    demo,
+    req.query.from || null,
+    req.query.to || null,
+  ));
 });
 
 app.get('/api/results/list', (req, res) => {
