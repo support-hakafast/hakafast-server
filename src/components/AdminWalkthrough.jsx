@@ -7,7 +7,7 @@ import '../assets/AdminWalkthrough.css';
 
 const CORE_STEPS = [
   { id: 'welcome', target: null, interactive: false },
-  { id: 'kart-mode', target: null, interactive: false },
+  { id: 'kart-mode', target: null, interactive: true, kartModeStep: true },
   { id: 'warehouse', target: null, interactive: true, warehouseStep: true },
   { id: 'pits', targets: ['inventory-pits-flow'], interactive: true },
   { id: 'heat-settings', target: 'heat-settings', interactive: true },
@@ -80,6 +80,11 @@ function resolveTourTargetIds(step, activePanels = {}, multipleKartTypes = false
   if (step.id === 'planner') {
     return activePanels.planner ? ['planner'] : ['planner-trigger'];
   }
+  if (step.kartModeStep) {
+    return multipleKartTypes
+      ? ['kart-types-toggle', 'warehouse-numbers']
+      : ['kart-types-toggle', 'warehouse-single-numbers'];
+  }
   if (step.warehouseStep) {
     return multipleKartTypes ? ['warehouse-numbers'] : ['warehouse-single-numbers'];
   }
@@ -93,7 +98,7 @@ export default function AdminWalkthrough({
   isFirstRun = false,
   activePanels = {},
   multipleKartTypes = false,
-  onSetMultipleKartTypes,
+  kartModeConfirmed = false,
   kartModePreconfigured = false,
   onStepChange,
   onComplete,
@@ -109,6 +114,7 @@ export default function AdminWalkthrough({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [kartModeChosen, setKartModeChosen] = useState(false);
+  const kartModeReady = kartModeChosen || kartModeConfirmed || kartModePreconfigured;
 
   const step = steps[stepIndex];
   const stepId = step.id;
@@ -149,7 +155,8 @@ export default function AdminWalkthrough({
 
   useLayoutEffect(() => {
     onStepChange?.(stepId, stepIndex);
-    const timer = window.setTimeout(updateSpotlight, 120);
+    const delay = stepId === 'kart-mode' ? 320 : 120;
+    const timer = window.setTimeout(updateSpotlight, delay);
     return () => window.clearTimeout(timer);
   }, [stepId, stepIndex, onStepChange, updateSpotlight, activePanels.preview, activePanels.planner, multipleKartTypes]);
 
@@ -157,7 +164,10 @@ export default function AdminWalkthrough({
     if (stepId === 'kart-mode' && kartModePreconfigured) {
       setKartModeChosen(true);
     }
-  }, [stepId, kartModePreconfigured]);
+    if (stepId === 'kart-mode' && kartModeConfirmed) {
+      setKartModeChosen(true);
+    }
+  }, [stepId, kartModePreconfigured, kartModeConfirmed]);
 
   useEffect(() => {
     window.addEventListener('resize', updateSpotlight);
@@ -247,13 +257,8 @@ export default function AdminWalkthrough({
     return true;
   };
 
-  const pickKartMode = (multi) => {
-    onSetMultipleKartTypes?.(multi);
-    setKartModeChosen(true);
-  };
-
   const next = async () => {
-    if (stepId === 'kart-mode' && !kartModeChosen) {
+    if (stepId === 'kart-mode' && !kartModeReady) {
       showAlert(t('admin_tour_kart_mode_required'));
       return;
     }
@@ -278,7 +283,9 @@ export default function AdminWalkthrough({
   const isFormStep = stepId === 'security';
   const isClickStep = Boolean(step.clickTarget && isInteractive && !panelOpen);
 
-  const tryHintKey = panelOpen && stepId === 'preview'
+  const tryHintKey = stepId === 'kart-mode'
+    ? 'admin_tour_kart_mode_try_hint'
+    : panelOpen && stepId === 'preview'
     ? 'admin_tour_preview_try_hint'
     : panelOpen && stepId === 'planner'
       ? 'admin_tour_planner_try_hint'
@@ -286,7 +293,7 @@ export default function AdminWalkthrough({
         ? 'admin_tour_click_hint'
         : 'admin_tour_try_hint';
 
-  const NON_INTERACTIVE_STEPS = new Set(['welcome', 'kart-mode', 'history', 'booking', 'championship', 'security', 'done']);
+  const NON_INTERACTIVE_STEPS = new Set(['welcome', 'history', 'booking', 'championship', 'security', 'done']);
 
   const tourBodyKey = stepId === 'warehouse'
     ? (multipleKartTypes ? 'admin_tour_warehouse_body_multi' : 'admin_tour_warehouse_body_single')
@@ -336,28 +343,6 @@ export default function AdminWalkthrough({
         </p>
         <h2 id="admin-tour-title">{t(`admin_tour_${stepId}_title`)}</h2>
         <p className="admin-tour-body">{t(tourBodyKey)}</p>
-
-        {stepId === 'kart-mode' && (
-          <div className="admin-tour-kart-mode">
-            <button
-              type="button"
-              className={`admin-tour-kart-mode-btn${!multipleKartTypes ? ' is-selected' : ''}`}
-              onClick={() => pickKartMode(false)}
-            >
-              <strong>{t('admin_tour_kart_mode_single')}</strong>
-              <span>{t('admin_tour_kart_mode_single_hint')}</span>
-            </button>
-            <button
-              type="button"
-              className={`admin-tour-kart-mode-btn${multipleKartTypes ? ' is-selected' : ''}`}
-              onClick={() => pickKartMode(true)}
-            >
-              <strong>{t('admin_tour_kart_mode_multi')}</strong>
-              <span>{t('admin_tour_kart_mode_multi_hint')}</span>
-            </button>
-            <p className="admin-tour-field-hint">{t('admin_tour_kart_mode_locked_hint')}</p>
-          </div>
-        )}
 
         {stepId === 'security' && (
           <div className="admin-tour-form">
@@ -411,7 +396,7 @@ export default function AdminWalkthrough({
         )}
 
         {isInteractive && (
-          <p className={`admin-tour-try-hint${isClickStep ? ' is-click-step' : ''}`}>
+          <p className={`admin-tour-try-hint${isClickStep ? ' is-click-step' : ''}${stepId === 'kart-mode' ? ' is-kart-mode-step' : ''}`}>
             {t(tryHintKey)}
           </p>
         )}

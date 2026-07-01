@@ -235,6 +235,8 @@ const AdminPanel = () => {
   const [showTrackPlannerModal, setShowTrackPlannerModal] = useState(false);
   const [plannerSaving, setPlannerSaving] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [walkthroughStepId, setWalkthroughStepId] = useState(null);
+  const [tourKartModeConfirmed, setTourKartModeConfirmed] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(false);
   const [adminTheme, setAdminTheme] = useState(readAdminTheme);
   const [teamStarters, setTeamStarters] = useState({});
@@ -1426,6 +1428,8 @@ const AdminPanel = () => {
 
   const handleWalkthroughComplete = useCallback((payload = {}) => {
     setShowWalkthrough(false);
+    setWalkthroughStepId(null);
+    setTourKartModeConfirmed(false);
     setShowLivePreview(false);
     setShowTrackPlannerModal(false);
     setNeedsOnboarding(false);
@@ -1433,19 +1437,12 @@ const AdminPanel = () => {
   }, []);
 
   const handleWalkthroughStep = useCallback((stepId) => {
+    setWalkthroughStepId(stepId);
     if (stepId !== 'preview') setShowLivePreview(false);
     if (stepId !== 'planner') setShowTrackPlannerModal(false);
   }, []);
 
-  const handleTourKartMode = useCallback((multi) => {
-    setMultipleKartTypes(multi);
-    if (multi && kartTypes.length < 2) {
-      const seeded = DEFAULT_KART_TYPE_PRESETS.map((row) => ({ ...row }));
-      setKartTypes(seeded);
-      setSelectedKartTypeId(seeded[0]?.id || '');
-    }
-    if (!multi) setKartNumbersByType({});
-  }, [kartTypes.length]);
+  const kartTypesToggleLocked = showWalkthrough && walkthroughStepId !== 'kart-mode';
 
   const toggleAdminTheme = useCallback(() => {
     setAdminTheme((prev) => {
@@ -1808,7 +1805,7 @@ const AdminPanel = () => {
           isFirstRun={needsOnboarding}
           activePanels={{ preview: showLivePreview, planner: showTrackPlannerModal }}
           multipleKartTypes={multipleKartTypes}
-          onSetMultipleKartTypes={handleTourKartMode}
+          kartModeConfirmed={tourKartModeConfirmed}
           kartModePreconfigured={poolKarts.length > 0}
           onStepChange={handleWalkthroughStep}
           onComplete={handleWalkthroughComplete}
@@ -1980,18 +1977,18 @@ const AdminPanel = () => {
                 <h2>{t('admin_warehouse')}</h2>
                 <span className="warehouse-kart-count">{poolKarts.length}</span>
               </div>
-              <div className="security-toggle-row kart-types-toggle-row">
+              <div className="security-toggle-row kart-types-toggle-row" data-tour="kart-types-toggle">
                 <span className="field-label">{t('admin_multiple_kart_types')}</span>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={multipleKartTypes}
-                  aria-disabled={showWalkthrough}
-                  disabled={showWalkthrough}
-                  title={showWalkthrough ? t('admin_kart_types_locked_tour') : undefined}
-                  className={`hf-toggle${multipleKartTypes ? ' is-on' : ''}${showWalkthrough ? ' is-locked' : ''}`}
+                  aria-disabled={kartTypesToggleLocked}
+                  disabled={kartTypesToggleLocked}
+                  title={kartTypesToggleLocked ? t('admin_kart_types_locked_tour') : undefined}
+                  className={`hf-toggle${multipleKartTypes ? ' is-on' : ''}${kartTypesToggleLocked ? ' is-locked' : ''}`}
                   onClick={() => {
-                    if (showWalkthrough) return;
+                    if (kartTypesToggleLocked) return;
                     setMultipleKartTypes((on) => {
                       const next = !on;
                       if (next && kartTypes.length < 2) {
@@ -2002,6 +1999,9 @@ const AdminPanel = () => {
                       if (!next) setKartNumbersByType({});
                       return next;
                     });
+                    if (showWalkthrough && walkthroughStepId === 'kart-mode') {
+                      setTourKartModeConfirmed(true);
+                    }
                   }}
                 >
                   <span className="hf-toggle-knob" />
